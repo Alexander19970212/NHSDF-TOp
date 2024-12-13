@@ -64,7 +64,7 @@ class SdfDataset(Dataset):
 
 class SdfDatasetSurface(Dataset):
     """Custom Dataset for SDF data of multiple shapes"""
-    def __init__(self, csv_files, value_limit=0.001):
+    def __init__(self, csv_files, cut_value=True, value_limit=0.001):
         # Load and combine data from multiple CSV files
         dfs = []
         points_dfs = []
@@ -103,6 +103,7 @@ class SdfDatasetSurface(Dataset):
         self.feature_dim = len(self.x_names) + 2
 
         self.value_limit = value_limit
+        self.cut_value = cut_value
 
     def __len__(self):
         return len(self.data)
@@ -115,13 +116,13 @@ class SdfDatasetSurface(Dataset):
         X = torch.tensor(X_list, dtype=torch.float32)
         # print(row['sdf'])
         y = torch.tensor(row['sdf'], dtype=torch.float32)
-
-        limit_mask = torch.logical_and(y > self.value_limit, y < (1-self.value_limit))
-        y = y[limit_mask]
-        # Get the class index and corresponding points
         class_idx = int(row['class'] * (self.n_classes - 1))
         points = self.points_data[class_idx]
-        points = points[limit_mask]
+
+        if self.cut_value:
+            limit_mask = torch.logical_and(y > self.value_limit, y < (1-self.value_limit))
+            y = y[limit_mask]
+            points = points[limit_mask]
 
         sample = {
             'X': X,

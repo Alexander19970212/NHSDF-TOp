@@ -1,4 +1,11 @@
 dataset_generation/develpment.ipynb
+dataset_generation/.ipynb_checkpoints
 dataset_generation/__pycache__
 datasets/__pycache__
 models/__pycache__
+.venv/
+.vscode/
+smoothness_metrics.ipynb
+logs/
+shape_datasets/
+model_weights/

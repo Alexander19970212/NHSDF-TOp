@@ -12,6 +12,22 @@ import lightning as L
 from torch.optim.lr_scheduler import LambdaLR, CosineAnnealingLR, SequentialLR
 
 
+def compute_closeness(sdf_pred, sdf_target):
+    # Mean Absolute Error
+    mae = F.l1_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
+    # Root Mean Square Error
+    rmse = torch.sqrt(F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean'))
+    return mae, rmse
+
+def finite_difference_smoothness_torch(points):
+    dx = torch.diff(points, dim=0)
+    dy = torch.diff(points, dim=1)
+    dx = dx[:, :-1]  # Adjust dx to match the shape of dy
+    dy = dy[:-1, :]  # Adjust dy to match the shape of dx
+    smoothness = torch.sqrt(dx**2 + dy**2)
+    return smoothness.mean()
+
+
 class VAE(nn.Module):
     def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, 
                  regularization=None, reg_weight=1e-4):
@@ -182,6 +198,7 @@ class VAE(nn.Module):
 
         return sdf_pred
     
+
 class LitSdfVAE(L.LightningModule):
     def __init__(self, vae_model, learning_rate=1e-4, reg_weight=1e-4, 
                  regularization=None, warmup_steps=1000, max_steps=10000):
@@ -237,14 +254,20 @@ class LitSdfVAE(L.LightningModule):
             total_loss = 0
             total_splitted_loss = {}
             xs, sdfs, points_s = batch
+            total_mae = 0
+            total_rmse = 0
+            total_smoothness = 0
+
             for i in range(len(points_s)):
                 x = xs[i]
                 sdf = sdfs[i]
                 points = points_s[i]
+
+                # Attention: it is supposed that points are from a full grid
+                points_per_side = int(np.sqrt(points.shape[0]))
                 
                 x_repeated = x.repeat(points.size(0), 1)
                 x_combined = torch.cat((points, x_repeated), dim=1)
-                # print(f"x_combined: {x_combined.shape}, type: {x_combined.dtype}")
                 x_reconstructed, sdf_pred, z = self.vae(x_combined)
 
                 loss, splitted_loss = self.vae.loss_function(
@@ -259,10 +282,25 @@ class LitSdfVAE(L.LightningModule):
                     else:
                         total_splitted_loss[key] += value
 
+                # Compute metrics
+                mae, rmse = compute_closeness(sdf_pred, sdf)
+                sdf_reshaped = sdf_pred.reshape(points_per_side, points_per_side)
+                smoothness = finite_difference_smoothness_torch(sdf_reshaped)
+
+                total_mae += mae
+                total_rmse += rmse
+                total_smoothness += smoothness
+
             avg_splitted_loss = {key: value / len(batch) for key, value in total_splitted_loss.items()}
+            avg_mae = total_mae / len(points_s)
+            avg_rmse = total_rmse / len(points_s)
+            avg_smoothness = total_smoothness / len(points_s)
 
             for key, value in avg_splitted_loss.items():
                 self.log(f'val2_{key}', value, prog_bar=True)
+            self.log('val2_mae', avg_mae, prog_bar=True)
+            self.log('val2_rmse', avg_rmse, prog_bar=True)
+            self.log('val2_smoothness', avg_smoothness, prog_bar=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
