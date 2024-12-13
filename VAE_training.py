@@ -15,13 +15,13 @@ from datasets.SDF_dataset import SdfDataset, SdfDatasetSurface, collate_fn_surfa
 import argparse
 
 def main(args):
-    # dataset_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_dataset.csv',
-    #                  '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_dataset.csv', 
-    #                  '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_dataset.csv']
+    dataset_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_dataset.csv',
+                     '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_dataset.csv', 
+                     '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_dataset.csv']
 
-    # surface_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_surface_dataset.csv',
-    #                  '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_surface_dataset.csv', 
-    #                  '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_surface_dataset.csv']
+    surface_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_surface_dataset.csv',
+                     '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_surface_dataset.csv', 
+                     '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_surface_dataset.csv']
 
     # dataset_files = ['shape_datasets/ellipse_sdf_dataset_onlMove.csv',
     #                  'shape_datasets/triangle_sdf_dataset_test.csv', 
