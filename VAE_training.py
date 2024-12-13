@@ -100,7 +100,9 @@ def main(args):
                 patience=10,
                 mode='min'
             )
-        ]
+        ],
+        check_val_every_n_epoch=None,  # Disable validation every epoch
+        val_check_interval=4000  # Perform validation every 2000 training steps
     )
 
     # Initialize model with L1 regularization
