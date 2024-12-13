@@ -127,7 +127,7 @@ def main(args):
     vae_trainer = LitSdfAE(
         vae_model=vae_model, 
         learning_rate=1e-4, 
-        reg_weight=1e-4, 
+        reg_weight=1e-3, 
         regularization='l2',    # Should match the VAE model's regularization
         warmup_steps=1000, 
         max_steps=MAX_STEPS
