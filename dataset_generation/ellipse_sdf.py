@@ -39,7 +39,7 @@ def generate_ellipse_sdf_dataset(num_ellipse=1000, points_per_ellipse=500, filen
     """
     data = []
     
-    for _ in range(num_ellipse):
+    for _ in tqdm(range(num_ellipse)):
         # Generate random ellipse parameters
         center = np.array([0, 0])  # Center fixed at (0, 0)
         # a = np.random.uniform(0.2, 0.8)  # Semi-major axis
@@ -130,13 +130,13 @@ def generate_ellipse_sdf_surface_dataset(
     
     return df, points_df
 
-def plot_ellipse_sdf_dataset(df):
+def plot_ellipse_sdf_dataset(df, points_per_ellipse=1000):
     # Plot a few examples to verify
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
     for i in range(3):
         # Get data for one ellipse
-        ellipse_data = df.iloc[i*500:(i+1)*500]
+        ellipse_data = df.iloc[i*points_per_ellipse:(i+1)*points_per_ellipse]
         b_w = ellipse_data['semi_axes_ratio'].iloc[0]
         a = 0.5
         b = a * b_w
