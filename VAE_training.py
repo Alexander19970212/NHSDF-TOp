@@ -123,7 +123,7 @@ def main(args):
     )
 
     # Train the model
-    trainer.fit(vae_trainer, train_loader, test_loader)
+    trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader, surface_test_loader])
 
     # Save model weights
     checkpoint_path = 'model_weights/vae_model_weights12.ckpt'
