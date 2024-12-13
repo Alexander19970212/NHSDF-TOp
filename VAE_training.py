@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from lightning.pytorch import Trainer, seed_everything, callbacks
 from lightning.pytorch.loggers import TensorBoardLogger
 
-from models.sdf_models import LitSdfVAE, VAE
+from models.sdf_models import LitSdfAE, AE
 from datasets.SDF_dataset import SdfDataset, SdfDatasetSurface, collate_fn_surface
 import argparse
 
@@ -106,7 +106,7 @@ def main(args):
     )
 
     # Initialize model with L1 regularization
-    vae_model = VAE(
+    vae_model = AE(
         input_dim=dataset.feature_dim, 
         latent_dim=3, 
         hidden_dim=128, 
@@ -115,7 +115,7 @@ def main(args):
     )
 
     # Initialize the trainer
-    vae_trainer = LitSdfVAE(
+    vae_trainer = LitSdfAE(
         vae_model=vae_model, 
         learning_rate=1e-4, 
         reg_weight=1e-4, 
