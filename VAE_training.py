@@ -1,0 +1,123 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+from torch.nn import functional as F
+import pandas as pd
+import numpy as np
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+from lightning.pytorch import Trainer, seed_everything, callbacks
+from lightning.pytorch.loggers import TensorBoardLogger
+
+from models.sdf_models import LitSdfVAE, VAE
+from datasets.SDF_dataset import SdfDataset
+import argparse
+
+def main(args):
+    # dataset_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_dataset.csv',
+    #                  '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_dataset.csv', 
+    #                  '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_dataset.csv']
+
+    dataset_files = ['shape_datasets/ellipse_sdf_dataset_onlMove.csv',
+                     'shape_datasets/triangle_sdf_dataset_test.csv', 
+                     'shape_datasets/quadrangle_sdf_dataset_test.csv']
+
+    dataset = SdfDataset(dataset_files)
+
+    # Split dataset into train and test sets
+    train_size = int(0.8 * len(dataset))  # 80% for training
+    test_size = len(dataset) - train_size  # 20% for testing
+
+    # Use random_split to create train and test datasets
+    train_dataset, test_dataset = torch.utils.data.random_split(
+        dataset, 
+        [train_size, test_size],
+        generator=torch.Generator().manual_seed(42)  # Set seed for reproducibility
+    )
+
+    # Create DataLoaders with shuffling
+    batch_size = 64
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,  # Enable shuffling for training data
+        num_workers=15
+    )
+
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset, 
+        batch_size=batch_size,
+        shuffle=False,  # No need to shuffle test data
+        num_workers=15
+    )
+
+    print(f"Training set size: {len(train_dataset)}")
+    print(f"Test set size: {len(test_dataset)}")
+
+    MAX_EPOCHS = args.max_epochs
+    MAX_STEPS = MAX_EPOCHS * len(train_loader)
+
+    # Training setup
+    trainer = Trainer(
+        max_epochs=MAX_EPOCHS,
+        accelerator='auto',
+        devices=1,
+        logger=TensorBoardLogger(
+            name='VAEi', 
+            save_dir='./logs', 
+            default_hp_metric=False, 
+            version='run_test'
+        ),
+        callbacks=[
+            callbacks.ModelCheckpoint(
+                monitor='val_total_loss',
+                mode='min',
+                save_top_k=1,
+                filename='best-model-{epoch:02d}-{val_total_loss:.2f}'
+            ),
+            callbacks.EarlyStopping(
+                monitor='val_total_loss',
+                patience=10,
+                mode='min'
+            )
+        ]
+    )
+
+    # Initialize model with L1 regularization
+    vae_model = VAE(
+        input_dim=dataset.feature_dim, 
+        latent_dim=3, 
+        hidden_dim=128, 
+        regularization='l1',   # Use 'l1', 'l2', or None
+        reg_weight=1e-4        # Adjust the weight as needed
+    )
+
+    # Initialize the trainer
+    vae_trainer = LitSdfVAE(
+        vae_model=vae_model, 
+        learning_rate=1e-4, 
+        reg_weight=1e-4, 
+        regularization='l1',    # Should match the VAE model's regularization
+        warmup_steps=1000, 
+        max_steps=MAX_STEPS
+    )
+
+    # Train the model
+    trainer.fit(vae_trainer, train_loader, test_loader)
+
+    # Save model weights
+    checkpoint_path = 'model_weights/vae_model_weights9.ckpt'
+    trainer.save_checkpoint(checkpoint_path)
+    print(f"Model weights saved to {checkpoint_path}")
+
+    # Save just the model weights
+    model_weights_path = 'model_weights/vae_model_weights9.pt'
+    torch.save(vae_model.state_dict(), model_weights_path)
+    print(f"Model weights saved to {model_weights_path}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Train a VAE model.')
+    parser.add_argument('--max_epochs', type=int, default=2, help='Maximum number of epochs for training')
+    args = parser.parse_args()
+    main(args)

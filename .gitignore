@@ -1,2 +1,4 @@
 dataset_generation/develpment.ipynb
 dataset_generation/__pycache__
+datasets/__pycache__
+models/__pycache__
