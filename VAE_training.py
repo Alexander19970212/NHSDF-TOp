@@ -32,7 +32,7 @@ def main(args):
     #                  'shape_datasets/quadrangle_sdf_surface_dataset_test']
 
     dataset = SdfDataset(dataset_files)
-    surface_dataset = SdfDatasetSurface(surface_files)
+    surface_dataset = SdfDatasetSurface(surface_files, cut_value=False)
 
 
     # Split dataset into train and test sets
