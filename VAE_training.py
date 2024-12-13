@@ -64,7 +64,7 @@ def main(args):
 
     surface_test_loader = torch.utils.data.DataLoader(
         surface_dataset,
-        batch_size=4,
+        batch_size=8,
         shuffle=False,
         num_workers=15,
         collate_fn=collate_fn_surface
@@ -86,7 +86,7 @@ def main(args):
             name='VAEi', 
             save_dir='./logs', 
             default_hp_metric=False, 
-            version='run_test_surface'
+            version=args.run_name
         ),
         callbacks=[
             callbacks.ModelCheckpoint(
@@ -126,17 +126,18 @@ def main(args):
     trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader, surface_test_loader])
 
     # Save model weights
-    checkpoint_path = 'model_weights/vae_model_weights12.ckpt'
+    checkpoint_path = f'model_weights/{args.run_name}.ckpt'
     trainer.save_checkpoint(checkpoint_path)
     print(f"Model weights saved to {checkpoint_path}")
 
     # Save just the model weights
-    model_weights_path = 'model_weights/vae_model_weights12.pt'
+    model_weights_path = f'model_weights/{args.run_name}.pt'
     torch.save(vae_model.state_dict(), model_weights_path)
     print(f"Model weights saved to {model_weights_path}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VAE model.')
     parser.add_argument('--max_epochs', type=int, default=2, help='Maximum number of epochs for training')
+    parser.add_argument('--run_name', type=str, default='run_test', help='Name of the run')
     args = parser.parse_args()
     main(args)
