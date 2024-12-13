@@ -11,7 +11,7 @@ from lightning.pytorch import Trainer, seed_everything, callbacks
 from lightning.pytorch.loggers import TensorBoardLogger
 
 from models.sdf_models import LitSdfVAE, VAE
-from datasets.SDF_dataset import SdfDataset
+from datasets.SDF_dataset import SdfDataset, SdfDatasetSurface, collate_fn_surface
 import argparse
 
 def main(args):
@@ -19,11 +19,21 @@ def main(args):
     #                  '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_dataset.csv', 
     #                  '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_dataset.csv']
 
-    dataset_files = ['shape_datasets/ellipse_sdf_dataset_onlMove.csv',
-                     'shape_datasets/triangle_sdf_dataset_test.csv', 
-                     'shape_datasets/quadrangle_sdf_dataset_test.csv']
+    # surface_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_surface_dataset.csv',
+    #                  '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_surface_dataset.csv', 
+    #                  '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_surface_dataset.csv']
+
+    # dataset_files = ['shape_datasets/ellipse_sdf_dataset_onlMove.csv',
+    #                  'shape_datasets/triangle_sdf_dataset_test.csv', 
+    #                  'shape_datasets/quadrangle_sdf_dataset_test.csv']
+    
+    # surface_files = ['shape_datasets/ellipse_sdf_surface_dataset_test',
+    #                  'shape_datasets/triangle_sdf_surface_dataset_test',
+    #                  'shape_datasets/quadrangle_sdf_surface_dataset_test']
 
     dataset = SdfDataset(dataset_files)
+    surface_dataset = SdfDatasetSurface(surface_files)
+
 
     # Split dataset into train and test sets
     train_size = int(0.8 * len(dataset))  # 80% for training
@@ -52,8 +62,17 @@ def main(args):
         num_workers=15
     )
 
+    surface_test_loader = torch.utils.data.DataLoader(
+        surface_dataset,
+        batch_size=4,
+        shuffle=False,
+        num_workers=15,
+        collate_fn=collate_fn_surface
+    )
+
     print(f"Training set size: {len(train_dataset)}")
     print(f"Test set size: {len(test_dataset)}")
+    print(f"Surface test set size: {len(surface_test_loader)}")
 
     MAX_EPOCHS = args.max_epochs
     MAX_STEPS = MAX_EPOCHS * len(train_loader)
@@ -67,17 +86,17 @@ def main(args):
             name='VAEi', 
             save_dir='./logs', 
             default_hp_metric=False, 
-            version='run_test'
+            version='run_test_surface'
         ),
         callbacks=[
             callbacks.ModelCheckpoint(
-                monitor='val_total_loss',
+                monitor='val_total_loss/dataloader_idx_0',
                 mode='min',
                 save_top_k=1,
                 filename='best-model-{epoch:02d}-{val_total_loss:.2f}'
             ),
             callbacks.EarlyStopping(
-                monitor='val_total_loss',
+                monitor='val_total_loss/dataloader_idx_0',
                 patience=10,
                 mode='min'
             )
@@ -89,7 +108,7 @@ def main(args):
         input_dim=dataset.feature_dim, 
         latent_dim=3, 
         hidden_dim=128, 
-        regularization='l1',   # Use 'l1', 'l2', or None
+        regularization='l2',   # Use 'l1', 'l2', or None
         reg_weight=1e-4        # Adjust the weight as needed
     )
 
@@ -98,7 +117,7 @@ def main(args):
         vae_model=vae_model, 
         learning_rate=1e-4, 
         reg_weight=1e-4, 
-        regularization='l1',    # Should match the VAE model's regularization
+        regularization='l2',    # Should match the VAE model's regularization
         warmup_steps=1000, 
         max_steps=MAX_STEPS
     )
@@ -107,12 +126,12 @@ def main(args):
     trainer.fit(vae_trainer, train_loader, test_loader)
 
     # Save model weights
-    checkpoint_path = 'model_weights/vae_model_weights9.ckpt'
+    checkpoint_path = 'model_weights/vae_model_weights12.ckpt'
     trainer.save_checkpoint(checkpoint_path)
     print(f"Model weights saved to {checkpoint_path}")
 
     # Save just the model weights
-    model_weights_path = 'model_weights/vae_model_weights9.pt'
+    model_weights_path = 'model_weights/vae_model_weights12.pt'
     torch.save(vae_model.state_dict(), model_weights_path)
     print(f"Model weights saved to {model_weights_path}")
 
