@@ -4,6 +4,14 @@ import pandas as pd
 import os
 import numpy as np
 
+def collate_fn_rs_loss(batch):
+    """Custom collate function for the RSLossDataset"""
+    # Extract points and targets from the batch
+    points = torch.stack([item['grid'] for item in batch])
+    targets = torch.stack([item['target'] for item in batch])
+
+    return points, targets
+
 class RSLossConvDataset(Dataset):
     def __init__(self, root_dir, shape_type, grid_size=64, transform=None):
         """
