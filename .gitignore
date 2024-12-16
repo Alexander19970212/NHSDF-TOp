@@ -9,3 +9,5 @@ smoothness_metrics.ipynb
 logs/
 shape_datasets/
 model_weights/
+paper/
+src/
