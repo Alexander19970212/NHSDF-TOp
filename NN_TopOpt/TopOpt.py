@@ -11,6 +11,8 @@ from random import randint, randrange
 from scipy.sparse import linalg as sla
 from scipy.sparse import coo_matrix
 
+import os
+
 import cvxpy as cp
 
 def triag_area(point1, point2, point3):
@@ -266,6 +268,9 @@ class TopOptimizer2D:
             'time': time.strftime("%H:%M:%S", time.localtime()),
             'iter_meta': {}
         }
+
+        if not os.path.exists('experiments'):
+            os.makedirs('experiments')
         
         with open(self.log_file_name, 'w') as fp:
             json.dump(meta, fp)

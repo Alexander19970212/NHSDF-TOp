@@ -19,7 +19,6 @@ import json
 from TopOpt import LoadedMesh2D
 import time
 
-
 from TopOpt import SIMP_basic
 from TopOpt import TopOptimizer2D
 from TopOpt import fit_ellipsoid
@@ -262,6 +261,8 @@ class FeatureMappingDecSDF(torch.nn.Module):
         self.Emin = args["Emin"]
         self.Emax = args["Emax"]
         self.penal = args["penal"]
+        self.volfrac = args["args"]["volfrac"]
+
 
         # RS Loss
         if args["args"]["rs_loss"]:
@@ -286,7 +287,7 @@ class FeatureMappingDecSDF(torch.nn.Module):
             regularization='l2',   # Use 'l1', 'l2', or None
             reg_weight=1e-3        # Adjust the weight as needed
         )
-        self.model.load_state_dict(torch.load("model_weighst/AE_deepSDF_report.pt"))
+        self.model.load_state_dict(torch.load("model_weights/AE_deepSDF_report.pt"))
         self.model.eval()
 
         # create model for rs_loss
@@ -296,11 +297,11 @@ class FeatureMappingDecSDF(torch.nn.Module):
         self.rs_loss_predictor.eval()
 
         # Create input vector for encoder
-        encoder_input = torch.zeros(init_offsets.shape[0], 10)
+        encoder_input = torch.zeros(init_offsets.shape[0], 17)
         encoder_input[:, 3] = init_sigmas_ratios  # Set scale values at index 1
 
         # get latent vectors
-        _, _, z, _ = self.model(encoder_input)
+        _, _, z = self.model(encoder_input)
 
         self.sigma_min = 0.002
         self.sigma_max = 0.1
@@ -528,7 +529,7 @@ class FeatureMappingDecSDF(torch.nn.Module):
         shape_var = (self.shape_var_maxs - self.shape_var_mins)*torch.sigmoid(W_shape_var) + self.shape_var_mins 
         
         dist = torch.norm(shape_var - latent_center, dim=1) # TODO: check if this is correct
-        maha_dist_sq = torch.sum((shape_var - latent_center) @ torch.inverse(latent_cov) @ (shape_var - latent_center), dim=1)
+        maha_dist_sq = torch.sum((shape_var - latent_center) @ torch.inverse(latent_cov) @ (shape_var - latent_center).T, dim=1)
         # print("dist:", dist)
         # ff_loss = torch.nn.functional.leaky_relu(dist - 1.5, negative_slope=0.1)
         ff_loss = torch.nn.functional.leaky_relu(maha_dist_sq - 1.5, negative_slope=0.01)
@@ -548,7 +549,7 @@ class FeatureMappingDecSDF(torch.nn.Module):
         
         # Safeguard the loss calculations
         volfrac_loss_pre = torch.nn.functional.relu(
-            self.H.mean() - 0.6
+            self.H.mean() - self.volfrac
         )
         
         gaussian_overlap = self.H_splitted_sum_clipped.mean()
