@@ -337,12 +337,13 @@ def generate_and_calculate_signed_distance(num_vertices=4, noise_scale=0.03, noi
 
 ######## Dataset generation #########
 
-def save_dataset(dir, num_samples=1000, num_vertices=4, points_per_side=64):
+def save_dataset(dir, num_samples=1000, num_vertices=4, points_per_side=64, noise_scale=0.03, noise_scale_z=0.04):
     for sample_idx in tqdm(range(num_samples)):
         # Generate new random polygon and calculate everything
         # (assuming the polygon generation code is defined above)
         X, Y, Z, rounded_quadrangles, desired_angle_offset_sum = generate_and_calculate_signed_distance(
-            num_vertices=num_vertices, points_per_side=points_per_side
+            num_vertices=num_vertices, points_per_side=points_per_side,
+            noise_scale=noise_scale, noise_scale_z=noise_scale_z
         )
         # Store desired_angle_offset_sum
         if not hasattr(save_dataset, 'angle_offset_sums'):

@@ -11,3 +11,5 @@ shape_datasets/
 model_weights/
 paper/
 src/
+checkpoints/
+__pycache__/
