@@ -101,6 +101,8 @@ class SIMP_Gaussians:
         ], maximize=False, eps=1e-8)
 
     def parameter_opt_step(self, ce):
+        # for id in range(2):
+        #     _ = self.gaussian_core.get_x(self.global_i)
         self.optim.zero_grad()
         loss, volfrac_loss_pre, gaussian_overlap, compliance, ff_loss, rs_loss, obj_real = self.gaussian_core(
             torch.tensor(ce), self.global_i
@@ -124,7 +126,6 @@ class SIMP_Gaussians:
         torch.nn.utils.clip_grad_norm_(self.gaussian_core.parameters(), max_norm=0.02)
 
         self.optim.step()
-
 
         return loss, volfrac_loss_pre, gaussian_overlap, compliance, ff_loss, rs_loss, obj_real
     
@@ -247,6 +248,7 @@ class FeatureMappingDecSDF(torch.nn.Module):
         self.gaussian_overlap_scale = args["args"]["gaussian_overlap_scale"]
         self.ff_loss_w = args["args"]["ff_loss_w"]
         self.smooth_k = args["args"]["smooth_k"]
+        self.saved_model_name = args["args"]["saved_model_name"]
 
         problem_config = args["problem_config"]
 
@@ -263,6 +265,14 @@ class FeatureMappingDecSDF(torch.nn.Module):
         self.penal = args["penal"]
         self.volfrac = args["args"]["volfrac"]
 
+        # load stats for latent space
+        latent_goal = args["args"]["latent_goal"]
+        data = np.load(f"model_weights/{self.saved_model_name}_{latent_goal}_stats.npz")
+        self.latent_goal_center = torch.tensor(data['center'], dtype=torch.float32)
+        self.latent_goal_cov_inv = torch.tensor(data['class_cov_inv'], dtype=torch.float32)
+        self.latent_mins = torch.tensor(data['latent_mins'], dtype=torch.float32) * 1.2
+        self.latent_maxs = torch.tensor(data['latent_maxs'], dtype=torch.float32) * 1.2
+        self.latent_dim = self.latent_mins.shape[0]
 
         # RS Loss
         if args["args"]["rs_loss"]:
@@ -282,12 +292,12 @@ class FeatureMappingDecSDF(torch.nn.Module):
         # self.model = VAE(input_dim=10, latent_dim=3, hidden_dim=128)
         self.model = AE_DeepSDF(
             input_dim=17, 
-            latent_dim=3, 
+            latent_dim=self.latent_dim, 
             hidden_dim=128, 
             regularization='l2',   # Use 'l1', 'l2', or None
             reg_weight=1e-3        # Adjust the weight as needed
         )
-        self.model.load_state_dict(torch.load("model_weights/AE_deepSDF_report.pt"))
+        self.model.load_state_dict(torch.load(f"model_weights/{self.saved_model_name}.pt"))
         self.model.eval()
 
         # create model for rs_loss
@@ -308,7 +318,7 @@ class FeatureMappingDecSDF(torch.nn.Module):
 
         self.scale_sigma = torch.tensor(0.06)/4
         self.scale_max = self.scale_sigma*10
-        self.scale_min = self.scale_sigma*0.75
+        self.scale_min = self.scale_sigma*4
 
         self.rotation_min = -torch.pi/2
         self.rotation_max = torch.pi/2
@@ -316,8 +326,14 @@ class FeatureMappingDecSDF(torch.nn.Module):
         # self.shape_var_mins = torch.tensor([-2.7, -1.8, -2.9, -0.3, -3.3, -1.5])
         # self.shape_var_maxs = torch.tensor([2.2, 1.6, 3.7, 0.3, 2.7, 1.6])
 
-        self.shape_var_mins = torch.tensor([-2.2, -2.5, -2.5])
-        self.shape_var_maxs = torch.tensor([2.7, 3.0, 1.8])
+        self.shape_var_mins = self.latent_mins
+        self.shape_var_maxs = self.latent_maxs
+        z = torch.clamp(z, self.shape_var_mins, self.shape_var_maxs)
+        init_scales = torch.clamp(init_scales, self.scale_min, self.scale_max)
+
+        # print("shape_var_mins: ", self.shape_var_mins)
+        # print("shape_var_maxs: ", self.shape_var_maxs)
+        # print("z: ", z)
 
         shape_variables = torch.zeros((num_samples, z.shape[1])).to(torch.float32)
         offsets = torch.zeros((num_samples, 2)).to(torch.float32)
@@ -339,8 +355,6 @@ class FeatureMappingDecSDF(torch.nn.Module):
 
         self.coord_max = torch.tensor([x_max, y_max]).to(torch.float32)
         self.coord_min = torch.tensor([x_min, y_min]).to(torch.float32)
-
-        
 
         offsets_values = torch.logit((offsets - self.coord_min)/(self.coord_max - self.coord_min)).type(torch.float32)
         scale_values = torch.logit((scales - self.scale_min)/(self.scale_max - self.scale_min)).type(torch.float32)
@@ -470,11 +484,11 @@ class FeatureMappingDecSDF(torch.nn.Module):
         # plt.axis('equal')
 
         # Create scatter plot of H_splitted_sum using coords
-        plt.figure(figsize=(12, 4))
-        plt.tricontourf(self.coords[:, 0], self.coords[:, 1], self.H_splitted_sum.detach().numpy(), cmap='viridis', levels=20)
-        plt.colorbar()
-        plt.title('H_splitted_sum')
-        plt.axis('equal')
+        # plt.figure(figsize=(12, 4))
+        # plt.tricontourf(self.coords[:, 0], self.coords[:, 1], self.H_splitted_sum.detach().numpy(), cmap='viridis', levels=20)
+        # plt.colorbar()
+        # plt.title('H_splitted_sum')
+        # plt.axis('equal')
 
         self.H_splitted_sum_clipped = torch.nn.functional.relu(
             self.H_splitted_sum - 1
@@ -501,40 +515,23 @@ class FeatureMappingDecSDF(torch.nn.Module):
         return ff_loss.sum()
     
     def compute_ff_loss(self): # form factor loss
-        # get reconstruction code from decoder_input
-        triangle_latent_center = torch.tensor([ 0.16733168, -0.60638803, -0.36160374])
-        triangle_latent_cov = torch.tensor([[1.34255314, 0.2798122, 0.24901481], 
-                                            [0.2798122, 0.47263245, 0.0615747 ], 
-                                            [0.24901481, 0.0615747, 0.05206213]])
-
-        quadrangle_latent_center = torch.tensor([ 0.15750758,  0.40698782, -0.7939762 ])
-        quadrangle_latent_cov = torch.tensor([[ 0.94596978,  0.14350028,  0.21630775],
-                                              [ 0.14350028,  0.81666506, -0.12183093],
-                                              [ 0.21630775, -0.12183093,  0.33142915]])
         
-        barycenter_mean = torch.tensor([ 0.16241963, -0.0997001, -0.57778997])
-        barycenter_cov = torch.tensor([[ 1.13362385,  0.21123044,  0.23921178],
-                                      [ 0.21123044,  0.62926176, -0.015097  ],
-                                      [ 0.23921178, -0.015097  ,  0.13975657]])
-        
-        common_mean = torch.tensor([ 0.16232415, -0.08983172, -0.58200043])
-        common_cov = torch.tensor([[ 1.13999355,  0.20776021,  0.2333174 ],
-                                   [ 0.20776021,  0.9044896,  -0.14144171], 
-                                   [ 0.2333174,  -0.14144171,  0.24113142]])
-        
-        latent_center = common_mean
-        latent_cov = common_cov
+        latent_center = self.latent_goal_center
+        latent_cov_inv = self.latent_goal_cov_inv
 
         W_shape_var = self.W_shape_var[self.persistent_mask]
         shape_var = (self.shape_var_maxs - self.shape_var_mins)*torch.sigmoid(W_shape_var) + self.shape_var_mins 
         
         dist = torch.norm(shape_var - latent_center, dim=1) # TODO: check if this is correct
-        maha_dist_sq = torch.sum((shape_var - latent_center) @ torch.inverse(latent_cov) @ (shape_var - latent_center).T, dim=1)
+        maha_dist_sq = torch.sum((shape_var - latent_center) @ latent_cov_inv @ (shape_var - latent_center).T, dim=1)
         # print("dist:", dist)
         # ff_loss = torch.nn.functional.leaky_relu(dist - 1.5, negative_slope=0.1)
-        ff_loss = torch.nn.functional.leaky_relu(maha_dist_sq - 1.5, negative_slope=0.01)
+        # ff_loss = torch.nn.functional.relu(maha_dist_sq - 1000.0)
+        ff_loss = torch.nn.functional.relu(dist - 0.8)
 
         print("ff_loss: ", ff_loss.min(), ff_loss.max())
+        print("maha_dist_sq: ", maha_dist_sq.min(), maha_dist_sq.max())
+        print("dist: ", dist.shape, dist.min(), dist.max())
 
         return ff_loss.sum()
 
@@ -546,10 +543,12 @@ class FeatureMappingDecSDF(torch.nn.Module):
         # Add numerical stability to compliance calculation
         H_vec = torch.clamp(self.H, min=self.Emin, max=self.Emax)**self.penal
         compliance = torch.dot(H_vec, ce.float())
+
+        volfrac_goal = self.volfrac - 0.2*max(0, min(1, (global_i-20)/20))
         
         # Safeguard the loss calculations
         volfrac_loss_pre = torch.nn.functional.relu(
-            self.H.mean() - self.volfrac
+            self.H.mean() - volfrac_goal
         )
         
         gaussian_overlap = self.H_splitted_sum_clipped.mean()

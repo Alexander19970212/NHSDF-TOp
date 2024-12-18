@@ -32,7 +32,10 @@ def ellipse_sdf(points, a, b):
     # Inside: negative, Outside: positive
     return scaled_dist * min_axis - min_axis
 
-def generate_ellipse_sdf_dataset(num_ellipse=1000, points_per_ellipse=500, filename='shape_datasets/ellipse_sdf_dataset.csv'):
+def generate_ellipse_sdf_dataset(num_ellipse=1000,
+                                 points_per_ellipse=500,
+                                 smooth_factor=44,
+                                 filename='shape_datasets/ellipse_sdf_dataset.csv'):
     """
     Generate a dataset of points and their SDFs for random ellipses.
     Each ellipse is defined by its center, semi-major axis, semi-minor axis and rotation angle.
@@ -50,7 +53,7 @@ def generate_ellipse_sdf_dataset(num_ellipse=1000, points_per_ellipse=500, filen
         points = np.random.uniform(-1, 1, (points_per_ellipse, 2))
 
         sdf = ellipse_sdf(points, a, b)
-        sdf = 1/(1 + np.exp(44*sdf))
+        sdf = 1/(1 + np.exp(smooth_factor*sdf))
         
         for i, point in enumerate(points):
             data.append([
@@ -76,6 +79,7 @@ def generate_ellipse_sdf_dataset(num_ellipse=1000, points_per_ellipse=500, filen
 def generate_ellipse_sdf_surface_dataset(
         num_ellipse=1000,
         points_per_ellipse=1000,
+        smooth_factor=44,
         filename='../shape_datasets/ellipse_sdf_surface_dataset_test',
         axes_length=1):
     """
@@ -100,7 +104,7 @@ def generate_ellipse_sdf_surface_dataset(
         b = a * b_w
         
         sdf = ellipse_sdf(points, a, b)
-        sdf = 1/(1 + np.exp(44*sdf))
+        sdf = 1/(1 + np.exp(smooth_factor*sdf))
 
         sdf_str = ','.join(map(str, sdf.tolist()))
         

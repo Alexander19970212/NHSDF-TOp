@@ -105,7 +105,7 @@ def point_in_quadrangle(point, vertices):
 
     return wn != 0
 
-def signed_distance_quadrangle(point, v1, v2, v3, v4, corner_radius=0.1):
+def signed_distance_quadrangle(point, v1, v2, v3, v4, smooth_factor=40, corner_radius=0.1):
     """Calculate signed distance from point to quadrangle"""
     d1 = point_to_line_distance(point, v1, v2)
     d2 = point_to_line_distance(point, v2, v3)
@@ -120,9 +120,12 @@ def signed_distance_quadrangle(point, v1, v2, v3, v4, corner_radius=0.1):
     else:
         dist = -min_dist
 
-    return 1/(1 + np.exp(-20*(dist + corner_radius)))
+    return 1/(1 + np.exp(-smooth_factor*(dist + corner_radius)))
 
-def generate_quadrangle_sdf_dataset(num_quadrangle=1000, points_per_quadrangle=100, filename='quadrangle_sdf_dataset.csv'):
+def generate_quadrangle_sdf_dataset(num_quadrangle=1000,
+                                    points_per_quadrangle=100,
+                                    smooth_factor=40,
+                                    filename='quadrangle_sdf_dataset.csv'):
     """
     Generate dataset of signed distances for random quadrangle
     
@@ -160,7 +163,7 @@ def generate_quadrangle_sdf_dataset(num_quadrangle=1000, points_per_quadrangle=1
         
         # Calculate signed distance for each point
         for point in points:
-            sdf = signed_distance_quadrangle(point, v1, v2, v3, v4)
+            sdf = signed_distance_quadrangle(point, v1, v2, v3, v4, smooth_factor=smooth_factor)
             
             # Store data as a row: [point_x, point_y, v1_x, v1_y, v2_x, v2_y, v3_x, v3_y, v4_x, v4_y, signed_distance]
             row = [
@@ -194,6 +197,7 @@ from utils_generation import get_rounded_polygon_segments_rand_radius, signed_di
 def generate_rounded_quadrangle_sdf_dataset(
         num_quadrangle=1000,
         points_per_quadrangle=100,
+        smooth_factor=40,
         filename='quadrangle_sdf_dataset.csv'
 ):
     """
@@ -239,7 +243,7 @@ def generate_rounded_quadrangle_sdf_dataset(
         # Combine points
         points = np.vstack([points_uniform, points_gaussian])
 
-        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices)
+        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
         
         # Calculate signed distance for each point
         for i, point in enumerate(points):
@@ -275,6 +279,7 @@ def generate_rounded_quadrangle_sdf_dataset(
 def generate_rounded_quadrangle_sdf_surface_dataset(
         num_quadrangle=1000,
         points_per_quadrangle=1000,
+        smooth_factor=40,
         filename='../shape_datasets/quadrangle_sdf_surface_dataset_test',
         axes_length=1):
     """
@@ -308,7 +313,7 @@ def generate_rounded_quadrangle_sdf_surface_dataset(
         v1, v2, v3, v4 = vertices
         arc_radii = np.array([radius for _, _, _, radius in arc_segments])
 
-        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices)
+        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
 
         # print(sdf)
         
@@ -380,7 +385,7 @@ def plot_random_quadrangles():
     plt.tight_layout()
     plt.show()
 
-def plot_sdf_random_quadrangle():
+def plot_sdf_random_quadrangle(smooth_factor=40):
     # Generate random quadrangle vertices
     quadrangle = generate_quadrangle()
     v1, v2, v3, v4 = quadrangle
@@ -395,7 +400,7 @@ def plot_sdf_random_quadrangle():
     for i in range(X.shape[0]):
         for j in range(X.shape[1]):
             point = np.array([X[i,j], Y[i,j]])
-            Z[i,j] =  signed_distance_quadrangle(point, v1, v2, v3, v4)
+            Z[i,j] =  signed_distance_quadrangle(point, v1, v2, v3, v4, smooth_factor=smooth_factor)
 
     # Create plots
     fig = plt.figure(figsize=(20, 5))

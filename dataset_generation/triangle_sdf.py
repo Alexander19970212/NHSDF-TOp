@@ -22,7 +22,7 @@ def triangle_center(v1, v2, v3):
     """Calculate centroid of triangle"""
     return (v1 + v2 + v3) / 3.0
 
-def signed_distance(point, v1, v2, v3, corner_radius=0.1):
+def signed_distance(point, v1, v2, v3, smooth_factor=20,     corner_radius=0.1):
     """Calculate signed distance from point to triangle with rounded inner corners"""
     d1 = point_to_line_distance(point, v1, v2)
     d2 = point_to_line_distance(point, v2, v3)
@@ -36,7 +36,7 @@ def signed_distance(point, v1, v2, v3, corner_radius=0.1):
     else:
         dist = -min_dist
 
-    return 1/(1 + np.exp(-20*(dist + corner_radius)))
+    return 1/(1 + np.exp(-smooth_factor*(dist + corner_radius)))
 
 def generate_triangle():
     while True:
@@ -64,7 +64,7 @@ def generate_triangle():
     vertices = np.array([v1, v2, v3])
     return vertices
 
-def generate_triangle_sdf_dataset(num_triangle=100, points_per_triangle=1000, filename='triangle_sdf_dataset_short.csv'):
+def generate_triangle_sdf_dataset(num_triangle=100, points_per_triangle=1000, smooth_factor=40, filename='triangle_sdf_dataset_short.csv'):
     """
     Generate dataset of signed distances for random triangles
     
@@ -102,7 +102,7 @@ def generate_triangle_sdf_dataset(num_triangle=100, points_per_triangle=1000, fi
         
         # Calculate signed distance for each point
         for point in points:
-            sdf = signed_distance(point, v1, v2, v3)
+            sdf = signed_distance(point, v1, v2, v3, smooth_factor=smooth_factor)
             
             # Store data as a row: [point_x, point_y, v1_x, v1_y, v2_x, v2_y, v3_x, v3_y, signed_distance]
             row = [
@@ -132,6 +132,7 @@ from utils_generation import get_rounded_polygon_segments_rand_radius, signed_di
 def generate_rounded_triangle_sdf_dataset(
         num_triangle=1000,
         points_per_triangle=100,
+        smooth_factor=40,
         filename='triangle_sdf_dataset.csv'
 ):
     """
@@ -177,7 +178,7 @@ def generate_rounded_triangle_sdf_dataset(
         # Combine points
         points = np.vstack([points_uniform, points_gaussian])
 
-        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices)
+        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
         
         # Calculate signed distance for each point
         for i, point in enumerate(points):
@@ -210,6 +211,7 @@ def generate_rounded_triangle_sdf_dataset(
 def generate_rounded_triangle_sdf_surface_dataset(
         num_triangle=1000,
         points_per_triangle=100,
+        smooth_factor=40,
         filename='rounded_triangle_sdf_surface_dataset.csv'
 ):
     """
@@ -243,7 +245,7 @@ def generate_rounded_triangle_sdf_surface_dataset(
         v1, v2, v3 = vertices
         arc_radii = np.array([radius for _, _, _, radius in arc_segments])
 
-        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices)
+        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
         
         # Calculate signed distance for each point
         
@@ -283,6 +285,7 @@ def generate_rounded_triangle_sdf_surface_dataset(
 def generate_rounded_triangle_sdf_surface_dataset(
         num_triangle=1000,
         points_per_triangle=100,
+        smooth_factor=40,
         filename='rounded_triangle_sdf_surface_dataset',
         axes_length=1   
 ):
@@ -318,7 +321,7 @@ def generate_rounded_triangle_sdf_surface_dataset(
         v1, v2, v3 = vertices
         arc_radii = np.array([radius for _, _, _, radius in arc_segments])
 
-        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices)
+        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
         sdf_str = ','.join(map(str, sdf.tolist()))
         # Calculate signed distance for each point
         

@@ -108,6 +108,9 @@ def last_modified():
     return onlyfiles[np.argmax(times_m)]
 
 def last_iteration(file_name, save_fig=False):
+
+    loss_names = ['volfrac_loss_pre', 'gaussian_overlap', 'compliance', 'ff_loss', 'rs_loss']
+
     experiment_path = experiments_folder + "/" + file_name
     with open(experiment_path, 'r') as fp:
         exp_meta = json.load(fp)
@@ -122,6 +125,10 @@ def last_iteration(file_name, save_fig=False):
 
     x = exp_meta['iter_meta'][last_iter_key]['x']
     x = np.array(x)
+
+    for loss_name in loss_names:
+        if loss_name in exp_meta['iter_meta'][last_iter_key]:
+            print(f"{loss_name}: {exp_meta['iter_meta'][last_iter_key][loss_name]}")
 
     if save_fig:
         fig_name = experiment_path = "src/" + file_name[:-5]+'.jpg'

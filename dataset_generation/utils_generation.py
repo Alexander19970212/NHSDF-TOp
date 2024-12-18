@@ -413,7 +413,7 @@ def points_to_line_distance(points, line_start, line_end): # +|
     dist = np.linalg.norm(points - nearest, axis=1)
     return dist
 
-def signed_distance_polygon(points, line_segments, arc_segments, vertices): # + |
+def signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=40): # + |
     distances = []
     for line_segment in line_segments:
         distances.append(points_to_line_distance(points, line_segment[0], line_segment[1]))
@@ -430,7 +430,7 @@ def signed_distance_polygon(points, line_segments, arc_segments, vertices): # + 
     inside_grid, middle_points_intermideate_line_segments = if_points_in_polygon(points, line_segments, arc_segments, vertices)
 
     min_distances[~inside_grid] = -min_distances[~inside_grid]
-    return 1/(1 + np.exp(-40*min_distances))
+    return 1/(1 + np.exp(-smooth_factor*min_distances))
 
 # Plot a sample from the generated DataFrame
 def plot_sample_from_df(df, points_df, sample_index=0):
