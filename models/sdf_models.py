@@ -184,6 +184,20 @@ class AE(nn.Module):
             nn.Linear(hidden_dim, input_dim-2)
         )
 
+        #decoder for radius sum
+        self.decoder_radius_sum = nn.Sequential(
+            nn.Linear(latent_dim, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.BatchNorm1d(hidden_dim // 2),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim // 2, hidden_dim // 4),
+            nn.BatchNorm1d(hidden_dim // 4),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim // 4, 1)
+        )
+
         # Decoder for SDF prediction
         self.decoder_sdf = nn.Sequential(
             nn.Linear(latent_dim+2, hidden_dim),
@@ -246,6 +260,12 @@ class AE(nn.Module):
         sdf_pred = self.decoder_sdf(sdf_decoder_input)
 
         return x_reconstructed, sdf_pred, z  # Return z for regularization
+    
+    def radius_sum(self, z):
+        return self.decoder_radius_sum(z)
+    
+    def radius_sum_loss(self, radius_sum_pred, radius_sum_target):
+        return F.mse_loss(radius_sum_pred, radius_sum_target, reduction='mean')
 
     def loss_function(self, x_reconstructed, x_original, sdf_pred, sdf_target, z, only_recon=False):
         """
@@ -337,46 +357,64 @@ class LitSdfAE(L.LightningModule):
         self.warmup_steps = warmup_steps
         self.max_steps = max_steps
         self.only_recon = False
+        self.only_radius_sum = False
             
         self.save_hyperparameters(logger=False)
 
-    def freeze_decoder_input(self):
+    def freeze_decoder_input(self, only_recon=False, only_radius_sum=False):
         for param in self.vae.parameters():
             param.requires_grad = False
 
-        for param in self.vae.decoder_input.parameters():
-            param.requires_grad = True
+        if only_radius_sum:
+            for param in self.vae.decoder_radius_sum.parameters():
+                param.requires_grad = True
+        else:
+            for param in self.vae.decoder_input.parameters():
+                param.requires_grad = True
 
-        self.only_recon = True
+        self.only_recon = only_recon
+        self.only_radius_sum = only_radius_sum
 
     def forward(self, x):
         return self.vae(x)
 
     def training_step(self, batch, batch_idx):
-        x, sdf = batch
+        x, sdf, radius_sum = batch
         x_reconstructed, sdf_pred, z = self.vae(x)
 
-        total_loss, splitted_loss = self.vae.loss_function(
-            x_reconstructed, x, sdf_pred, sdf, z, self.only_recon
-        )
-
-        for key, value in splitted_loss.items():
-            self.log(f'train_{key}', value, prog_bar=True)
-
-        return total_loss
-
-    def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        if dataloader_idx == 0:
-            x, sdf = batch
-            # print(f"x: {x.shape}, type: {x.dtype}")
-            x_reconstructed, sdf_pred, z = self.vae(x)
-
+        if self.only_radius_sum:
+            radius_sum_pred = self.vae.radius_sum(z)
+            radius_sum_loss = self.vae.radius_sum_loss(radius_sum_pred, radius_sum)
+            total_loss = radius_sum_loss
+            self.log('train_radius_sum_loss', radius_sum_loss, prog_bar=True)
+        else:
             total_loss, splitted_loss = self.vae.loss_function(
                 x_reconstructed, x, sdf_pred, sdf, z, self.only_recon
             )
 
             for key, value in splitted_loss.items():
-                self.log(f'val_{key}', value, prog_bar=True)
+                self.log(f'train_{key}', value, prog_bar=True)
+
+        return total_loss
+
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
+        if dataloader_idx == 0:
+            x, sdf, radius_sum = batch
+            # print(f"x: {x.shape}, type: {x.dtype}")
+            x_reconstructed, sdf_pred, z = self.vae(x)
+
+            if self.only_radius_sum:
+                radius_sum_pred = self.vae.radius_sum(z)
+                radius_sum_loss = self.vae.radius_sum_loss(radius_sum_pred, radius_sum)
+                total_loss = radius_sum_loss
+                self.log('val_radius_sum_loss', radius_sum_loss, prog_bar=True)
+            else:
+                total_loss, splitted_loss = self.vae.loss_function(
+                    x_reconstructed, x, sdf_pred, sdf, z, self.only_recon
+                )
+
+                for key, value in splitted_loss.items():
+                    self.log(f'val_{key}', value, prog_bar=True)
         else:
             total_loss = 0
             total_splitted_loss = {}

@@ -245,7 +245,7 @@ class TopOptimizer2D:
         self.K_sep = np.array(self.K_sep)
 
         #for SIMP type methods
-        self.penal = 3 
+        self.penal = args["penal"]
         self.Emin = 0.0001
         self.Emax = 1
         self.obj = 0

@@ -53,7 +53,8 @@ def plot_learning_curves(log_dir, subdirs, metric='loss', filename=None):
                         if metric in scalars:
                             steps = [s.step for s in scalars[metric]]
                             values = [s.value for s in scalars[metric]]
-                            plt.plot(steps, values, label=f'{subdir} - {metric}')
+                            if len(steps) > 1:
+                                plt.plot(steps, values, label=f'{subdir} - {metric}')
     
     plt.title(f'Learning Curves for {metric}')
     plt.xlabel('Steps')
@@ -63,7 +64,7 @@ def plot_learning_curves(log_dir, subdirs, metric='loss', filename=None):
     if filename is not None:
         plt.savefig(filename)
     plt.show()
-
+    
 # all experiments
 experiments_folder = "experiments"
 

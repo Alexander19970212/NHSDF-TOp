@@ -36,6 +36,8 @@ class SdfDataset(Dataset):
         # Replace NaN values with 0
         self.data = self.data.fillna(0)
 
+        self.r_names = [var_name for var_name in self.x_names if var_name[0] != 'r']
+
         self.feature_dim = len(self.x_names)
 
     def __len__(self):
@@ -46,19 +48,18 @@ class SdfDataset(Dataset):
         
         # Input features: point coordinates and shape parameters
         X_list = []
+        radius_sum = 0
         for x_name in self.x_names:
             # if x_name != 'class':
             X_list.append(row[x_name])
-            # else:
-            #     if self.n_classes == 1:
-            #         X_list.append(1)
-            #     else:
-            #         X_list.append(row[x_name]/(self.n_classes-1))
+            if x_name in self.r_names:
+                radius_sum += row[x_name]
 
         X = torch.tensor(X_list, dtype=torch.float32)
+        radius_sum = torch.tensor(radius_sum, dtype=torch.float32)
         y = torch.tensor(row['sdf'], dtype=torch.float32)
         
-        return X, y
+        return X, y, radius_sum
     
 #################################################################################################################
 
