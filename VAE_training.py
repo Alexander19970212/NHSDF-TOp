@@ -15,13 +15,13 @@ from datasets.SDF_dataset import SdfDataset, SdfDatasetSurface, collate_fn_surfa
 import argparse
 
 def main(args):
-    dataset_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_dataset.csv',
-                     '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_dataset.csv', 
-                     '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_dataset.csv']
+    dataset_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_dataset_smf22_arc_ratio.csv',
+                     '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_dataset_smf20_arc_ratio.csv', 
+                     '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_dataset_smf20_arc_ratio.csv']
 
-    surface_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_surface_dataset',
-                     '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_surface_dataset', 
-                     '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_surface_dataset']
+    surface_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_surface_dataset_smf22',
+                     '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_surface_dataset_smf20', 
+                     '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_surface_dataset_smf20']
 
     # dataset_files = ['shape_datasets/ellipse_sdf_dataset_onlMove.csv',
     #                  'shape_datasets/triangle_sdf_dataset_test.csv', 
@@ -31,7 +31,7 @@ def main(args):
     #                  'shape_datasets/triangle_sdf_surface_dataset_test',
     #                  'shape_datasets/quadrangle_sdf_surface_dataset_test']
 
-    dataset = SdfDataset(dataset_files)
+    dataset = SdfDataset(dataset_files, exclude_ellipse=False)
     surface_dataset = SdfDatasetSurface(surface_files, cut_value=False)
 
 
@@ -117,7 +117,7 @@ def main(args):
     # Initialize model with L1 regularization
     vae_model = AE_DeepSDF(
         input_dim=dataset.feature_dim, 
-        latent_dim=12, 
+        latent_dim=9, 
         hidden_dim=128, 
         regularization='l2',   # Use 'l1', 'l2', or None
         reg_weight=1e-3        # Adjust the weight as needed
