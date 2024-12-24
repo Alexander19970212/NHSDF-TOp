@@ -59,14 +59,16 @@ def generate_ellipse_sdf_dataset(num_ellipse=1000,
             data.append([
                 point[0], point[1],  # Point coordinates
                 b_w,  # Semi-axes ratio
-                sdf[i]
+                sdf[i],
+                1
             ])
     
     # Create DataFrame
     columns = [
         'point_x', 'point_y',
         'semi_axes_ratio',
-        'sdf'
+        'sdf',
+        'arc_ratio'
     ]
     df = pd.DataFrame(data, columns=columns)
     

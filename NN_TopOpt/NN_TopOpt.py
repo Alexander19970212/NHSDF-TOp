@@ -235,7 +235,7 @@ class SIMP_Gaussians:
         with open('test_problems/problems.json', 'w') as f:
             json.dump(problem_list, f)
 
-from models.sdf_models import AE_DeepSDF
+from models.sdf_models import AE_DeepSDF, Decoder_loss
 from models.rs_loss_models import RSLossPredictorResNet50
 
 class FeatureMappingDecSDF(torch.nn.Module):
@@ -249,6 +249,7 @@ class FeatureMappingDecSDF(torch.nn.Module):
         self.ff_loss_w = args["args"]["ff_loss_w"]
         self.smooth_k = args["args"]["smooth_k"]
         self.saved_model_name = args["args"]["saved_model_name"]
+        self.decoder_radius_sum_name = args["args"]["decoder_radius_sum_name"]
 
         problem_config = args["problem_config"]
 
@@ -297,8 +298,12 @@ class FeatureMappingDecSDF(torch.nn.Module):
             regularization='l2',   # Use 'l1', 'l2', or None
             reg_weight=1e-3        # Adjust the weight as needed
         )
-        self.model.load_state_dict(torch.load(f"model_weights/{self.saved_model_name}.pt"))
+        self.model.load_state_dict(torch.load(f"model_weights/{self.saved_model_name}.pt"), strict=False)
         self.model.eval()
+
+        self.decoder_radius_sum = Decoder_loss(latent_dim=self.latent_dim, hidden_dim=128)
+        self.decoder_radius_sum.load_state_dict(torch.load(f"model_weights/{self.decoder_radius_sum_name}.pt"))
+        self.decoder_radius_sum.eval()
 
         # create model for rs_loss
         # checkpoint_path = 'model_weights/rs_loss_conv_combined.ckpt'
@@ -514,7 +519,7 @@ class FeatureMappingDecSDF(torch.nn.Module):
         
         return ff_loss.sum()
     
-    def compute_ff_loss(self): # form factor loss
+    def compute_ff_loss2(self): # form factor loss
         
         latent_center = self.latent_goal_center
         latent_cov_inv = self.latent_goal_cov_inv
@@ -534,7 +539,34 @@ class FeatureMappingDecSDF(torch.nn.Module):
         print("dist: ", dist.shape, dist.min(), dist.max())
 
         return ff_loss.sum()
+    
+    def compute_ff_loss(self): # form factor loss
+        
+        latent_center = self.latent_goal_center
+        latent_cov_inv = self.latent_goal_cov_inv
 
+        W_shape_var = self.W_shape_var[self.persistent_mask]
+        shape_var = (self.shape_var_maxs - self.shape_var_mins)*torch.sigmoid(W_shape_var) + self.shape_var_mins 
+        
+        radius_sum = self.decoder_radius_sum(shape_var)
+
+        print("radius_sum: ", radius_sum.min(), radius_sum.max(), radius_sum.sum())
+
+        return radius_sum.sum()
+
+        #######################################################################
+
+        # W_shape_var = self.W_shape_var[self.persistent_mask]
+        # shape_var = (self.shape_var_maxs - self.shape_var_mins)*torch.sigmoid(W_shape_var) + self.shape_var_mins 
+        
+        # dist = torch.norm(shape_var - latent_center, dim=1) # TODO: check if this is correct
+        # maha_dist_sq = torch.sum((shape_var - latent_center) @ latent_cov_inv @ (shape_var - latent_center).T, dim=1)
+        # # print("dist:", dist)
+        # # ff_loss = torch.nn.functional.leaky_relu(dist - 1.5, negative_slope=0.1)
+        # # ff_loss = torch.nn.functional.relu(maha_dist_sq - 1000.0)
+        # ff_loss = torch.nn.functional.relu(dist - 0.8)
+
+        # return ff_loss.sum()
     
     def forward(self, ce, global_i):
 

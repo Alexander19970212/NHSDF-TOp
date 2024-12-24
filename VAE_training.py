@@ -117,7 +117,7 @@ def main(args):
     # Initialize model with L1 regularization
     vae_model = AE_DeepSDF(
         input_dim=dataset.feature_dim, 
-        latent_dim=3, 
+        latent_dim=12, 
         hidden_dim=128, 
         regularization='l2',   # Use 'l1', 'l2', or None
         reg_weight=1e-3        # Adjust the weight as needed
@@ -150,5 +150,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VAE model.')
     parser.add_argument('--max_epochs', type=int, default=2, help='Maximum number of epochs for training')
     parser.add_argument('--run_name', type=str, default='run_test', help='Name of the run')
+    parser.add_argument('--only_radius_sum', type=bool, default=False, help='Whether to only train the radius sum decoder')
     args = parser.parse_args()
     main(args)

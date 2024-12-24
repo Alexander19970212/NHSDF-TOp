@@ -133,6 +133,26 @@ class Decoder(nn.Module):
             x = self.th(x)
 
         return x
+    
+class Decoder_loss(nn.Module):
+    def __init__(self, latent_dim, hidden_dim):
+        super(Decoder_loss, self).__init__()
+
+        self.model = nn.Sequential(
+            nn.Linear(latent_dim, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, 1)
+        )
+
+    def forward(self, z):
+        return self.model(z)
 
 
 class AE(nn.Module):
@@ -185,18 +205,7 @@ class AE(nn.Module):
         )
 
         #decoder for radius sum
-        self.decoder_radius_sum = nn.Sequential(
-            nn.Linear(latent_dim, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-            nn.LeakyReLU(0.2),
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.BatchNorm1d(hidden_dim // 2),
-            nn.LeakyReLU(0.2),
-            nn.Linear(hidden_dim // 2, hidden_dim // 4),
-            nn.BatchNorm1d(hidden_dim // 4),
-            nn.LeakyReLU(0.2),
-            nn.Linear(hidden_dim // 4, 1)
-        )
+        self.decoder_radius_sum = Decoder_loss(latent_dim, hidden_dim)
 
         # Decoder for SDF prediction
         self.decoder_sdf = nn.Sequential(
@@ -368,7 +377,8 @@ class LitSdfAE(L.LightningModule):
         if only_radius_sum:
             for param in self.vae.decoder_radius_sum.parameters():
                 param.requires_grad = True
-        else:
+                
+        if only_recon:
             for param in self.vae.decoder_input.parameters():
                 param.requires_grad = True
 

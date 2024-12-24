@@ -127,7 +127,7 @@ def generate_triangle_sdf_dataset(num_triangle=100, points_per_triangle=1000, sm
     return df
 
 #################################################################################################################
-from utils_generation import get_rounded_polygon_segments_rand_radius, signed_distance_polygon
+from utils_generation import get_rounded_polygon_segments_rand_radius, signed_distance_polygon, compute_perimeter
 
 def generate_rounded_triangle_sdf_dataset(
         num_triangle=1000,
@@ -156,6 +156,9 @@ def generate_rounded_triangle_sdf_dataset(
                 get_rounded_polygon_segments_rand_radius(vertices, 0.1))
             if arcs_intersection == False:
                 break
+
+        perimeter, line_perimeter, arc_perimeter = compute_perimeter(line_segments, arc_segments)
+        arc_ratio = arc_perimeter / perimeter
 
         v1, v2, v3 = vertices
         arc_radii = np.array([radius for _, _, _, radius in arc_segments])
@@ -188,7 +191,8 @@ def generate_rounded_triangle_sdf_dataset(
                 arc_radii[0],
                 arc_radii[1],
                 arc_radii[2],
-                sdf[i]                  # signed distance value
+                sdf[i],
+                arc_ratio
             ]
             data.append(row)
     
@@ -197,7 +201,8 @@ def generate_rounded_triangle_sdf_dataset(
         'point_x', 'point_y',
         'v1_x', 'v1_y',
         'r_t1', 'r_t2', 'r_t3', # t means triangle
-        'sdf'
+        'sdf',
+        'arc_ratio'
     ]
     
     df = pd.DataFrame(data, columns=columns)

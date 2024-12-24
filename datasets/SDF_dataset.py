@@ -10,8 +10,9 @@ import matplotlib.pyplot as plt
 
 class SdfDataset(Dataset):
     """Custom Dataset for SDF data of multiple shapes"""
-    def __init__(self, csv_files):
+    def __init__(self, csv_files, exclude_ellipse=False):
         # Load and combine data from multiple CSV files
+        self.max_radius_sum = 6
         dfs = []
         feature_len = 0
         x_i = 0
@@ -21,7 +22,7 @@ class SdfDataset(Dataset):
             dfs.append(df)
             feature_len += len(df.columns) - 3
             for col in df.columns:
-                if col not in self.x_names and col != "sdf":
+                if col not in self.x_names and col not in ["sdf", "arc_ratio"]:
                     self.x_names.append(col)
                 x_i += 1    
 
@@ -36,7 +37,8 @@ class SdfDataset(Dataset):
         # Replace NaN values with 0
         self.data = self.data.fillna(0)
 
-        self.r_names = [var_name for var_name in self.x_names if var_name[0] != 'r']
+        if exclude_ellipse:
+            self.data = self.data[self.data["class"] != 0]
 
         self.feature_dim = len(self.x_names)
 
@@ -48,18 +50,15 @@ class SdfDataset(Dataset):
         
         # Input features: point coordinates and shape parameters
         X_list = []
-        radius_sum = 0
         for x_name in self.x_names:
             # if x_name != 'class':
             X_list.append(row[x_name])
-            if x_name in self.r_names:
-                radius_sum += row[x_name]
 
         X = torch.tensor(X_list, dtype=torch.float32)
-        radius_sum = torch.tensor(radius_sum, dtype=torch.float32)
+        arc_ratio = torch.tensor(row['arc_ratio'], dtype=torch.float32)
         y = torch.tensor(row['sdf'], dtype=torch.float32)
         
-        return X, y, radius_sum
+        return X, y, arc_ratio
     
 #################################################################################################################
 
@@ -81,7 +80,7 @@ class SdfDatasetSurface(Dataset):
             dfs.append(df)
             feature_len += len(df.columns) - 3
             for col in df.columns:
-                if col not in self.x_names and col != "sdf":
+                if col not in self.x_names and col not in ["sdf", "arc_ratio"]:
                     self.x_names.append(col)
                 x_i += 1    
 

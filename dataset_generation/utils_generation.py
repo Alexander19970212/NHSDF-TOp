@@ -120,6 +120,39 @@ def maximal_rounding_radius(seg1_start, seg1_end, seg2_start, seg2_end): # + -> 
     
     return max_radius, center
 
+def compute_perimeter(line_segments, arc_segments):
+    """
+    Compute the perimeter of a polygon consisting of line and arc segments.
+    
+    Parameters:
+    - line_segments: list of tuples representing the line segments [(start_point, end_point), ...]
+    - arc_segments: list of tuples representing the arc segments [(center, start_angle, end_angle, radius), ...]
+    
+    Returns:
+    - perimeter: float, the total perimeter of the polygon
+    """
+    perimeter = 0.0
+    line_perimeter = 0.0
+    arc_perimeter = 0.0
+    
+    # Calculate the perimeter contribution from line segments
+    for line_segment in line_segments:
+        start_point, end_point = line_segment
+        perimeter += np.linalg.norm(end_point - start_point)
+        line_perimeter += np.linalg.norm(end_point - start_point)
+    
+    # Calculate the perimeter contribution from arc segments
+    for arc_segment in arc_segments:
+        center, start_angle, end_angle, radius = arc_segment
+        angle_diff = abs(end_angle - start_angle)
+        if angle_diff > np.pi:
+            angle_diff = 2 * np.pi - angle_diff
+        arc_length = angle_diff * radius
+        perimeter += arc_length
+        arc_perimeter += arc_length
+
+    return perimeter, line_perimeter, arc_perimeter
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -189,7 +222,7 @@ def get_rounded_polygon_segments(vertices, radius): # + -> |
     return line_segments, arc_segments, arcs_intersection
 
 
-def get_rounded_polygon_segments_rand_radius(vertices, min_radius = 0.1): # + ->
+def get_rounded_polygon_segments_rand_radius(vertices, min_radius = 0.05): # + ->
     """Get arc segments and line segments for a polygon with rounded corners."""
     
     line_segments_cut, _,  arcs_intersection = get_rounded_polygon_segments(vertices, min_radius)
@@ -235,7 +268,11 @@ def get_rounded_polygon_segments_rand_radius(vertices, min_radius = 0.1): # + ->
 
             max_radius, center = maximal_rounding_radius(A1, A2, B1, B2)
             
-            valid_radius = np.random.uniform(min_radius, max_radius)
+            if np.random.uniform(0, 1) < 0.5:
+                valid_radius = np.random.uniform(min_radius, max_radius)
+            else:
+                valid_radius = np.random.uniform(min_radius, min_radius + (max_radius - min_radius)*0.3)
+
             p1_new, p2_new, center, start_angle, end_angle = get_corner_points(v1, v2, v3, valid_radius)
         
             v_p_distances.append(np.linalg.norm(v2 - p2_new))

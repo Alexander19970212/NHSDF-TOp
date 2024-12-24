@@ -192,7 +192,7 @@ def generate_quadrangle_sdf_dataset(num_quadrangle=1000,
 #################################################################################################################
 
 ####### dataset generation with rounded corners #############
-from utils_generation import get_rounded_polygon_segments_rand_radius, signed_distance_polygon
+from utils_generation import get_rounded_polygon_segments_rand_radius, signed_distance_polygon, compute_perimeter
 
 def generate_rounded_quadrangle_sdf_dataset(
         num_quadrangle=1000,
@@ -224,6 +224,8 @@ def generate_rounded_quadrangle_sdf_dataset(
 
         v1, v2, v3, v4 = vertices
         arc_radii = np.array([radius for _, _, _, radius in arc_segments])
+        perimeter, line_perimeter, arc_perimeter = compute_perimeter(line_segments, arc_segments)
+        arc_ratio = arc_perimeter / perimeter
         
         # Generate random points
         # Sample more points near the triangle
@@ -256,7 +258,8 @@ def generate_rounded_quadrangle_sdf_dataset(
                 arc_radii[1],
                 arc_radii[2],
                 arc_radii[3],
-                sdf[i]                  # signed distance value
+                sdf[i],
+                arc_ratio
             ]
             data.append(row)
     
@@ -266,7 +269,8 @@ def generate_rounded_quadrangle_sdf_dataset(
         'v3_x', 'v3_y',
         'v4_x', 'v4_y',
         'r_q1', 'r_q2', 'r_q3', 'r_q4', # q means quadrangle
-        'sdf'
+        'sdf',
+        'arc_ratio'
     ]
     df = pd.DataFrame(data, columns=columns)
     
