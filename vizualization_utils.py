@@ -155,10 +155,10 @@ def opt_animation(file_name):
     for iter in exp_meta['iter_meta']:
         xs.append(exp_meta['iter_meta'][iter]['x'])
         try:
-            objs.append(exp_meta['iter_meta'][iter]['obj'])
+            objs.append(exp_meta['iter_meta'][iter]['obj_real'])
         except:
             # print(iter)
-            objs.append(exp_meta['iter_meta']['2']['obj'])
+            objs.append(exp_meta['iter_meta']['2']['obj_real'])
 
     xs = np.array(xs)
     objs = np.array(objs)
@@ -199,7 +199,6 @@ def plot_objective_history(file_names):
     Args:
         file_names (list): List of names of the experiment files in the experiments folder
     """
-    fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2, figsize=(15, 15))
 
     # Find parameters that differ across experiments
     param_values = {}
@@ -228,80 +227,58 @@ def plot_objective_history(file_names):
         for fname, value in values.items():
             print(f"  {fname}: {value}")
     
+
+    # Determine the number of metrics to plot
+    meta_not_to_plot = ['x', 'ce', 'dc', 'stop_flag']
+    sample_file = file_names[0]
+    with open(experiments_folder + "/" + sample_file, 'r') as fp:
+        sample_meta = json.load(fp)
+    metrics = list(sample_meta['iter_meta']['2'].keys())
+    metrics = [metric for metric in metrics if metric not in meta_not_to_plot]
+
+    num_metrics = len(metrics)
+
+    # Create subplots dynamically based on the number of metrics
+    num_rows = (num_metrics + 1) // 2
+    fig, axes = plt.subplots(num_rows, 2, figsize=(15, 5 * num_rows))
+    axes = axes.flatten()
+
     for file_name in file_names:
         experiment_path = experiments_folder + "/" + file_name
 
         with open(experiment_path, 'r') as fp:
             exp_meta = json.load(fp)
 
-        # Extract values
-        objs = []
-        volfrac_losses = []
-        gaussian_overlaps = []
-        compliances = []
-        ff_losses = []
-        rs_losses = []
+        # Extract values for each metric
+        metric_values = {metric: [] for metric in metrics}
         
         for iter in exp_meta['iter_meta']:
-            try:
-                objs.append(exp_meta['iter_meta'][iter]['obj'])
-                volfrac_losses.append(exp_meta['iter_meta'][iter]['volfrac_loss_pre'])
-                gaussian_overlaps.append(exp_meta['iter_meta'][iter]['gaussian_overlap'])
-                compliances.append(exp_meta['iter_meta'][iter]['compliance'])
-                ff_losses.append(exp_meta['iter_meta'][iter]['ff_loss'])
-                rs_losses.append(exp_meta['iter_meta'][iter]['rs_loss'])
-            except:
-                objs.append(exp_meta['iter_meta']['2']['obj'])
-                volfrac_losses.append(exp_meta['iter_meta']['2']['volfrac_loss_pre'])
-                gaussian_overlaps.append(exp_meta['iter_meta']['2']['gaussian_overlap']) 
-                compliances.append(exp_meta['iter_meta']['2']['compliance'])
-                ff_losses.append(exp_meta['iter_meta']['2']['ff_loss'])
-                rs_losses.append(exp_meta['iter_meta']['2']['rs_loss'])
-        objs = np.array(objs)
-        volfrac_losses = np.array(volfrac_losses)
-        gaussian_overlaps = np.array(gaussian_overlaps)
-        compliances = np.array(compliances)
-        ff_losses = np.array(ff_losses)
-        rs_losses = np.array(rs_losses)
+            for metric in metrics:
+                try:
+                    metric_values[metric].append(exp_meta['iter_meta'][iter][metric])
+                except KeyError:
+                    metric_values[metric].append(exp_meta['iter_meta']['2'][metric])  # Handle missing data gracefully
+
+        # Convert lists to numpy arrays
+        for metric in metrics:
+            metric_values[metric] = np.array(metric_values[metric])
+
         # Plot for each file
         label = " ".join([f"{param}={different_params[param][file_name]}" for param in different_params])
-        ax1.plot(np.arange(len(objs)), objs, label=label)
-        ax2.plot(np.arange(len(volfrac_losses)), volfrac_losses, label=label)
-        ax3.plot(np.arange(len(gaussian_overlaps)), gaussian_overlaps, label=label)
-        ax4.plot(np.arange(len(compliances)), compliances, label=label)
-        ax5.plot(np.arange(len(ff_losses)), ff_losses, label=label)
-        ax6.plot(np.arange(len(rs_losses)), rs_losses, label=label)
+        for idx, metric in enumerate(metrics):
+            axes[idx].plot(np.arange(len(metric_values[metric])), metric_values[metric], label=label)
 
-    # Set labels and titles
-    ax1.set_xlabel("Iteration")
-    ax1.set_ylabel("Objective Value") 
-    ax1.set_title("Total Objective History")
-    ax1.grid(True)
-    ax1.legend()
+    # Set labels and titles for each subplot
+    for idx, metric in enumerate(metrics):
+        axes[idx].set_xlabel("Iteration")
+        axes[idx].set_ylabel(metric.replace('_', ' ').title())
+        axes[idx].set_title(f"{metric.replace('_', ' ').title()} History")
+        axes[idx].grid(True)
+        axes[idx].legend()
 
-    ax2.set_xlabel("Iteration")
-    ax2.set_ylabel("Volume Fraction Loss")
-    ax2.set_title("Volume Fraction Loss History")
-    ax2.grid(True)
-    ax2.legend()
-
-    ax3.set_xlabel("Iteration")
-    ax3.set_ylabel("Gaussian Overlap")
-    ax3.set_title("Gaussian Overlap History")
-    ax3.grid(True)
-    ax3.legend()
-
-    ax4.set_xlabel("Iteration")
-    ax4.set_ylabel("Compliance")
-    ax4.set_title("Compliance History")
-    ax4.grid(True)
-    ax4.legend()
-
-    ax5.set_xlabel("Iteration")
-    ax5.set_ylabel("FF Loss")
-    ax5.set_title("FF Loss History")
-    ax5.grid(True)
-    ax5.legend()
+    # Adjust layout
+    plt.tight_layout()
+    plt.show()
 
     plt.tight_layout()
     plt.show()
