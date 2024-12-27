@@ -14,6 +14,7 @@ from models.sdf_models import LitSdfAE, AE, AE_DeepSDF
 from datasets.SDF_dataset import SdfDataset, SdfDatasetSurface, collate_fn_surface
 import argparse
 
+
 def main(args):
     dataset_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_dataset_smf22_arc_ratio.csv',
                      '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_dataset_smf20_arc_ratio.csv', 
