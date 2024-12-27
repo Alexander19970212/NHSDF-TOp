@@ -133,6 +133,7 @@ def generate_rounded_triangle_sdf_dataset(
         num_triangle=1000,
         points_per_triangle=100,
         smooth_factor=40,
+        min_radius=0.01,
         filename='triangle_sdf_dataset.csv'
 ):
     """
@@ -153,7 +154,7 @@ def generate_rounded_triangle_sdf_dataset(
             vertices = generate_triangle()
             # vertices = generate_triangle()
             line_segments, arc_segments, arcs_intersection = (
-                get_rounded_polygon_segments_rand_radius(vertices, 0.1))
+                get_rounded_polygon_segments_rand_radius(vertices, min_radius))
             if arcs_intersection == False:
                 break
 
