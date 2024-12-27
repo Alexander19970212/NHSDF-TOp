@@ -226,24 +226,38 @@ def generate_rounded_quadrangle_sdf_dataset(
         arc_radii = np.array([radius for _, _, _, radius in arc_segments])
         perimeter, line_perimeter, arc_perimeter = compute_perimeter(line_segments, arc_segments)
         arc_ratio = arc_perimeter / perimeter
+        arc_centers = np.array([center for _, _, center, _ in arc_segments])
         
         # Generate random points
         # Sample more points near the triangle
         quadrangle_center = (v1 + v2 + v3 + v4) / 4
         
         # Mix of uniform and gaussian sampling
-        num_uniform = points_per_quadrangle // 2
-        num_gaussian = points_per_quadrangle - num_uniform
-        
-        # Uniform sampling in the bounding box
-        points_uniform = np.random.rand(num_uniform, 2)*2 - 1
-        
-        # Gaussian sampling around the triangle
+        # num_uniform = points_per_quadrangle // 3
+        num_points_in_vertices = points_per_quadrangle // 3
+        num_gaussian = points_per_quadrangle // 3
+
         points_gaussian = np.random.normal(loc=quadrangle_center, scale=0.5, size=(num_gaussian, 2))
         points_gaussian = np.clip(points_gaussian, -1, 1)
         
+        # Uniform sampling in the bounding box
+        # points_uniform = np.random.rand(num_uniform, 2)*2 - 1           
+
+        # Generate points in the vertices
+        points_in_vertices = []
+        for center, radius in zip([v1, v2, v3, v4], arc_radii):
+            points_in_circle = np.random.normal(loc=center, scale=0.2, size=(num_points_in_vertices // 4, 2))
+            points_in_circle = np.clip(points_in_circle, -1, 1)
+            points_in_vertices.append(points_in_circle)
+        
+        points_in_vertices = np.vstack(points_in_vertices)
+
+        # Gaussian sampling around the triangle
+        num_uniform = points_per_quadrangle - points_in_vertices.shape[0] - points_gaussian.shape[0]
+        points_uniform = np.random.rand(num_uniform, 2)*2 - 1        
+
         # Combine points
-        points = np.vstack([points_uniform, points_gaussian])
+        points = np.vstack([points_uniform, points_gaussian, points_in_vertices])
 
         sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
         

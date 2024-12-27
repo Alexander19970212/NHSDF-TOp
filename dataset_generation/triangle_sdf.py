@@ -162,24 +162,40 @@ def generate_rounded_triangle_sdf_dataset(
 
         v1, v2, v3 = vertices
         arc_radii = np.array([radius for _, _, _, radius in arc_segments])
+        arc_centers = np.array([center for _, _, center, _ in arc_segments])
         
         # Generate random points
         # Sample more points near the triangle
         triangle_center = (v1 + v2 + v3) / 3
         
         # Mix of uniform and gaussian sampling
-        num_uniform = points_per_triangle // 2
-        num_gaussian = points_per_triangle - num_uniform
-        
+        # num_uniform = points_per_triangle // 3
+        num_gaussian = points_per_triangle // 3
+        num_points_in_vertices = points_per_triangle // 3
+        # num_points_in_vertices = points_per_triangle
+
         # Uniform sampling in the bounding box
-        points_uniform = np.random.rand(num_uniform, 2)*2 - 1
+        # points_uniform = np.random.rand(num_uniform, 2)*2 - 1
         
         # Gaussian sampling around the triangle
         points_gaussian = np.random.normal(loc=triangle_center, scale=0.5, size=(num_gaussian, 2))
         points_gaussian = np.clip(points_gaussian, -1, 1)
+
+        # Generate points in the vertices
+        points_in_vertices = []
+        for center, radius in zip([v1, v2, v3], arc_radii):
+            points_in_circle = np.random.normal(loc=center, scale=0.2, size=(num_points_in_vertices // 3, 2))
+            points_in_circle = np.clip(points_in_circle, -1, 1)
+            points_in_vertices.append(points_in_circle)
+        
+        points_in_vertices = np.vstack(points_in_vertices)
+
+        num_uniform = points_per_triangle - points_in_vertices.shape[0] - points_gaussian.shape[0]
+        points_uniform = np.random.rand(num_uniform, 2)*2 - 1
         
         # Combine points
-        points = np.vstack([points_uniform, points_gaussian])
+        points = np.vstack([points_uniform, points_gaussian, points_in_vertices])
+        # points = points_in_vertices
 
         sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
         
@@ -213,78 +229,78 @@ def generate_rounded_triangle_sdf_dataset(
     
     return df
 
-def generate_rounded_triangle_sdf_surface_dataset(
-        num_triangle=1000,
-        points_per_triangle=100,
-        smooth_factor=40,
-        filename='rounded_triangle_sdf_surface_dataset.csv'
-):
-    """
-    Generate dataset of signed distances for random quadrangle
+# def generate_rounded_triangle_sdf_surface_dataset(
+#         num_triangle=1000,
+#         points_per_triangle=100,
+#         smooth_factor=40,
+#         filename='rounded_triangle_sdf_surface_dataset.csv'
+# ):
+#     """
+#     Generate dataset of signed distances for random quadrangle
     
-    Parameters:
-    - num_quadrangle: number of random quadrangle to generate
-    - points_per_quadrangle: number of random points to sample per quadrangle
-    - filename: output CSV file name
-    """
-    # Lists to store our data
-    data = []
-    # Create a grid of points
-    point_per_side = int(np.sqrt(points_per_triangle))
-    x = np.linspace(-1, 1, point_per_side)
-    y = np.linspace(-1, 1, point_per_side)
-    X, Y = np.meshgrid(x, y)
-    points = np.array([X.flatten(), Y.flatten()]).T
+#     Parameters:
+#     - num_quadrangle: number of random quadrangle to generate
+#     - points_per_quadrangle: number of random points to sample per quadrangle
+#     - filename: output CSV file name
+#     """
+#     # Lists to store our data
+#     data = []
+#     # Create a grid of points
+#     point_per_side = int(np.sqrt(points_per_triangle))
+#     x = np.linspace(-1, 1, point_per_side)
+#     y = np.linspace(-1, 1, point_per_side)
+#     X, Y = np.meshgrid(x, y)
+#     points = np.array([X.flatten(), Y.flatten()]).T
     
-    # Generate multiple triangles
-    for _ in tqdm(range(num_triangle)):
-        # Generate random quadrangle vertices
-        while True:
-            vertices = generate_triangle()
-            # vertices = generate_triangle()
-            line_segments, arc_segments, arcs_intersection = (
-                get_rounded_polygon_segments_rand_radius(vertices, 0.1))
-            if arcs_intersection == False:
-                break
+#     # Generate multiple triangles
+#     for _ in tqdm(range(num_triangle)):
+#         # Generate random quadrangle vertices
+#         while True:
+#             vertices = generate_triangle()
+#             # vertices = generate_triangle()
+#             line_segments, arc_segments, arcs_intersection = (
+#                 get_rounded_polygon_segments_rand_radius(vertices, 0.1))
+#             if arcs_intersection == False:
+#                 break
 
-        v1, v2, v3 = vertices
-        arc_radii = np.array([radius for _, _, _, radius in arc_segments])
+#         v1, v2, v3 = vertices
+#         arc_radii = np.array([radius for _, _, _, radius in arc_segments])
 
-        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
+#         sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
         
-        # Calculate signed distance for each point
+#         # Calculate signed distance for each point
         
-        row = [
-                v3[0], v3[1],        # third vertex
-                arc_radii[0],
-                arc_radii[1],
-                arc_radii[2],
-                sdf                  # signed distance value
-        ]
-        data.append(row)
+#         row = [
+#                 v3[0], v3[1],        # third vertex
+#                 arc_radii[0],
+#                 arc_radii[1],
+#                 arc_radii[2],
+#                 sdf                  # signed distance value
+#         ]
+#         data.append(row)
     
-    # Convert to DataFrame
-    columns = [
-        'v1_x', 'v1_y',
-        'r_t1', 'r_t2', 'r_t3', # t means triangle
-        'sdf'
-    ]
+#     # Convert to DataFrame
+#     columns = [
+#         'v1_x', 'v1_y',
+#         'r_t1', 'r_t2', 'r_t3', # t means triangle
+#         'sdf'
+#     ]
     
-    df = pd.DataFrame(data, columns=columns)
+#     df = pd.DataFrame(data, columns=columns)
     
-    # Save to CSV
-    df.to_csv(filename, index=False)
-    print(f"Dataset saved to {filename}")
+#     # Save to CSV
+#     df.to_csv(filename, index=False)
+#     print(f"Dataset saved to {filename}")
 
-    # Save points grid for later use
-    points_df = pd.DataFrame({
-        'x': points[:, 0],
-        'y': points[:, 1]
-    })
-    points_df.to_csv(f'{filename}_grid.csv', index=False)
-    print("Points grid saved to points_grid.csv")
+#     # Save points grid for later use
+#     points_df = pd.DataFrame({
+#         'x': points[:, 0],
+#         'y': points[:, 1]
+#     })
+#     points_df.to_csv(f'{filename}_grid.csv', index=False)
+#     print("Points grid saved to points_grid.csv")
     
-    return df
+#     return df
 
 
 def generate_rounded_triangle_sdf_surface_dataset(
