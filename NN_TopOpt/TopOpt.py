@@ -15,143 +15,7 @@ import os
 
 import cvxpy as cp
 
-def triag_area(point1, point2, point3):
-    mat = np.array([[point1[0], point1[1], 1],
-                    [point2[0], point2[1], 1],
-                    [point3[0], point3[1], 1]])
-    
-    return 0.5*np.abs(np.linalg.det(mat))
-
-class LoadedMesh2D:
-    """
-    Class for loading mesh from filename.msh
-    self.q   is an array with nodes coords
-    self.me  is an array with indeces of coords for tetraidal elements
-    self.volumes is an array with volumes for each element.
-    """
-    
-    def __init__(self, filename):
-
-        gmsh.initialize()
-        gmsh.open(filename)
-        
-        entities = gmsh.model.getEntities()
-        node_coords = []
-        elem_node_tags = []
-        elem_tags = []
-        node_tags = []
-        
-        i = 0
-        
-        for e in entities:
-            dim = e[0]
-            tag = e[1]
-
-            nodeTags, nodeCoords, nodeParams = gmsh.model.mesh.getNodes(dim, tag)
-
-            for i, nodetag in enumerate(nodeTags): # nodes
-                node_tags.append(nodetag)
-                node_coords.append(nodeCoords[i*3:i*3+2])
-
-
-            if dim == 2: 
-
-                elemTypes, elemTags, elemNodeTags = gmsh.model.mesh.getElements(dim, tag)
-            
-                if elemTypes[0] == 2: # triagunal
-                    elem_node_tags = np.array(elemNodeTags).reshape(int(np.array(elemNodeTags)[0].shape[0]/3), 3)
-                    elem_tags = elemTags[0]
-            
-                i += 1
-        
-        gmsh.finalize()
-        
-        self.node_tags = np.array(node_tags) - 1 # indeces start from 1
-        self.q = np.array(node_coords)
-        
-        self.elem_tags = np.array(elem_tags)
-        self.me = np.array(elem_node_tags) - 1 # indeces start from 1
-
-        # assemle volume list for each component
-        area_list = []
-        print("Compute areas ...")
-        for element in tqdm(self.me):
-            area = triag_area(self.q[int(element[0])], self.q[int(element[1])], self.q[int(element[2])])
-            area_list.append(area)
-
-        centroid_list = []
-        for element in tqdm(self.me):
-            centroid = self.q[element].sum(0)/3
-            centroid_list.append(centroid)
-
-        self.centroids = np.array(centroid_list)        
-        self.areas = np.array(area_list)
-        print('Whole area', self.areas.sum())
-
-    def plot(self):
-        fig = plt.figure(figsize=(12, 4))
-        x = self.q[:, 0]
-        y = self.q[:, 1]
-        triangulation = mtri.Triangulation(x.ravel(), y.ravel(), self.me)
-        # plt.scatter(x, y, color='red')
-        plt.triplot(triangulation) #, 'g-h')
-        
-        plt.axis('equal')
-        plt.show()
-
-    def plot_topology(self, xPhys, fname=None):
-        fig = plt.figure(figsize=(12, 4))
-        x = self.q[:, 0]
-        y = self.q[:, 1]
-        triangulation = mtri.Triangulation(x.ravel(), y.ravel(), self.me)
-        # plt.scatter(x, y, color='red')
-        # plt.triplot(triangulation, mask = x > 0.5) #, 'g-h')
-        plt.tripcolor(triangulation, facecolors=xPhys)
-        plt.axis('equal')
-        if fname != None:
-            plt.savefig(fname)
-        plt.show()
-
-    def plot_displacement(self, u):
-        d_x = u[::2]
-        d_y = u[1::2]
-
-        print("max_disp_x: ", d_x.max())
-        print("max_disp_y: ", d_y.max())
-
-        fig = plt.figure(figsize=(12, 4))
-        x = self.q[:, 0]+d_x
-        y = self.q[:, 1]+d_y
-        triangulation = mtri.Triangulation(x.ravel(), y.ravel(), self.me)
-        # plt.scatter(x, y, color='red')
-        plt.triplot(triangulation) #, 'g-h')
-        plt.axis('equal')
-        plt.show()
-
-class LoadedMesh2D_ext(LoadedMesh2D):
-    def plot_topology(self, xPhys, vmax, vmin, ax):
-        # fig = plt.figure(figsize=(12, 4))
-        x = self.q[:, 0]
-        y = self.q[:, 1]
-        triangulation = mtri.Triangulation(x.ravel(), y.ravel(), self.me)
-        # plt.scatter(x, y, color='red')
-        # plt.triplot(triangulation, mask = x > 0.5) #, 'g-h')
-        tcf = ax.tripcolor(triangulation, facecolors=xPhys, vmax = vmax, vmin = vmin)
-        # plt.axis('equal')
-        # plt.show()
-        # tcf = ax.tricontourf(triangulation, xPhys, vmax = vmax, vmin = vmin)
-        return tcf  
-
-# problem_list = {"sigmund3k": {"meshfile": 'test_problems/sigmund3k.msh',
-#                               "fixed_x": [[0, [0, 0.2]]],
-#                               "fixed_y": [[0.6, 0]],
-#                               "fixed_xy":[],
-#                               "loads": [[[0, [0, 0.2]], [0, -0.000005]]]},
-#                 "sigmund11k": {"meshfile": 'test_problems/sigmund11k.msh',
-#                               "fixed_x": [[0, [0, 0.2]]],
-#                               "fixed_y": [[0.6, 0]],
-#                               "fixed_xy":[],
-#                               "loads": [[[0, [0, 0.2]], [0, -0.000005]]]}}
+from mesh_utils import LoadedMesh2D
 
 def BuildIkFunc0():
   return lambda me,k: np.array([2*me[k,0],2*me[k,0]+1,
@@ -429,7 +293,7 @@ class TopOptimizer2D:
             self.update_meth_args()
                    
 
-def oc(nme,x,volfrac,dc,dv,g):
+def oc(nme,x, v, vol_goal,dc,dv,g):
     """
     The function finds next X for optimization in SIMP method
     and upadates optimality criterion.
@@ -444,7 +308,9 @@ def oc(nme,x,volfrac,dc,dv,g):
         # print(lmid)
         xnew= np.maximum(0.001,np.maximum(x-move,np.minimum(1.0,np.minimum(x+move,x*np.sqrt(-dc/dv/lmid)))))
 
-        gt=g+np.sum((dv*(xnew-x)))
+        # gt=g+np.sum((dv*(xnew-x)))
+        gt = np.sum(xnew * v) - vol_goal
+
         if gt>0 :
             l1=lmid
         else:
@@ -535,12 +401,16 @@ class SIMP_basic:
         self.Emin = args["Emin"]
         self.Emax = args["Emax"]
         self.penal = args["penal"]
-        self.volfrac = args["volfrac"]
-        self.rmin = args["rmin"]
+        self.volfrac = args["args"]["volfrac"]
+        self.rmin = args["args"]["rmin"]
         self.Th = args["Th"]
         self.nme = self.Th.me.shape[0]
         self.x = self.volfrac * np.ones(self.Th.me.shape[0],dtype=float)
         self.x_old = self.x.copy()
+
+        self.volumes = self.Th.areas
+        self.volumes_sum = self.volumes.sum()
+        self.vol_goal = self.volumes_sum*self.volfrac
 
         self.dv = self.Th.areas/self.Th.areas.max()
         print("check dv", (self.dv == 0).sum(), self.dv.mean())
@@ -570,8 +440,10 @@ class SIMP_basic:
         self.dc[:] = np.asarray((self.H*(self.x*self.dc))[np.newaxis].T/self.Hs)[:,0] / np.maximum(0.001, self.x)
 
         self.xold = self.x.copy()
-        self.x, self.g=oc(self.nme, self.x, self.volfrac, self.dc, self.dv, self.g)
+        self.x, self.g=oc(self.nme, self.x, self.volumes, self.vol_goal, self.dc, self.dv, self.g)
         # print(self.x)
+
+        print("current volume: ", (self.x.T @ self.volumes)/self.volumes_sum)
         
         change=np.linalg.norm(self.x.reshape(self.nme,1)-self.xold.reshape(self.nme,1),np.inf)
 

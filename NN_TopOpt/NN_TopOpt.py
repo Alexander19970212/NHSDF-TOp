@@ -59,7 +59,7 @@ def _points_to_grid(points, z_values, grid_size=40, half_side=1):
     return grid
 
 
-class SIMP_Gaussians:
+class FeatureMappingTopOpt:
     def __init__(self, args) -> None:
 
         top_opt_methods = {
@@ -1209,6 +1209,9 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.Emax = args["Emax"]
         self.penal = args["penal"]
         self.volfrac = args["args"]["volfrac"]
+        self.volfrac_increment = args["args"]["volfrac_increment"]
+        self.volfrac_increment_marker = args["args"]["volfrac_increment_marker"]
+        self.volfrac_increment_duration = args["args"]["volfrac_increment_duration"]
 
         self.compliance_w = args["args"]["compliance_w"]
         self.volfrac_w = args["args"]["volfrac_w"]
@@ -1569,17 +1572,20 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         H_vec = torch.clamp(self.H, min=self.Emin, max=self.Emax)**self.penal
         compliance = torch.dot(H_vec, ce.float())
 
-        volfrac_goal = self.volfrac - 0.1*max(0, min(1, (global_i-20)/20))
-        
+        # volfrac_goal = self.volfrac - 0.1*max(0, min(1, (global_i-20)/20))
+        volfrac_goal = self.volfrac - self.volfrac_increment * max(
+            0, min(1, (global_i - self.volfrac_increment_marker) / self.volfrac_increment_duration)
+        )
+        volume_goal = self.volumes_sum * volfrac_goal
         # Safeguard the loss calculations
         # TODO: change to vectorproduct with volume vectors
         volfrac_loss_pre = torch.nn.functional.relu(
-            self.H.mean() - volfrac_goal
+            self.H.T @ self.volumes - volume_goal
         )
         
         gaussian_overlap = self.H_splitted_sum_clipped.mean()
 
-        print("volume: ", self.H.mean())
+        print("volume: ", self.H.T @ self.volumes, volfrac_goal, volume_goal, volfrac_loss_pre)
         print("compliance: ", compliance)
         print("gaussian_overlap: ", gaussian_overlap)
         print("ff_loss: ", ff_loss)
