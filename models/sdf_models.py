@@ -27,6 +27,17 @@ def finite_difference_smoothness_torch(points):
     smoothness = torch.sqrt(dx**2 + dy**2)
     return smoothness.mean()
 
+def orthogonality_metric(z, rad_latent_dim):
+    z_radius = z[:, :rad_latent_dim]
+    z_original = z[:, rad_latent_dim:]
+    
+    Q_radius, R_radius = torch.linalg.qr(z_radius)
+    Q_original, R_original = torch.linalg.qr(z_original)
+
+    orthogonality_loss = torch.linalg.norm(Q_radius.T @ Q_original, ord=2)
+    return orthogonality_loss
+
+
 
 class Decoder(nn.Module):
     """
@@ -452,7 +463,14 @@ class AE_explicit_radius(nn.Module):
         """
         z_radius = z[:, :self.rad_latent_dim]
         z_original = z[:, self.rad_latent_dim:]
-        return torch.norm(z_radius.T @ z_original, p='fro')
+        # return torch.norm(z_radius.T @ z_original, p='fro')
+
+        Q_radius, R_radius = torch.linalg.qr(z_radius)
+        Q_original, R_original = torch.linalg.qr(z_original)
+
+        orthogonality_loss = -1 * torch.linalg.norm(Q_radius.T @ Q_original, ord=2)
+        return orthogonality_loss
+        
 
     def loss_function(self, radius_sum_pred, radius_sum_target, sdf_pred, sdf_target, z):
         """
@@ -480,6 +498,11 @@ class AE_explicit_radius(nn.Module):
         # Orthogonality loss
         orthogonality_loss = self.orthogonality_loss(z)
 
+        if not self.training:
+            orthogonality_metric_value = orthogonality_metric(z, self.rad_latent_dim)
+        else:
+            orthogonality_metric_value = 0
+
         # Regularization loss
         if self.regularization == 'l1':
             reg_loss = torch.mean(torch.abs(z))
@@ -503,6 +526,9 @@ class AE_explicit_radius(nn.Module):
             "orthogonality_loss": orthogonality_loss,
             "reg_loss": reg_loss
         }
+
+        if not self.training:
+            splitted_loss["orthogonality_metric"] = orthogonality_metric_value
 
         return total_loss, splitted_loss
     
@@ -611,7 +637,9 @@ class LitSdfAE(L.LightningModule):
             xs, sdfs, points_s = batch
             total_mae = 0
             total_rmse = 0
-            total_smoothness = 0
+            total_smoothness_pred = 0
+            total_smoothness_diff = 0
+            total_diff_smoothness = 0
 
             for i in range(len(points_s)):
                 x = xs[i]
@@ -625,6 +653,8 @@ class LitSdfAE(L.LightningModule):
                 x_repeated = x.repeat(points.size(0), 1)
                 x_combined = torch.cat((points, x_repeated), dim=1)
                 radius_sum_pred, sdf_pred, z = self.vae(x_combined)
+
+                sdf_diff = sdf_pred.squeeze() - sdf.squeeze()
 
                 loss, splitted_loss = self.vae.loss_function(
                     radius_sum_pred, radius_sum_pred, sdf_pred, sdf, z
@@ -640,23 +670,35 @@ class LitSdfAE(L.LightningModule):
 
                 # Compute metrics
                 mae, rmse = compute_closeness(sdf_pred, sdf)
-                sdf_reshaped = sdf_pred.reshape(points_per_side, points_per_side)
-                smoothness = finite_difference_smoothness_torch(sdf_reshaped)
+                sdf_pred_reshaped = sdf_pred.reshape(points_per_side, points_per_side)
+                sdf_target_reshaped = sdf.reshape(points_per_side, points_per_side)
+                sdf_diff_reshaped = sdf_diff.reshape(points_per_side, points_per_side)
+                smoothness_pred = finite_difference_smoothness_torch(sdf_pred_reshaped)
+                smoothness_target = finite_difference_smoothness_torch(sdf_target_reshaped)
+                smoothness_diff = finite_difference_smoothness_torch(sdf_diff_reshaped)
+                diff_smoothness = smoothness_pred - smoothness_target
 
                 total_mae += mae
                 total_rmse += rmse
-                total_smoothness += smoothness
+                total_smoothness_pred += smoothness_pred
+                total_smoothness_diff += smoothness_diff
+                total_diff_smoothness += diff_smoothness
 
             avg_splitted_loss = {key: value / len(batch) for key, value in total_splitted_loss.items()}
             avg_mae = total_mae / len(points_s)
             avg_rmse = total_rmse / len(points_s)
-            avg_smoothness = total_smoothness / len(points_s)
+            avg_smoothness_pred = total_smoothness_pred / len(points_s)
+            avg_smoothness_diff = total_smoothness_diff / len(points_s)
+            avg_diff_smoothness = total_diff_smoothness / len(points_s)
 
             for key, value in avg_splitted_loss.items():
                 self.log(f'val2_{key}', value, prog_bar=True)
+
             self.log('val2_mae', avg_mae, prog_bar=True)
             self.log('val2_rmse', avg_rmse, prog_bar=True)
-            self.log('val2_smoothness', avg_smoothness, prog_bar=True)
+            self.log('val2_smoothness_pred', avg_smoothness_pred, prog_bar=True)
+            self.log('val2_smoothness_diff', avg_smoothness_diff, prog_bar=True)
+            self.log('val2_diff_smoothness', avg_diff_smoothness, prog_bar=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)

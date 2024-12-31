@@ -15,7 +15,7 @@ import os
 
 import cvxpy as cp
 
-from mesh_utils import LoadedMesh2D
+from NN_TopOpt.mesh_utils import LoadedMesh2D
 
 def BuildIkFunc0():
   return lambda me,k: np.array([2*me[k,0],2*me[k,0]+1,

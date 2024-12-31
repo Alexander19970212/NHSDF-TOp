@@ -16,12 +16,12 @@ from scipy import sparse
 from random import randint, randrange
 import json
 
-from TopOpt import LoadedMesh2D
+from NN_TopOpt.mesh_utils import LoadedMesh2D
 import time
 
-from TopOpt import SIMP_basic
-from TopOpt import TopOptimizer2D
-from TopOpt import fit_ellipsoid
+from NN_TopOpt.TopOpt import SIMP_basic
+from NN_TopOpt.TopOpt import TopOptimizer2D
+from NN_TopOpt.TopOpt import fit_ellipsoid
 
 
 def if_nan(tensor):

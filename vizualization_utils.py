@@ -2,7 +2,7 @@ import os
 import matplotlib.pyplot as plt
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
-from NN_TopOpt.TopOpt import LoadedMesh2D, LoadedMesh2D_ext
+from NN_TopOpt.mesh_utils import LoadedMesh2D, LoadedMesh2D_ext
 import json
 from os import listdir
 from os.path import isfile, join

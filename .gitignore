@@ -16,3 +16,4 @@ __pycache__/
 experiments/
 development.ipynb
 .ipynb_checkpoints/
+NN_TopOpt/carpenter-sdf-topology-optimizer.code-workspace
