@@ -1,3 +1,5 @@
+import sys
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -10,19 +12,26 @@ import matplotlib.pyplot as plt
 from lightning.pytorch import Trainer, seed_everything, callbacks
 from lightning.pytorch.loggers import TensorBoardLogger
 
-from models.sdf_models import LitSdfAE, AE, AE_DeepSDF
+from models.sdf_models import LitSdfAE
+from models.sdf_models import AE
+from models.sdf_models import AE_DeepSDF, AE_DeepSDF_explicit_radius
 from datasets.SDF_dataset import SdfDataset, SdfDatasetSurface, collate_fn_surface
 import argparse
 
+# Add the parent directory of NN_TopOpt to the system path
+sys.path.append(os.path.abspath('NN_TopOpt'))
+
 
 def main(args):
-    dataset_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_dataset_smf22_arc_ratio.csv',
-                     '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_dataset_smf20_arc_ratio.csv', 
-                     '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_dataset_smf20_arc_ratio.csv']
+    root_path = 'shape_datasets'
 
-    surface_files = ['../mnt/local/data/kalexu97/topOpt/ellipse_sdf_surface_dataset_smf22',
-                     '../mnt/local/data/kalexu97/topOpt/rounded_triangle_sdf_surface_dataset_smf20', 
-                     '../mnt/local/data/kalexu97/topOpt/rounded_quadrangle_sdf_surface_dataset_smf20']
+    dataset_files = [f'{root_path}/ellipse_sdf_dataset_smf22_arc_ratio_5000.csv',
+                    f'{root_path}/triangle_sdf_dataset_smf20_arc_ratio_5000.csv', 
+                    f'{root_path}/quadrangle_sdf_dataset_smf20_arc_ratio_5000.csv']
+    
+    surface_files = [f'{root_path}/ellipse_sdf_surface_dataset_smf22_150.csv',
+                 f'{root_path}/triangle_sdf_surface_dataset_smf20_150.csv',
+                 f'{root_path}/quadrangle_sdf_surface_dataset_smf20_150.csv']
 
     # dataset_files = ['shape_datasets/ellipse_sdf_dataset_onlMove.csv',
     #                  'shape_datasets/triangle_sdf_dataset_test.csv', 
@@ -32,9 +41,8 @@ def main(args):
     #                  'shape_datasets/triangle_sdf_surface_dataset_test',
     #                  'shape_datasets/quadrangle_sdf_surface_dataset_test']
 
+        
     dataset = SdfDataset(dataset_files, exclude_ellipse=False)
-    surface_dataset = SdfDatasetSurface(surface_files, cut_value=False)
-
 
     # Split dataset into train and test sets
     train_size = int(0.8 * len(dataset))  # 80% for training
@@ -63,9 +71,11 @@ def main(args):
         num_workers=15
     )
 
+    surface_dataset = SdfDatasetSurface(surface_files, cut_value=False)
+
     surface_test_loader = torch.utils.data.DataLoader(
         surface_dataset,
-        batch_size=8,
+        batch_size=32,
         shuffle=False,
         num_workers=15,
         collate_fn=collate_fn_surface
@@ -74,6 +84,8 @@ def main(args):
     print(f"Training set size: {len(train_dataset)}")
     print(f"Test set size: {len(test_dataset)}")
     print(f"Surface test set size: {len(surface_test_loader)}")
+
+    #################################################
 
     MAX_EPOCHS = args.max_epochs
     MAX_STEPS = MAX_EPOCHS * len(train_loader)
@@ -100,10 +112,11 @@ def main(args):
                 monitor='val_total_loss/dataloader_idx_0',
                 patience=10,
                 mode='min'
-            )
+            ) #,
+            # FirstEvalCallback()
         ],
         check_val_every_n_epoch=None,  # Disable validation every epoch
-        val_check_interval=4000  # Perform validation every 2000 training steps
+        val_check_interval=5000  # Perform validation every 2000 training steps
     )
 
     # Initialize model with L1 regularization
@@ -116,13 +129,24 @@ def main(args):
     # )
 
     # Initialize model with L1 regularization
-    vae_model = AE_DeepSDF(
+    vae_model = AE_DeepSDF_explicit_radius(
         input_dim=dataset.feature_dim, 
         latent_dim=9, 
         hidden_dim=128, 
+        rad_latent_dim=2,
+        rad_loss_weight=0.1,
+        orthogonality_loss_weight=0.1,
         regularization='l2',   # Use 'l1', 'l2', or None
         reg_weight=1e-3        # Adjust the weight as needed
     )
+
+    # vae_model = AE(
+    #         input_dim=dataset.feature_dim, 
+    #         latent_dim=3, 
+    #         hidden_dim=128, 
+    #         regularization='l2',   # Use 'l1', 'l2', or None
+    #         reg_weight=1e-3        # Adjust the weight as needed
+    #     )
 
     # Initialize the trainer
     vae_trainer = LitSdfAE(
@@ -135,6 +159,7 @@ def main(args):
     )
 
     # Train the model
+    trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader])
     trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader, surface_test_loader])
 
     # Save model weights
@@ -149,8 +174,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VAE model.')
-    parser.add_argument('--max_epochs', type=int, default=2, help='Maximum number of epochs for training')
-    parser.add_argument('--run_name', type=str, default='run_test', help='Name of the run')
-    parser.add_argument('--only_radius_sum', type=bool, default=False, help='Whether to only train the radius sum decoder')
+    parser.add_argument('--max_epochs', type=int, default=1, help='Maximum number of epochs for training')
+    parser.add_argument('--run_name', type=str, default='uba_reg1em2', help='Name of the run')
     args = parser.parse_args()
     main(args)
