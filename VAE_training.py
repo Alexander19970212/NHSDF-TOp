@@ -137,7 +137,7 @@ def main(args):
         rad_loss_weight=0.1,
         orthogonality_loss_weight=0.1,
         regularization='l2',   # Use 'l1', 'l2', or None
-        reg_weight=1e-3        # Adjust the weight as needed
+        reg_weight=1e-2        # Adjust the weight as needed
     )
 
     # vae_model = AE(
@@ -152,7 +152,7 @@ def main(args):
     vae_trainer = LitSdfAE(
         vae_model=vae_model, 
         learning_rate=1e-4, 
-        reg_weight=1e-3, 
+        reg_weight=1e-2, 
         regularization='l2',    # Should match the VAE model's regularization
         warmup_steps=1000, 
         max_steps=MAX_STEPS
