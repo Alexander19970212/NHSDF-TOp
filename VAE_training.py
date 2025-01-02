@@ -137,7 +137,7 @@ def main(args):
         rad_loss_weight=0.1,
         orthogonality_loss_weight=0.1,
         regularization='l2',   # Use 'l1', 'l2', or None
-        reg_weight=1e-2        # Adjust the weight as needed
+        reg_weight=5e-2        # Adjust the weight as needed
     )
 
     # vae_model = AE(
@@ -152,7 +152,7 @@ def main(args):
     vae_trainer = LitSdfAE(
         vae_model=vae_model, 
         learning_rate=1e-4, 
-        reg_weight=1e-2, 
+        reg_weight=5e-2, 
         regularization='l2',    # Should match the VAE model's regularization
         warmup_steps=1000, 
         max_steps=MAX_STEPS
@@ -175,6 +175,6 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VAE model.')
     parser.add_argument('--max_epochs', type=int, default=1, help='Maximum number of epochs for training')
-    parser.add_argument('--run_name', type=str, default='uba_reg1em2', help='Name of the run')
+    parser.add_argument('--run_name', type=str, default='uba_reg5em2', help='Name of the run')
     args = parser.parse_args()
     main(args)

@@ -384,6 +384,7 @@ class AE_explicit_radius(nn.Module):
 
         self.regularization = regularization
         self.reg_weight = reg_weight
+        print(f"regularization: {regularization}, reg_weight: {reg_weight}")
         self.rad_latent_dim = rad_latent_dim
         self.rad_loss_weight = rad_loss_weight
         self.orthogonality_loss_weight = orthogonality_loss_weight
