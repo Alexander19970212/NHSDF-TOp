@@ -2,7 +2,6 @@ import os
 import matplotlib.pyplot as plt
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
-from NN_TopOpt.mesh_utils import LoadedMesh2D, LoadedMesh2D_ext
 import json
 from os import listdir
 from os.path import isfile, join
@@ -109,6 +108,7 @@ def last_modified():
     return onlyfiles[np.argmax(times_m)]
 
 def last_iteration(file_name, save_fig=False):
+    from NN_TopOpt.mesh_utils import LoadedMesh2D, LoadedMesh2D_ext
 
     loss_names = ['volfrac_loss_pre', 'gaussian_overlap', 'compliance', 'ff_loss', 'rs_loss']
 
@@ -139,6 +139,7 @@ def last_iteration(file_name, save_fig=False):
         Th.plot_topology(x)
 
 def opt_animation(file_name):
+    from NN_TopOpt.mesh_utils import LoadedMesh2D, LoadedMesh2D_ext
     experiment_path = experiments_folder + "/" + file_name
 
     # plot the final section plot

@@ -55,7 +55,7 @@ def ElemStiffElasMatBa2DP1(ql,V,C):
 GetI2DP1 = BuildIkFunc0()
 
 class TopOptimizer2D:
-    def __init__(self, method_dict, args) -> None:
+    def __init__(self, method_dict, args, activate_method = True) -> None:
         
         self.problem_name = args['problem_name']
         # load problems config
@@ -98,6 +98,7 @@ class TopOptimizer2D:
 
         self.fixed_dof = np.unique(np.array(self.fixed_dof))
         self.moved_dof = np.array([])
+        self.moved_fixed_dof = np.concatenate((self.moved_dof, self.fixed_dof)).astype(int)
         self.free_dof = np.setdiff1d(self.dofs, self.fixed_dof)
         self.free_dof = np.setdiff1d(self.free_dof, self.moved_dof)
 
@@ -114,14 +115,15 @@ class TopOptimizer2D:
         self.Emax = 1
         self.obj = 0
 
-        self.meth_args = {"Th": self.Th,
-                          "penal": self.penal,
-                          "args": args,
-                          "problem_config": self.problem_args,
-                          "Emin": self.Emin,
-                          "Emax": self.Emax}
+        if activate_method:
+            self.meth_args = {"Th": self.Th,
+                            "penal": self.penal,
+                            "args": args,
+                            "problem_config": self.problem_args,
+                            "Emin": self.Emin,
+                            "Emax": self.Emax}
 
-        self.method = method_dict[args['method']](self.meth_args)
+            self.method = method_dict[args['method']](self.meth_args)
 
         ### initialize logger file
         self.log_file_name = 'experiments/'+''.join(["{}".format(randint(0, 9)) for num in range(0, 10)])+'.json'
@@ -263,7 +265,9 @@ class TopOptimizer2D:
 
             # compute RHS
             # print("compute RHS")
-            F_free = self.f[self.free_dof] - (K[self.free_dof,:][:,np.concatenate((self.moved_dof, self.fixed_dof)).astype(int)] @ self.u[np.concatenate((self.moved_dof, self.fixed_dof)).astype(int)])
+            # F_free = self.f[self.free_dof] - (K[self.free_dof,:][:,np.concatenate((self.moved_dof, self.fixed_dof)).astype(int)] @ self.u[np.concatenate((self.moved_dof, self.fixed_dof)).astype(int)])
+            F_free = self.f[self.free_dof] - (K[self.free_dof,:][:,self.moved_fixed_dof] @ self.u[self.moved_fixed_dof])
+            
             K_free = K[self.free_dof,:][:,self.free_dof]
 
             # compute SLE
@@ -292,6 +296,78 @@ class TopOptimizer2D:
             self.log_meta()
             self.update_meth_args()
                    
+class TopOptimizer2D_ADMM(TopOptimizer2D):
+    def __init__(self, method_dict, args, activate_method = True) -> None:
+        super().__init__(method_dict, args, activate_method)
+
+        self.gamma_1 = args["gamma_1"]
+        self.gamma_2 = args["gamma_2"]
+        self.gamma_3 = args["gamma_3"]
+
+        self.w = np.zeros((self.ndof,))  # vector of displacments
+        self.tilde_mu = np.zeros((self.ndof,))  # vector of displacments
+
+        self.gamma_3_I = self.gamma_3 * sparse.eye(self.ndof)
+
+        # self.K_sep_torch = torch.tensor(self.K_sep)
+        # self.indeces_K_torch = torch.tensor([self.iK, self.jK])
+        self.indeces_K = np.array([self.iK, self.jK])
+        
+        self.meth_args = {"Th": self.Th,
+                          "penal": self.penal,
+                          "args": args,
+                          "problem_config": self.problem_args,
+                          "Emin": self.Emin,
+                          "Emax": self.Emax,
+                          "ndof": self.ndof,
+                          "K_sep": self.K_sep,
+                          "indeces_K": self.indeces_K,
+                          "f": self.f}
+
+        self.method = method_dict[args['method']](self.meth_args)
+
+    def update_meth_args(self):
+        self.meth_args["ce"] = self.ce
+        self.meth_args["u"] = self.u
+
+    def optimize(self):
+        self.log_meta()
+        xPhys = self.method.x_init
+
+        while not self.method.stop_flag:
+            # update u
+            sK=(self.K_sep.T*(self.Emin+(xPhys)**self.penal*(self.Emax-self.Emin))).flatten(order='F')
+            K = coo_matrix((sK,(self.iK,self.jK)),shape=(self.ndof,self.ndof)).tocsc()
+
+            A = self.gamma_1*(K.T @ K) + self.gamma_3_I
+            # print("A: ", A.shape)
+            # print("K: ", K.shape)
+            # print("self.w: ", self.w.shape)
+            # print("self.tilde_mu: ", self.tilde_mu.shape)
+            RHS = self.gamma_2*(K.T @ self.f) + self.gamma_3*(self.w - self.tilde_mu)
+
+            RHS_free = RHS[self.free_dof] - (A[self.free_dof,:][:,self.moved_fixed_dof] @ self.u[self.moved_fixed_dof])            
+            A_free = A[self.free_dof,:][:,self.free_dof]
+
+            A_free = A_free.tocsc() #  Need CSR for SuperLU factorisation
+            lu = sla.splu(A_free)
+            self.u[self.free_dof] = lu.solve(RHS_free)
+
+            # update xPhys
+            self.update_meth_args()
+            xPhys = self.method.get_x(self.meth_args).detach().numpy()
+
+            # update w
+            self.w = -self.f/self.gamma_3 + self.u + self.tilde_mu
+
+            # update tilde_mu
+            self.tilde_mu = self.tilde_mu + self.gamma_3*(self.u - self.w)
+
+            self.Th.plot_topology(xPhys)
+            self.log_meta()
+            
+
+
 
 def oc(nme,x, v, vol_goal,dc,dv,g):
     """
@@ -462,6 +538,83 @@ class SIMP_basic:
 
         return self.x.copy()
     
+class SIMP_ADMM(torch.nn.Module):
+    """
+    SIMP method for topology optimization with ADMM
+    """
+    def __init__(self, args) -> None:
+        super().__init__()
+
+        self.Emin = args["Emin"]
+        self.Emax = args["Emax"]
+        self.penal = args["penal"]
+        self.volfrac = args["args"]["volfrac"]
+        self.rmin = args["args"]["rmin"]
+        self.Th = args["Th"]
+        self.gamma_2 = args["args"]["gamma_2"]
+        self.ndof = args["ndof"]
+        self.nme = self.Th.me.shape[0]
+        self.x_init = self.volfrac * np.ones(self.Th.me.shape[0],dtype=float)
+        self.x_values = torch.logit(torch.tensor(self.volfrac * np.ones(self.Th.me.shape[0],dtype=float)))
+        self.W_x = torch.nn.Parameter(self.x_values)
+
+        self.volumes = torch.tensor(self.Th.areas)
+        self.volumes_sum = self.volumes.sum()
+        self.vol_goal = self.volumes_sum*self.volfrac
+
+        self.dv = self.Th.areas/self.Th.areas.max()
+        print("check dv", (self.dv == 0).sum(), self.dv.mean())
+        self.dc = np.ones(self.Th.me.shape[0])
+        self.ce = np.ones(self.Th.me.shape[0])
+        self.g = 0
+
+        self.H = filter_matrix(self.Th.centroids, self.rmin)
+        self.Hs = self.H.sum(1)
+
+        self.stop_flag = False
+        self.obj = 0
+
+        self.K_sep = torch.tensor( args["K_sep"])
+        self.indeces_K = torch.tensor(args["indeces_K"])
+        self.f = torch.tensor(args["f"])
+
+        self.global_i = 0
+        self.meta = {'x': self.x_values.detach().numpy().tolist(), 'stop_flag': self.stop_flag}
+
+        self.optimizer = torch.optim.Adam([self.W_x], lr=0.01)
+
+    def get_x(self, args):
+        u = torch.tensor(args["u"])
+
+        for i in range(10):
+            self.optimizer.zero_grad()
+
+            rho = torch.sigmoid(self.W_x)
+            # vofrac_loss = torch.nn.functional.relu(self.vol_goal - rho.T @ self.volumes)
+            vofrac_loss = torch.nn.functional.relu(rho.mean() - self.volfrac)
+
+            sK=(self.K_sep.T*(self.Emin+(rho)**self.penal*(self.Emax-self.Emin))).T.flatten()
+            # print(sK.shape)
+            # print(self.iK.shape)
+            # print(self.ndof)
+            # print(self.indeces_K.shape)
+            # print(sK.shape)
+            K = torch.sparse_coo_tensor(self.indeces_K, sK, size=(self.ndof, self.ndof))
+            confidence_loss = torch.norm(K @ u - self.f)
+
+            print(f'vol_loss: {vofrac_loss}, conf_loss: {confidence_loss}, rho: {rho.mean()}, {rho.min()}, {rho.max()}')
+
+            loss = vofrac_loss + self.gamma_2*confidence_loss
+            loss.backward()
+            self.optimizer.step()
+
+        self.global_i += 1
+
+        if self.global_i == 10:
+            self.stop_flag = True
+
+        return rho
+
 class GaussianSplattingCompliance(torch.nn.Module):
     def __init__(self, dist_means_, coords, Emin, Emax, penal, num_samples, args):
         super().__init__()
