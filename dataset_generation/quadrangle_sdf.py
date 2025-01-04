@@ -375,6 +375,89 @@ def generate_rounded_quadrangle_sdf_surface_dataset(
     
     return df, points_df
 
+def generate_quadrangle_random_radius_dataset(
+        num_quadrangle=100,
+        sample_per_quadrangle=100,
+        smooth_factor=40,
+        filename='quadrangle_random_radius_dataset',
+        axes_length=1   
+):
+    """
+    Generate dataset of signed distances for random quadrangle
+    
+    Parameters:
+    - num_quadrangle: number of random quadrangle to generate
+    - sample_per_quadrangle: number sample with random radiuses for each quadrangle
+    - filename: output CSV file name
+    """
+    # Lists to store our data
+    data = []
+    quadrangle_count = 0
+    
+    # Generate multiple triangles
+    from tqdm import tqdm
+
+    with tqdm(total=num_quadrangle, desc="Quadrangle") as pbar:
+        while True:
+            vertices = generate_quadrangle()
+
+            failed_count = 0
+            success_count = 0
+            while True:
+                line_segments, arc_segments, arcs_intersection = (
+                    get_rounded_polygon_segments_rand_radius(vertices, 0.1))
+                
+                if arcs_intersection == True:
+                    failed_count += 1
+                    if failed_count > 10:
+                        break
+                    continue
+                else:
+                    failed_count = 0
+                    
+                    v1, v2, v3, v4 = vertices
+                    arc_radii = np.array([radius for _, _, _, radius in arc_segments])
+
+                    perimeter, line_perimeter, arc_perimeter = compute_perimeter(line_segments, arc_segments)
+                    arc_ratio = arc_perimeter / perimeter
+
+                    row = [ f'qd_{quadrangle_count}',
+                            v3[0], v3[1],        # third vertex
+                            v4[0], v4[1],        # fourth vertex
+                            arc_radii[0],
+                            arc_radii[1],
+                            arc_radii[2],
+                            arc_radii[3],
+                            arc_ratio
+                        ]
+                    data.append(row)
+
+                    success_count += 1
+                    if success_count >= sample_per_quadrangle:
+                        quadrangle_count += 1
+                        pbar.update(1)
+                        break
+
+            if quadrangle_count >= num_quadrangle:
+                break
+
+    # Convert to DataFrame
+    columns = [
+        'feature_id',
+        'v3_x', 'v3_y',
+        'v4_x', 'v4_y',
+        'r_q1', 'r_q2', 'r_q3', 'r_q4', # q means quadrangle
+        'arc_ratio'
+    ]
+    
+    df = pd.DataFrame(data, columns=columns)
+    
+    # Save to CSV
+    df.to_csv(f'{filename}.csv', index=False)
+    print(f"Dataset saved to {filename}")
+
+    return df
+
 #################################################################################################################
 
 # testing the function

@@ -37,7 +37,12 @@ def orthogonality_metric(z, rad_latent_dim):
     orthogonality_loss = torch.linalg.norm(Q_radius.T @ Q_original, ord=2)
     return orthogonality_loss
 
-
+def orthogonality_metric_std(z, rad_latent_dim):
+    z_radius = z[:, :rad_latent_dim]
+    z_original = z[:, rad_latent_dim:]
+    z_original_std = torch.std(z_original, dim=0)
+    z_radius_std = torch.std(z_radius, dim=0)
+    return z_original_std.mean() / z_radius_std.mean(), z_original_std.mean(), z_radius_std.mean()
 
 class Decoder(nn.Module):
     """
@@ -632,7 +637,8 @@ class LitSdfAE(L.LightningModule):
 
                 for key, value in splitted_loss.items():
                     self.log(f'val_{key}', value, prog_bar=True)
-        else:
+
+        elif dataloader_idx == 1:
             total_loss = 0
             total_splitted_loss = {}
             xs, sdfs, points_s = batch
@@ -700,6 +706,32 @@ class LitSdfAE(L.LightningModule):
             self.log('val2_smoothness_pred', avg_smoothness_pred, prog_bar=True)
             self.log('val2_smoothness_diff', avg_smoothness_diff, prog_bar=True)
             self.log('val2_diff_smoothness', avg_diff_smoothness, prog_bar=True)
+
+        if dataloader_idx == 2:
+            x, sdf, tau = batch
+            # print(f"x: {x.shape}, type: {x.dtype}")
+            total_tau_loss = 0
+            total_ort_std = 0
+            total_orig_std = 0
+            total_tau_std = 0
+            for i in range(len(x)):
+                x_i = x[i]
+                # sdf_i = sdf[i]
+                tau_i = tau[i]
+                tau_pred, sdf_pred, z = self.vae(x_i)
+
+                # tau_loss = self.vae.radius_sum_loss(tau_pred, tau_i)
+                tau_loss = F.mse_loss(tau_pred.flatten(), tau_i.flatten(), reduction='mean')
+                ort_std, orig_std, tau_std = orthogonality_metric_std(z, self.vae.rad_latent_dim)
+                total_tau_loss += tau_loss
+                total_ort_std += ort_std
+                total_orig_std += orig_std
+                total_tau_std += tau_std
+
+            self.log('val_tau_loss', total_tau_loss / len(x), prog_bar=True)
+            self.log('val_ort_std', total_ort_std / len(x), prog_bar=True)
+            self.log('val_orig_std', total_orig_std / len(x), prog_bar=True)
+            self.log('val_tau_std', total_tau_std / len(x), prog_bar=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)

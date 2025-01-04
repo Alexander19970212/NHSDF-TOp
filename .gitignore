@@ -6,6 +6,7 @@ models/__pycache__
 .venv/
 .vscode/
 smoothness_metrics.ipynb
+orthogonality_metric.ipynb
 logs/
 shape_datasets/
 model_weights/

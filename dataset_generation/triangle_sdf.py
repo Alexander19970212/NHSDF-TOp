@@ -381,6 +381,88 @@ def generate_rounded_triangle_sdf_surface_dataset(
 
 #################################################################################################################
 
+def generate_traingle_random_radius_dataset(
+        num_triangle=100,
+        sample_per_triangle=100,
+        smooth_factor=40,
+        filename='triangle_random_radius_dataset',
+        axes_length=1   
+):
+    """
+    Generate dataset of signed distances for random quadrangle
+    
+    Parameters:
+    - num_triangle: number of random triangle to generate
+    - sample_per_triangle: number sample with random radiuses for each triangle
+    - filename: output CSV file name
+    """
+    # Lists to store our data
+    data = []
+    triangle_count = 0
+    
+    # Generate multiple triangles
+    from tqdm import tqdm
+
+    with tqdm(total=num_triangle, desc="Triangles") as pbar:
+        while True:
+            vertices = generate_triangle()
+
+            failed_count = 0
+            success_count = 0
+            while True:
+                line_segments, arc_segments, arcs_intersection = (
+                    get_rounded_polygon_segments_rand_radius(vertices, 0.1))
+                
+                if arcs_intersection == True:
+                    failed_count += 1
+                    if failed_count > 10:
+                        break
+                    continue
+                else:
+                    failed_count = 0
+                    
+                    v1, v2, v3 = vertices
+                    arc_radii = np.array([radius for _, _, _, radius in arc_segments])
+
+                    perimeter, line_perimeter, arc_perimeter = compute_perimeter(line_segments, arc_segments)
+                    arc_ratio = arc_perimeter / perimeter
+
+                    row = [ f'tr_{triangle_count}',
+                            v3[0], v3[1],        # third vertex
+                            arc_radii[0],
+                            arc_radii[1],
+                            arc_radii[2],
+                            arc_ratio
+                    ]
+                    data.append(row)
+
+                    success_count += 1
+                    if success_count >= sample_per_triangle:
+                        triangle_count += 1
+                        pbar.update(1)
+                        break
+
+            if triangle_count >= num_triangle:
+                break
+
+    # Convert to DataFrame
+    columns = [
+        'feature_id',
+        'v1_x', 'v1_y',
+        'r_t1', 'r_t2', 'r_t3', # t means triangle
+        'arc_ratio'
+    ]
+    
+    df = pd.DataFrame(data, columns=columns)
+    
+    # Save to CSV
+    df.to_csv(f'{filename}.csv', index=False)
+    print(f"Dataset saved to {filename}")
+
+    return df
+
+#################################################################################################################
+
 def plot_triangle_sdf_dataset(df, points_per_triangle=500):
 # Plot first few triangles and their points
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))

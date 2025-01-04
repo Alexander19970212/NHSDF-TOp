@@ -132,6 +132,50 @@ class SdfDatasetSurface(Dataset):
 
         return sample
     
+class RadiusDataset(Dataset):
+    """Custom Dataset for SDF data of multiple shapes"""
+    def __init__(self, csv_files, exclude_ellipse=False):
+        # Load and combine data from multiple CSV files
+        feature_names = ['feature_id',
+            'point_x', 'point_y', 'class', 'semi_axes_ratio', 'v1_x', 'v1_y', 
+            'r_t1', 'r_t2', 'r_t3', 'v3_x', 'v3_y', 'v4_x', 'v4_y', 
+            'r_q1', 'r_q2', 'r_q3', 'r_q4', 'arc_ratio'
+        ]
+        self.max_radius_sum = 6
+        dfs = []
+        for file in csv_files:
+            df = pd.read_csv(file)
+            dfs.append(df)    
+
+        self.n_classes = 3
+        for class_i, df in enumerate(dfs):
+            if self.n_classes == 1:
+                df["class"] = 0
+            else:
+                df["class"] = (class_i+1)/(self.n_classes-1)
+
+        self.data = pd.concat(dfs, ignore_index=True)
+        self.data = self.data.reindex(columns=feature_names, fill_value=0)
+        # Replace NaN values with 0
+        self.data = self.data.fillna(0)
+        geom_feature_ids = self.data['feature_id'].unique()
+        self.geom_feature_ids = np.unique(geom_feature_ids)
+
+        self.feature_dim = len(feature_names) - 2
+
+    def __len__(self):
+        return len(self.geom_feature_ids)
+    
+    def __getitem__(self, idx):
+        geom_feature_id = self.geom_feature_ids[idx]
+        row = self.data[self.data['feature_id'] == geom_feature_id]
+        X_row = row.drop(columns=['feature_id', 'arc_ratio'])
+
+        X = torch.tensor(X_row.values, dtype=torch.float32)
+        arc_ratio = torch.tensor(row['arc_ratio'].values, dtype=torch.float32)
+        
+        return X, 0, arc_ratio
+
 def collate_fn_surface(batch):
     """Custom collate function for the SdfDatasetSurface"""
     # Extract points and targets from the batch

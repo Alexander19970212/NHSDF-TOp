@@ -18,6 +18,7 @@ from models.sdf_models import AE_DeepSDF, AE_DeepSDF_explicit_radius
 from datasets.SDF_dataset import SdfDataset, SdfDatasetSurface, collate_fn_surface
 from datasets.SDF_dataset import RadiusDataset
 import argparse
+import json
 
 # Add the parent directory of NN_TopOpt to the system path
 sys.path.append(os.path.abspath('NN_TopOpt'))
@@ -92,86 +93,63 @@ def main(args):
 
     #################################################
 
-    MAX_EPOCHS = args.max_epochs
-    MAX_STEPS = MAX_EPOCHS * len(train_loader)
+    # load model
+    checkpoint_path = f'model_weights/{args.run_name}.ckpt'
 
-    # Training setup
-    trainer = Trainer(
-        max_epochs=MAX_EPOCHS,
-        accelerator='auto',
-        devices=1,
-        logger=TensorBoardLogger(
-            name='VAEi', 
-            save_dir='./logs', 
-            default_hp_metric=False, 
-            version=args.run_name
-        ),
-        callbacks=[
-            callbacks.ModelCheckpoint(
-                monitor='val_total_loss/dataloader_idx_0',
-                mode='min',
-                save_top_k=1,
-                filename='best-model-{epoch:02d}-{val_total_loss:.2f}'
-            ),
-            callbacks.EarlyStopping(
-                monitor='val_total_loss/dataloader_idx_0',
-                patience=10,
-                mode='min'
-            ) #,
-            # FirstEvalCallback()
-        ],
-        check_val_every_n_epoch=None,  # Disable validation every epoch
-        val_check_interval=5000  # Perform validation every 2000 training steps
-    )
-
-    # Initialize model with L1 regularization
-    # vae_model = AE(
-    #     input_dim=dataset.feature_dim, 
-    #     latent_dim=3, 
-    #     hidden_dim=128, 
-    #     regularization='l2',   # Use 'l1', 'l2', or None
-    #     reg_weight=1e-4        # Adjust the weight as needed
-    # )
-
-    # Initialize model with L1 regularization
     vae_model = AE_DeepSDF_explicit_radius(
-        input_dim=train_dataset.feature_dim, 
+        input_dim=test_dataset.feature_dim, 
         latent_dim=9, 
         hidden_dim=128, 
         rad_latent_dim=2,
-        rad_loss_weight=0.01,
+        rad_loss_weight=0.1,
         orthogonality_loss_weight=0.1,
         regularization='l2',   # Use 'l1', 'l2', or None
-        reg_weight=5e-3        # Adjust the weight as needed
+        reg_weight=1e-3        # Adjust the weight as needed
     )
 
-    # Initialize the trainer
-    vae_trainer = LitSdfAE(
-        vae_model=vae_model, 
-        learning_rate=1e-4, 
-        reg_weight=5e-3, 
-        regularization='l2',    # Should match the VAE model's regularization
-        warmup_steps=1000, 
-        max_steps=MAX_STEPS
+    vae_trainer = LitSdfAE.load_from_checkpoint(checkpoint_path, vae_model=vae_model, strict=True)
+
+    # Training setup
+    trainer = Trainer(
+        max_epochs=args.max_epochs,
+        accelerator='auto',
+        devices=1,
+        logger=TensorBoardLogger(name='VAEi', save_dir='./logs', default_hp_metric=False, version=args.run_name),
+        callbacks=[
+            callbacks.ModelCheckpoint(
+                monitor='val_radius_sum_loss',
+                mode='min',
+                save_top_k=1,
+                filename='best-model-{epoch:02d}-{val_radius_sum_loss:.2f}'
+            ),
+            callbacks.EarlyStopping(
+                monitor='val_radius_sum_loss',   
+                patience=10,
+                mode='min'
+            )
+        ]
     )
 
-    # Train the model
-    trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
-    trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
+    metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
 
-    # Save model weights
-    checkpoint_path = f'model_weights/{args.run_name}.ckpt'
-    trainer.save_checkpoint(checkpoint_path)
-    print(f"Model weights saved to {checkpoint_path}")
+    combined_metrics = {k: v for d in metrics for k, v in d.items()}
 
-    # Save just the model weights
-    model_weights_path = f'model_weights/{args.run_name}.pt'
-    torch.save(vae_model.state_dict(), model_weights_path)
-    print(f"Model weights saved to {model_weights_path}")
+    # Save metrics into a JSON file with run_name
+    metrics_filename = 'src/metrics.json'
+    try:
+        with open(metrics_filename, 'r') as f:
+            all_metrics = json.load(f)
+    except FileNotFoundError:
+        all_metrics = {}
 
+    all_metrics[args.run_name] = combined_metrics
+
+    with open(metrics_filename, 'w') as f:
+        json.dump(all_metrics, f, indent=4)
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VAE model.')
     parser.add_argument('--max_epochs', type=int, default=1, help='Maximum number of epochs for training')
-    parser.add_argument('--run_name', type=str, default='uba_qqMax_reg5em3', help='Name of the run')
+    parser.add_argument('--run_name', type=str, default='uba_reg5em2', help='Name of the run')
     args = parser.parse_args()
     main(args)
