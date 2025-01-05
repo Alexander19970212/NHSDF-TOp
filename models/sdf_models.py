@@ -425,6 +425,20 @@ class AE_explicit_radius(nn.Module):
             nn.Linear(hidden_dim, 1)
         )
 
+        # Decoder for input reconstruction
+        self.decoder_input = nn.Sequential(
+            nn.Linear(latent_dim, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, input_dim-2)
+        )
+
         self.init_weights()
 
     def init_weights(self):
@@ -474,7 +488,9 @@ class AE_explicit_radius(nn.Module):
         Q_radius, R_radius = torch.linalg.qr(z_radius)
         Q_original, R_original = torch.linalg.qr(z_original)
 
-        orthogonality_loss = -1 * torch.linalg.norm(Q_radius.T @ Q_original, ord=2)
+        # orthogonality_loss = -1 * torch.linalg.norm(Q_radius.T @ Q_original, ord=2)
+        I = torch.eye(Q_radius.shape[1], Q_original.shape[1], device=Q_radius.device)
+        orthogonality_loss = torch.norm(Q_radius.T @ Q_original - I, p='fro')
         return orthogonality_loss
         
 

@@ -142,6 +142,8 @@ class TopOptimizer2D:
             json.dump(meta, fp)
 
         # print(self.log_file_name)
+        self.F_free_to_invest = None
+        self.K_free_to_invest = None
 
     def build_stiffness_matrix(self):
         # create the elasticity problem
@@ -210,7 +212,7 @@ class TopOptimizer2D:
                         # print("Fixed_node_y: ", node_id)
                         self.fixed_dof.append(2*node_id+1)
                     else:
-                        print("Fixed_node: ", node_id)
+                        # print("Fixed_node: ", node_id)
                         self.fixed_dof.append(2*node_id)
                         self.fixed_dof.append(2*node_id+1)
 
@@ -236,6 +238,8 @@ class TopOptimizer2D:
             self.f[node_ids*2] = case[1][0]
             self.f[node_ids*2+1] = case[1][1]
 
+        print("Loaded loads: ", self.f[self.f != 0].shape)
+
     def update_meth_args(self):
         self.meth_args["ce"] = self.ce
 
@@ -253,7 +257,9 @@ class TopOptimizer2D:
 
     def optimize(self):
         self.log_meta()
+        counter = 0
         while not self.method.stop_flag:
+            counter += 1
             xPhys = self.method.get_x(self.meth_args)
 
             # build global stiffness matrix
@@ -269,6 +275,11 @@ class TopOptimizer2D:
             F_free = self.f[self.free_dof] - (K[self.free_dof,:][:,self.moved_fixed_dof] @ self.u[self.moved_fixed_dof])
             
             K_free = K[self.free_dof,:][:,self.free_dof]
+
+            if counter == 30:
+                self.F_free_to_invest = F_free.copy()
+                self.K_free_to_invest = K_free.copy()
+                break
 
             # compute SLE
             # print("compute SLE")
@@ -295,6 +306,8 @@ class TopOptimizer2D:
 
             self.log_meta()
             self.update_meth_args()
+
+        self.x = xPhys
                    
 class TopOptimizer2D_ADMM(TopOptimizer2D):
     def __init__(self, method_dict, args, activate_method = True) -> None:
@@ -366,9 +379,35 @@ class TopOptimizer2D_ADMM(TopOptimizer2D):
             self.Th.plot_topology(xPhys)
             self.log_meta()
             
+class TopOptimizer2D_LP(TopOptimizer2D):
+    def __init__(self, method_dict, args, activate_method = True) -> None:
+        super().__init__(method_dict, args, activate_method)
 
+        self.volumes = self.Th.areas
+        self.assemble_t()
 
+    def assemble_t(self):
+        t_list = []
+        for k in tqdm(range(self.nme), desc="Assembling t"):
+            sk=self.K_sep[k].T.flatten(order='F')
+            # print(sK.shape)
+            # print(self.iK.shape)
+            # print(self.ndof)
+            K = coo_matrix((sk,(self.ik[k],self.jk[k])),shape=(self.ndof,self.ndof)).tocsc()
 
+            # compute RHS
+            # print("compute RHS")
+            # F_free = self.f[self.free_dof] - (K[self.free_dof,:][:,np.concatenate((self.moved_dof, self.fixed_dof)).astype(int)] @ self.u[np.concatenate((self.moved_dof, self.fixed_dof)).astype(int)])
+            F_free = self.f[self.free_dof] - (K[self.free_dof,:][:,self.moved_fixed_dof] @ self.u[self.moved_fixed_dof])
+            K_free = K[self.free_dof,:][:,self.free_dof]
+
+            t = F_free.T @ K_free.T @ F_free
+
+            t_list.append(t)
+
+        self.t = np.array(t_list)
+
+        
 def oc(nme,x, v, vol_goal,dc,dv,g):
     """
     The function finds next X for optimization in SIMP method

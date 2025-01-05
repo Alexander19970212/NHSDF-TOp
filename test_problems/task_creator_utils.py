@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath('../NN_TopOpt'))
 from mesh_utils import LoadedMesh2D 
 import json
 
-def create_task(poligone_vertices, task_name, constraints, loads):
+def create_task(poligone_vertices, task_name, constraints, loads, meshsize = 0.005):
     gmsh.initialize()
     model = gmsh.model()
 
@@ -26,7 +26,7 @@ def create_task(poligone_vertices, task_name, constraints, loads):
     model.occ.synchronize()
     model.add_physical_group(dim=2, tags=[face])
 
-    gmsh.option.setNumber('Mesh.MeshSizeMax', 0.005)
+    gmsh.option.setNumber('Mesh.MeshSizeMax', meshsize)
 
     #mesh generation
     model.mesh.generate(dim=2)
@@ -46,9 +46,10 @@ def create_task(poligone_vertices, task_name, constraints, loads):
                               "loads": loads}}
 
     try:
-        with open('test_problems/problems_new.json', 'r') as fp:
+        with open('problems.json', 'r') as fp:
             existing_problems = json.load(fp)
     except FileNotFoundError:
+        print("File not found, creating new file")
         existing_problems = {}
 
     existing_problems.update(problem_list)
