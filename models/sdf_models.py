@@ -454,11 +454,17 @@ class AE_explicit_radius(nn.Module):
                 nn.init.xavier_uniform_(layer.weight)
                 nn.init.zeros_(layer.bias)
 
+        # Initialize decoder_input layers
+        for layer in self.decoder_input:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
         # Initialize decoder_radius_sum layers
         nn.init.xavier_uniform_(self.decoder_radius_sum.weight)
         nn.init.zeros_(self.decoder_radius_sum.bias)
 
-    def forward(self, x):
+    def forward(self, x, reconstruction=False):
         # Encode
         query_points = x[:, :2]
         z = self.encoder(x[:, 2:])  # Only use x[2:] features
@@ -469,7 +475,11 @@ class AE_explicit_radius(nn.Module):
         sdf_decoder_input = torch.cat([z, query_points], dim=1)
         sdf_pred = self.decoder_sdf(sdf_decoder_input)
 
-        return radius_sum_pred, sdf_pred, z  # Return z for regularization
+        if reconstruction:
+            x_reconstructed = self.decoder_input(z)
+            return radius_sum_pred, sdf_pred, x_reconstructed, z  # Return z for regularization
+        else:
+            return radius_sum_pred, sdf_pred, z  # Return z for regularization
     
     def radius_sum(self, z):
         return self.decoder_radius_sum(z)
@@ -485,12 +495,13 @@ class AE_explicit_radius(nn.Module):
         z_original = z[:, self.rad_latent_dim:]
         # return torch.norm(z_radius.T @ z_original, p='fro')
 
-        Q_radius, R_radius = torch.linalg.qr(z_radius)
-        Q_original, R_original = torch.linalg.qr(z_original)
+        # Q_radius, R_radius = torch.linalg.qr(z_radius)
+        # Q_original, R_original = torch.linalg.qr(z_original)
 
         # orthogonality_loss = -1 * torch.linalg.norm(Q_radius.T @ Q_original, ord=2)
-        I = torch.eye(Q_radius.shape[1], Q_original.shape[1], device=Q_radius.device)
-        orthogonality_loss = torch.norm(Q_radius.T @ Q_original - I, p='fro')
+        # I = torch.eye(Q_radius.shape[1], Q_original.shape[1], device=Q_radius.device)
+        # orthogonality_loss = torch.norm(Q_radius.T @ Q_original - I, p='fro')
+        orthogonality_loss = torch.norm(z_radius.T @ z_original, p='fro')
         return orthogonality_loss
         
 
@@ -554,6 +565,11 @@ class AE_explicit_radius(nn.Module):
 
         return total_loss, splitted_loss
     
+    def reconstruction_loss(self, x_reconstructed, x):
+        x_original = x[:, 2:]
+        reconstruction_loss = F.mse_loss(x_reconstructed, x_original, reduction='mean')
+        return reconstruction_loss, {"reconstruction_loss": reconstruction_loss}
+    
     def sdf(self, z, query_points):
         z_repeated = z.repeat(query_points.shape[0], 1)
 
@@ -584,6 +600,7 @@ class AE_DeepSDF_explicit_radius(AE_explicit_radius):
         }
         
         self.decoder_sdf = Decoder(**NetworkSpecs)
+        self.init_weights()
 
 class LitSdfAE(L.LightningModule):
     def __init__(self, vae_model, learning_rate=1e-4, reg_weight=1e-4, 
@@ -595,44 +612,44 @@ class LitSdfAE(L.LightningModule):
         self.regularization = regularization
         self.warmup_steps = warmup_steps
         self.max_steps = max_steps
-        self.only_recon = False
-        self.only_radius_sum = False
+        self.reconstruction_decoder_training = False
             
         self.save_hyperparameters(logger=False)
 
-    def freeze_decoder_input(self, only_recon=False, only_radius_sum=False):
+    def freezing_weights(self, rec_decoder_training=False):
         for param in self.vae.parameters():
-            param.requires_grad = False
+            param.requires_grad = not rec_decoder_training
 
-        if only_radius_sum:
-            for param in self.vae.decoder_radius_sum.parameters():
-                param.requires_grad = True
-                
-        if only_recon:
-            for param in self.vae.decoder_input.parameters():
-                param.requires_grad = True
-
-        self.only_recon = only_recon
-        self.only_radius_sum = only_radius_sum
+        for param in self.vae.decoder_input.parameters():
+            param.requires_grad = rec_decoder_training
 
     def forward(self, x):
         return self.vae(x)
 
     def training_step(self, batch, batch_idx):
-        x, sdf, radius_sum = batch
-        radius_sum_pred, sdf_pred, z = self.vae(x)
 
-        if self.only_radius_sum:
-            radius_sum_loss = self.vae.radius_sum_loss(radius_sum_pred, radius_sum)
-            total_loss = radius_sum_loss
-            self.log('train_radius_sum_loss', radius_sum_loss, prog_bar=True)
-        else:
+        epoch = self.current_epoch
+        dataloader_idx = epoch % 2
+
+        x, sdf, radius_sum = batch[dataloader_idx]
+        
+        if dataloader_idx == 0:
+            if self.reconstruction_decoder_training==True:
+                self.freezing_weights(rec_decoder_training=False)
+                self.reconstruction_decoder_training = False
+            radius_sum_pred, sdf_pred, z = self.vae(x)
             total_loss, splitted_loss = self.vae.loss_function(
                 radius_sum_pred, radius_sum, sdf_pred, sdf, z
             )
+        else:
+            if self.reconstruction_decoder_training==False:
+                self.freezing_weights(rec_decoder_training=True)
+                self.reconstruction_decoder_training = True
+            _, _, x_reconstructed, _ = self.vae(x, reconstruction=True)
+            total_loss, splitted_loss = self.vae.reconstruction_loss(x_reconstructed, x)
 
-            for key, value in splitted_loss.items():
-                self.log(f'train_{key}', value, prog_bar=True)
+        for key, value in splitted_loss.items():
+            self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
 
         return total_loss
 
@@ -640,19 +657,19 @@ class LitSdfAE(L.LightningModule):
         if dataloader_idx == 0:
             x, sdf, radius_sum = batch
             # print(f"x: {x.shape}, type: {x.dtype}")
-            radius_sum_pred, sdf_pred, z = self.vae(x)
+            radius_sum_pred, sdf_pred, x_reconstructed, z = self.vae(x, reconstruction=True)
 
-            if self.only_radius_sum:
-                radius_sum_loss = self.vae.radius_sum_loss(radius_sum_pred, radius_sum)
-                total_loss = radius_sum_loss
-                self.log('val_radius_sum_loss', radius_sum_loss, prog_bar=True)
-            else:
-                total_loss, splitted_loss = self.vae.loss_function(
-                    radius_sum_pred, radius_sum, sdf_pred, sdf, z
-                )
+            
+            total_loss, splitted_loss = self.vae.loss_function(
+                radius_sum_pred, radius_sum, sdf_pred, sdf, z
+            )
 
-                for key, value in splitted_loss.items():
-                    self.log(f'val_{key}', value, prog_bar=True)
+            for key, value in splitted_loss.items():
+                self.log(f'val_{key}', value, prog_bar=True, batch_size=x.shape[0])
+
+            total_loss, splitted_loss = self.vae.reconstruction_loss(x_reconstructed, x)            
+            for key, value in splitted_loss.items():
+                self.log(f'val_reconstruction_{key}', value, prog_bar=True, batch_size=x.shape[0])
 
         elif dataloader_idx == 1:
             total_loss = 0
@@ -744,22 +761,34 @@ class LitSdfAE(L.LightningModule):
                 total_orig_std += orig_std
                 total_tau_std += tau_std
 
-            self.log('val_tau_loss', total_tau_loss / len(x), prog_bar=True)
-            self.log('val_ort_std', total_ort_std / len(x), prog_bar=True)
-            self.log('val_orig_std', total_orig_std / len(x), prog_bar=True)
-            self.log('val_tau_std', total_tau_std / len(x), prog_bar=True)
+            self.log('val_tau_loss', total_tau_loss / len(x), prog_bar=True, batch_size=x.shape[0])
+            self.log('val_ort_std', total_ort_std / len(x), prog_bar=True, batch_size=x.shape[0])
+            self.log('val_orig_std', total_orig_std / len(x), prog_bar=True, batch_size=x.shape[0])
+            self.log('val_tau_std', total_tau_std / len(x), prog_bar=True, batch_size=x.shape[0])
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
 
-        warmup_lr_lambda = lambda step: (step + 1) / self.warmup_steps if step < self.warmup_steps else 1
+        warmup_lr_lambda = lambda step: ((step + 1)%self.max_steps) / self.warmup_steps if step < self.warmup_steps else 1
         warmup_scheduler = LambdaLR(optimizer, lr_lambda=warmup_lr_lambda)
 
         cosine_scheduler = CosineAnnealingLR(optimizer, T_max=(self.max_steps - self.warmup_steps), eta_min=0)
 
+        # Start of Selection
         scheduler = {
             'scheduler': SequentialLR(
-                optimizer, schedulers=[warmup_scheduler, cosine_scheduler], milestones=[self.warmup_steps]
+                optimizer,
+                schedulers=[
+                    warmup_scheduler,
+                    cosine_scheduler,
+                    warmup_scheduler,
+                    cosine_scheduler
+                ],
+                milestones=[
+                    self.warmup_steps,
+                    self.max_steps,
+                    self.max_steps + self.warmup_steps
+                ]
             ),
             'interval': 'step',
             'frequency': 1

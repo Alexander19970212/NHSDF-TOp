@@ -97,7 +97,7 @@ def main(args):
 
     # Training setup
     trainer = Trainer(
-        max_epochs=MAX_EPOCHS,
+        max_epochs=MAX_EPOCHS*2, # the first epoch for training all model, the second one for training rec decoder
         accelerator='auto',
         devices=1,
         logger=TensorBoardLogger(
@@ -125,31 +125,38 @@ def main(args):
     )
 
     # Initialize model with L1 regularization
-    # vae_model = AE(
+    # vae_model = AE_DeepSDF(
     #     input_dim=dataset.feature_dim, 
-    #     latent_dim=3, 
+    #     latent_dim=9, 
     #     hidden_dim=128, 
     #     regularization='l2',   # Use 'l1', 'l2', or None
-    #     reg_weight=1e-4        # Adjust the weight as needed
+    #     reg_weight=1e-3        # Adjust the weight as needed
     # )
 
-    # Initialize model with L1 regularization
     vae_model = AE_DeepSDF_explicit_radius(
-        input_dim=train_dataset.feature_dim, 
+        input_dim=test_dataset.feature_dim, 
         latent_dim=9, 
         hidden_dim=128, 
         rad_latent_dim=2,
-        rad_loss_weight=0.01,
+        rad_loss_weight=0.1,
         orthogonality_loss_weight=0.1,
         regularization='l2',   # Use 'l1', 'l2', or None
-        reg_weight=5e-3        # Adjust the weight as needed
+        reg_weight=1e-3        # Adjust the weight as needed
     )
+
+    # vae_model = AE(
+    #         input_dim=dataset.feature_dim, 
+    #         latent_dim=3, 
+    #         hidden_dim=128, 
+    #         regularization='l2',   # Use 'l1', 'l2', or None
+    #         reg_weight=1e-3        # Adjust the weight as needed
+    #     )
 
     # Initialize the trainer
     vae_trainer = LitSdfAE(
         vae_model=vae_model, 
         learning_rate=1e-4, 
-        reg_weight=5e-3, 
+        reg_weight=1e-3, 
         regularization='l2',    # Should match the VAE model's regularization
         warmup_steps=1000, 
         max_steps=MAX_STEPS
@@ -157,7 +164,7 @@ def main(args):
 
     # Train the model
     trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
-    trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
+    trainer.fit(vae_trainer, [train_loader, train_loader], val_dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
 
     # Save model weights
     checkpoint_path = f'model_weights/{args.run_name}.ckpt'
@@ -172,6 +179,6 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VAE model.')
     parser.add_argument('--max_epochs', type=int, default=1, help='Maximum number of epochs for training')
-    parser.add_argument('--run_name', type=str, default='uba_qqmI_F_reg5em3', help='Name of the run')
+    parser.add_argument('--run_name', type=str, default='uba_N.TM_F_reg5em3', help='Name of the run')
     args = parser.parse_args()
     main(args)

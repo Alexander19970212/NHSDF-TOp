@@ -255,6 +255,18 @@ class TopOptimizer2D:
         with open(self.log_file_name, 'w') as fp:
             json.dump(meta, fp)
 
+    def save_data(self, directory):
+        np.save(f"{directory}/K_sep.npy", self.K_sep)
+        np.save(f"{directory}/free_dof.npy", self.free_dof)
+        np.save(f"{directory}/moved_fixed_dof.npy", self.moved_fixed_dof)
+        np.save(f"{directory}/f.npy", self.f)
+        np.save(f"{directory}/ik.npy", self.ik)
+        np.save(f"{directory}/jk.npy", self.jk)
+
+    def save_solution(self, directory):
+        np.save(f"{directory}/u.npy", self.u)
+        np.save(f"{directory}/x.npy", self.x)
+    
     def optimize(self):
         self.log_meta()
         counter = 0
