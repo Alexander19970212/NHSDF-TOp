@@ -600,8 +600,7 @@ class AE_DeepSDF_explicit_radius(AE_explicit_radius):
         }
         
         self.decoder_sdf = Decoder(**NetworkSpecs)
-        self.init_weights()
-
+        
 class LitSdfAE(L.LightningModule):
     def __init__(self, vae_model, learning_rate=1e-4, reg_weight=1e-4, 
                  regularization=None, warmup_steps=1000, max_steps=10000):
