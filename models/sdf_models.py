@@ -664,11 +664,11 @@ class LitSdfAE(L.LightningModule):
             )
 
             for key, value in splitted_loss.items():
-                self.log(f'val_{key}', value, prog_bar=True, batch_size=x.shape[0])
+                self.log(f'val_{key}', value, prog_bar=True)
 
             total_loss, splitted_loss = self.vae.reconstruction_loss(x_reconstructed, x)            
             for key, value in splitted_loss.items():
-                self.log(f'val_reconstruction_{key}', value, prog_bar=True, batch_size=x.shape[0])
+                self.log(f'val_reconstruction_{key}', value, prog_bar=True)
 
         elif dataloader_idx == 1:
             total_loss = 0
@@ -760,10 +760,10 @@ class LitSdfAE(L.LightningModule):
                 total_orig_std += orig_std
                 total_tau_std += tau_std
 
-            self.log('val_tau_loss', total_tau_loss / len(x), prog_bar=True, batch_size=x.shape[0])
-            self.log('val_ort_std', total_ort_std / len(x), prog_bar=True, batch_size=x.shape[0])
-            self.log('val_orig_std', total_orig_std / len(x), prog_bar=True, batch_size=x.shape[0])
-            self.log('val_tau_std', total_tau_std / len(x), prog_bar=True, batch_size=x.shape[0])
+            self.log('val_tau_loss', total_tau_loss / len(x), prog_bar=True)
+            self.log('val_ort_std', total_ort_std / len(x), prog_bar=True)
+            self.log('val_orig_std', total_orig_std / len(x), prog_bar=True)
+            self.log('val_tau_std', total_tau_std / len(x), prog_bar=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
