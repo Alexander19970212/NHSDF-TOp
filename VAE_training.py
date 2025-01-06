@@ -120,7 +120,7 @@ def main(args):
             name='VAEi', 
             save_dir='./logs', 
             default_hp_metric=False, 
-            version=args.run_name
+            version=run_name
         ),
         callbacks=[
             callbacks.ModelCheckpoint(
