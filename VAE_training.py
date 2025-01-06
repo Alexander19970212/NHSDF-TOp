@@ -17,8 +17,8 @@ from models.sdf_models import AE
 from models.sdf_models import AE_DeepSDF
 from models.sdf_models import VAE
 from models.sdf_models import VAE_DeepSDF
-from models.sdf_models import ELBOVAE
-from models.sdf_models import MMDVAE
+from models.sdf_models import MMD_VAE
+from models.sdf_models import MMD_VAE_DeepSDF
 from datasets.SDF_dataset import SdfDataset, SdfDatasetSurface, collate_fn_surface
 from datasets.SDF_dataset import RadiusDataset
 import argparse
@@ -31,24 +31,10 @@ sys.path.append(os.path.abspath('NN_TopOpt'))
 models = {'AE_DeepSDF': AE_DeepSDF,
           'AE': AE, 
           'VAE': VAE,
-          'VAE_DeepSDF': VAE_DeepSDF}
+          'VAE_DeepSDF': VAE_DeepSDF,
+          'MMD_VAE': MMD_VAE,
+          'MMD_VAE_DeepSDF': MMD_VAE_DeepSDF}
 
-def get_model(config):
-    model_type = config['model']['type']
-    if model_type == 'VAE':
-        return VAE(**config['model'])
-    elif model_type == 'AE':
-        return AE(**config['model'])
-    elif model_type == 'VAE_DeepSDF':
-        return VAE_DeepSDF(**config['model'])
-    elif model_type == 'AE_DeepSDF':
-        return AE_DeepSDF(**config['model'])
-    elif model_type == 'ELBOVAE':
-        return ELBOVAE(**config['model'])
-    elif model_type == 'MMDVAE':
-        return MMDVAE(**config['model'])
-    else:
-        raise ValueError(f"Unknown model type: {model_type}")
 
 def main(args):
     dataset_path = args.dataset_path
@@ -162,7 +148,7 @@ def main(args):
     # Initialize VAE model
     model_params = config['model']['params']
     model_params['input_dim'] = test_dataset.feature_dim
-    vae_model = get_model(config)
+    vae_model = models[config['model']['type']](**model_params)
 
     # Initialize VAE trainer
     trainer_params = config['trainer']
