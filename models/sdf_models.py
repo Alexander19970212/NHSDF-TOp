@@ -27,22 +27,23 @@ def finite_difference_smoothness_torch(points):
     smoothness = torch.sqrt(dx**2 + dy**2)
     return smoothness.mean()
 
-def orthogonality_metric(z, rad_latent_dim):
-    z_radius = z[:, :rad_latent_dim]
-    z_original = z[:, rad_latent_dim:]
+def orthogonality_metric(z, tau_latent_dim):
+    z_tau = z[:, :tau_latent_dim]
+    z_original = z[:, tau_latent_dim:]
     
-    Q_radius, R_radius = torch.linalg.qr(z_radius)
+    Q_tau, R_tau = torch.linalg.qr(z_tau)
     Q_original, R_original = torch.linalg.qr(z_original)
 
-    orthogonality_loss = torch.linalg.norm(Q_radius.T @ Q_original, ord=2)
+    orthogonality_loss = torch.linalg.norm(Q_tau.T @ Q_original, ord=2)
     return orthogonality_loss
 
-def orthogonality_metric_std(z, rad_latent_dim):
-    z_radius = z[:, :rad_latent_dim]
-    z_original = z[:, rad_latent_dim:]
+def orthogonality_metric_std(z, tau_latent_dim):
+    z_tau = z[:, :tau_latent_dim]
+    z_original = z[:, tau_latent_dim:]
     z_original_std = torch.std(z_original, dim=0)
-    z_radius_std = torch.std(z_radius, dim=0)
-    return z_original_std.mean() / z_radius_std.mean(), z_original_std.mean(), z_radius_std.mean()
+    z_tau_std = torch.std(z_tau, dim=0)
+    return z_original_std.mean() / z_tau_std.mean(), z_original_std.mean(), z_tau_std.mean()
+
 
 class Decoder(nn.Module):
     """
@@ -171,7 +172,7 @@ class Decoder_loss(nn.Module):
         return self.model(z)
 
 
-class AE(nn.Module):
+class AE_old(nn.Module):
     def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, 
                  regularization=None, reg_weight=1e-4):
         """
@@ -221,7 +222,7 @@ class AE(nn.Module):
         )
 
         #decoder for radius sum
-        self.decoder_radius_sum = Decoder_loss(latent_dim, hidden_dim)
+        self.decoder_tau = Decoder_loss(latent_dim, hidden_dim)
 
         # Decoder for SDF prediction
         self.decoder_sdf = nn.Sequential(
@@ -286,11 +287,11 @@ class AE(nn.Module):
 
         return x_reconstructed, sdf_pred, z  # Return z for regularization
     
-    def radius_sum(self, z):
-        return self.decoder_radius_sum(z)
+    def tau(self, z):
+        return self.decoder_tau(z)
     
-    def radius_sum_loss(self, radius_sum_pred, radius_sum_target):
-        return F.mse_loss(radius_sum_pred, radius_sum_target, reduction='mean')
+    def tau_loss(self, tau_pred, tau_target):
+        return F.mse_loss(tau_pred, tau_target, reduction='mean')
 
     def loss_function(self, x_reconstructed, x_original, sdf_pred, sdf_target, z, only_recon=False):
         """
@@ -350,7 +351,7 @@ class AE(nn.Module):
 
         return sdf_pred
     
-class AE_DeepSDF(AE):
+class AE_DeepSDF_old(AE_old):
     def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, 
                  regularization=None, reg_weight=1e-4):
         super(AE_DeepSDF, self).__init__(input_dim, latent_dim, hidden_dim, 
@@ -371,9 +372,9 @@ class AE_DeepSDF(AE):
         
         self.decoder_sdf = Decoder(**NetworkSpecs)
 
-class AE_explicit_radius(nn.Module):
-    def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, rad_latent_dim=2,
-                 rad_loss_weight=0.1, orthogonality_loss_weight=0.1,
+class AE(nn.Module):
+    def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2,
+                 tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
                  regularization=None, reg_weight=1e-4):
         """
         VAE model with optional L1 or L2 regularization.
@@ -385,14 +386,15 @@ class AE_explicit_radius(nn.Module):
             regularization (str, optional): Type of regularization ('l1', 'l2', or None).
             reg_weight (float, optional): Weight of the regularization term.
         """
-        super(AE_explicit_radius, self).__init__()
+        super(AE, self).__init__()
 
         self.regularization = regularization
         self.reg_weight = reg_weight
         print(f"regularization: {regularization}, reg_weight: {reg_weight}")
-        self.rad_latent_dim = rad_latent_dim
-        self.rad_loss_weight = rad_loss_weight
+        self.tau_latent_dim = tau_latent_dim
+        self.tau_loss_weight = tau_loss_weight
         self.orthogonality_loss_weight = orthogonality_loss_weight
+        self.latent_dim = latent_dim
 
         # Encoder
         self.encoder = nn.Sequential(
@@ -409,7 +411,7 @@ class AE_explicit_radius(nn.Module):
         )
 
         #decoder for radius sum
-        self.decoder_radius_sum = nn.Linear(rad_latent_dim, 1)
+        self.decoder_tau = nn.Linear(tau_latent_dim, 1)
 
         # Decoder for SDF prediction
         self.decoder_sdf = nn.Sequential(
@@ -448,41 +450,48 @@ class AE_explicit_radius(nn.Module):
                 nn.init.xavier_uniform_(layer.weight)
                 nn.init.zeros_(layer.bias)
 
-        # Initialize decoder_sdf layers
-        for layer in self.decoder_sdf:
-            if isinstance(layer, nn.Linear):
-                nn.init.xavier_uniform_(layer.weight)
-                nn.init.zeros_(layer.bias)
-
         # Initialize decoder_input layers
         for layer in self.decoder_input:
             if isinstance(layer, nn.Linear):
                 nn.init.xavier_uniform_(layer.weight)
                 nn.init.zeros_(layer.bias)
 
-        # Initialize decoder_radius_sum layers
-        nn.init.xavier_uniform_(self.decoder_radius_sum.weight)
-        nn.init.zeros_(self.decoder_radius_sum.bias)
+        # Initialize decoder_tau layers
+        nn.init.xavier_uniform_(self.decoder_tau.weight)
+        nn.init.zeros_(self.decoder_tau.bias)
+
+        # Initialize decoder_sdf layers
+        for layer in self.decoder_sdf:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
 
     def forward(self, x, reconstruction=False):
         # Encode
         query_points = x[:, :2]
         z = self.encoder(x[:, 2:])  # Only use x[2:] features
 
-        z_radius = z[:, :self.rad_latent_dim]
-        radius_sum_pred = self.decoder_radius_sum(z_radius)
+        z_tau = z[:, :self.tau_latent_dim]
+        tau_pred = self.decoder_tau(z_tau)
 
         sdf_decoder_input = torch.cat([z, query_points], dim=1)
         sdf_pred = self.decoder_sdf(sdf_decoder_input)
 
+        output = {
+            "tau_pred": tau_pred,
+            "sdf_pred": sdf_pred,
+            "z": z
+        }
+
         if reconstruction:
             x_reconstructed = self.decoder_input(z)
-            return radius_sum_pred, sdf_pred, x_reconstructed, z  # Return z for regularization
-        else:
-            return radius_sum_pred, sdf_pred, z  # Return z for regularization
+            output["x_reconstructed"] = x_reconstructed
+
+        return output
     
-    def radius_sum(self, z):
-        return self.decoder_radius_sum(z)
+    def tau(self, z):
+        z_radius = z[:, :self.tau_latent_dim]
+        return self.decoder_tau(z_radius)
     
     # def orthogonality_loss(self, z):
     #     return torch.norm(z.T @ z - torch.eye(z.shape[1]), p='fro')
@@ -491,8 +500,8 @@ class AE_explicit_radius(nn.Module):
         """
         to ensure that the explicit radius dimension remains disentangled from other latent features
         """
-        z_radius = z[:, :self.rad_latent_dim]
-        z_original = z[:, self.rad_latent_dim:]
+        z_radius = z[:, :self.tau_latent_dim]
+        z_original = z[:, self.tau_latent_dim:]
         # return torch.norm(z_radius.T @ z_original, p='fro')
 
         # Q_radius, R_radius = torch.linalg.qr(z_radius)
@@ -505,7 +514,7 @@ class AE_explicit_radius(nn.Module):
         return orthogonality_loss
         
 
-    def loss_function(self, radius_sum_pred, radius_sum_target, sdf_pred, sdf_target, z):
+    def loss_function(self, loss_args):
         """
         Calculate the loss function with optional L1 or L2 regularization.
 
@@ -522,8 +531,14 @@ class AE_explicit_radius(nn.Module):
             sdf_loss (Tensor): SDF prediction loss.
             reg_loss (Tensor or 0): Regularization loss.
         """
+        tau_pred = loss_args["tau_pred"]
+        tau_target = loss_args["tau_target"]
+        sdf_pred = loss_args["sdf_pred"]
+        sdf_target = loss_args["sdf_target"]
+        z = loss_args["z"]
+
         # Reconstruction loss for input features
-        radius_sum_loss = F.mse_loss(radius_sum_pred.flatten(), radius_sum_target.flatten(), reduction='mean')
+        tau_loss = F.mse_loss(tau_pred.flatten(), tau_target.flatten(), reduction='mean')
 
         # SDF prediction loss
         sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
@@ -532,7 +547,7 @@ class AE_explicit_radius(nn.Module):
         orthogonality_loss = self.orthogonality_loss(z)
 
         if not self.training:
-            orthogonality_metric_value = orthogonality_metric(z, self.rad_latent_dim)
+            orthogonality_metric_value = orthogonality_metric(z, self.tau_latent_dim)
         else:
             orthogonality_metric_value = 0
 
@@ -545,8 +560,8 @@ class AE_explicit_radius(nn.Module):
             reg_loss = 0
 
         total_loss = (
-            sdf_loss 
-            + self.rad_loss_weight * radius_sum_loss 
+            sdf_loss
+            + self.tau_loss_weight * tau_loss 
             + self.orthogonality_loss_weight * orthogonality_loss 
             + self.reg_weight * reg_loss
         )
@@ -554,7 +569,7 @@ class AE_explicit_radius(nn.Module):
         
         splitted_loss = {
             "total_loss": total_loss,
-            "radius_sum_loss": radius_sum_loss,
+            "tau_loss": tau_loss,
             "sdf_loss": sdf_loss,
             "orthogonality_loss": orthogonality_loss,
             "reg_loss": reg_loss
@@ -579,12 +594,397 @@ class AE_explicit_radius(nn.Module):
 
         return sdf_pred
     
-class AE_DeepSDF_explicit_radius(AE_explicit_radius):
-    def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, rad_latent_dim=2, 
-                 rad_loss_weight=0.1, orthogonality_loss_weight=0.1,
+class VAE(nn.Module):
+    """
+    A standard Variational Autoencoder adapted to match the AE_DeepSDF interface for comparison.
+    """
+    def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2,
+                 tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
+                 kl_weight=1e-4,
                  regularization=None, reg_weight=1e-4):
-        super(AE_DeepSDF_explicit_radius, self).__init__(input_dim, latent_dim, hidden_dim, rad_latent_dim,
-                                        rad_loss_weight, orthogonality_loss_weight, regularization, reg_weight)
+        """
+        Initializes the Standard VAE.
+
+        Args:
+            input_dim (int): Dimension of input features.
+            latent_dim (int): Dimension of latent space.
+            hidden_dim (int): Dimension of hidden layers.
+            regularization (str, optional): Type of regularization ('l1', 'l2', or None).
+            reg_weight (float, optional): Weight of the regularization term.
+        """
+        super(VAE, self).__init__()
+
+        self.regularization = regularization
+        self.reg_weight = reg_weight
+        self.tau_latent_dim = tau_latent_dim
+        self.tau_loss_weight = tau_loss_weight
+        self.orthogonality_loss_weight = orthogonality_loss_weight
+        self.kl_weight = kl_weight
+
+        # Encoder
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim-2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+        )
+
+        # Mean and log variance layers for latent space
+        self.fc_mu = nn.Linear(hidden_dim, latent_dim)
+        self.fc_logvar = nn.Linear(hidden_dim, latent_dim)
+
+        # Decoder for input reconstruction
+        self.decoder_input = nn.Sequential(
+            nn.Linear(latent_dim, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, input_dim-2)
+        )
+
+        # Decoder for SDF prediction
+        self.decoder_sdf = nn.Sequential(
+            nn.Linear(latent_dim+2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, 1)
+        )
+
+        #decoder for radius sum
+        self.decoder_tau = nn.Linear(tau_latent_dim, 1)
+
+        self.init_weights()
+
+    def init_weights(self):
+        # Initialize encoder layers
+        for layer in self.encoder:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize mu and logvar layers
+        nn.init.xavier_uniform_(self.fc_mu.weight)
+        nn.init.zeros_(self.fc_mu.bias)
+        nn.init.xavier_uniform_(self.fc_logvar.weight)
+        nn.init.zeros_(self.fc_logvar.bias)
+
+        # Initialize decoder_input layers
+        for layer in self.decoder_input:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize decoder_sdf layers
+        for layer in self.decoder_sdf:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize decoder_tau layers
+        nn.init.xavier_uniform_(self.decoder_tau.weight)
+        nn.init.zeros_(self.decoder_tau.bias)
+
+    def encode(self, x):
+        """
+        Encodes the input into latent space.
+
+        Args:
+            x (Tensor): Input tensor.
+
+        Returns:
+            mu (Tensor): Mean of the latent distribution.
+            log_var (Tensor): Log variance of the latent distribution.
+        """
+        h = self.encoder(x)
+        mu = self.fc_mu(h)
+        log_var = self.fc_logvar(h)
+        return mu, log_var
+
+    def reparameterize(self, mu, log_var):
+        """
+        Reparameterization trick to sample from N(mu, var) from N(0,1).
+
+        Args:
+            mu (Tensor): Mean of the latent distribution.
+            log_var (Tensor): Log variance of the latent distribution.
+
+        Returns:
+            z (Tensor): Sampled latent vector.
+        """
+        std = torch.exp(0.5 * log_var)
+        eps = torch.randn_like(std)
+        return mu + eps * std
+
+    def forward(self, x, reconstruction=False):
+        """
+        Forward pass through the VAE.
+
+        Args:
+            x (Tensor): Input tensor.
+            reconstruction (bool, optional): Flag to compute reconstruction. Defaults to False.
+
+        Returns:
+            If reconstruction is False:
+                recon_x (Tensor): Reconstructed input.
+                mu (Tensor): Mean of the latent distribution.
+                log_var (Tensor): Log variance of the latent distribution.
+            If reconstruction is True:
+                recon_x (Tensor): Reconstructed input.
+                mu (Tensor): Mean of the latent distribution.
+                log_var (Tensor): Log variance of the latent distribution.
+                z (Tensor): Sampled latent vector.
+        """
+        query_points = x[:, :2]
+        mu, log_var = self.encode(x[:, 2:])
+        z = self.reparameterize(mu, log_var)
+
+        z_tau = z[:, :self.tau_latent_dim]
+        tau_pred = self.decoder_tau(z_tau)
+
+        sdf_decoder_input = torch.cat([z, query_points], dim=1)
+        sdf_pred = self.decoder_sdf(sdf_decoder_input)
+
+        output = {
+            "tau_pred": tau_pred,
+            "sdf_pred": sdf_pred,
+            "z": z,
+            "mu": mu,
+            "log_var": log_var
+        }
+
+        if reconstruction:
+            x_reconstructed = self.decoder_input(z)
+            output["x_reconstructed"] = x_reconstructed
+
+        return output
+        
+    def tau(self, z):
+        z_radius = z[:, :self.tau_latent_dim]
+        return self.decoder_tau(z_radius)
+    
+    def orthogonality_loss(self, z):
+        """
+        to ensure that the explicit radius dimension remains disentangled from other latent features
+        """
+        z_radius = z[:, :self.tau_latent_dim]
+        z_original = z[:, self.tau_latent_dim:]
+        # return torch.norm(z_radius.T @ z_original, p='fro')
+
+        # Q_radius, R_radius = torch.linalg.qr(z_radius)
+        # Q_original, R_original = torch.linalg.qr(z_original)
+
+        # orthogonality_loss = -1 * torch.linalg.norm(Q_radius.T @ Q_original, ord=2)
+        # I = torch.eye(Q_radius.shape[1], Q_original.shape[1], device=Q_radius.device)
+        # orthogonality_loss = torch.norm(Q_radius.T @ Q_original - I, p='fro')
+        orthogonality_loss = torch.norm(z_radius.T @ z_original, p='fro')
+        return orthogonality_loss
+
+    def loss_function(self, loss_args):
+        """
+        Calculates the loss function with optional L1 or L2 regularization.
+
+        Args:
+            loss_args (dict): Dictionary containing the following keys:
+                - "recon_x" (Tensor): Reconstructed input.
+                - "x_original" (Tensor): Original input.
+                - "mu" (Tensor): Mean of the latent distribution.
+                - "log_var" (Tensor): Log variance of the latent distribution.
+                - "z" (Tensor): Latent representations.
+            only_recon (bool, optional): Flag to compute only reconstruction loss. Defaults to False.
+
+        Returns:
+            total_loss (Tensor): Combined loss.
+            splitted_loss (dict): Dictionary containing individual loss components.
+        """
+        mu = loss_args["mu"]
+        log_var = loss_args["log_var"]
+        tau_pred = loss_args["tau_pred"]
+        tau_target = loss_args["tau_target"]
+        sdf_pred = loss_args["sdf_pred"]
+        sdf_target = loss_args["sdf_target"]
+        z = loss_args["z"]
+
+        # Reconstruction loss
+        # recon_loss = F.mse_loss(recon_x, x_original, reduction='mean')
+        tau_loss = F.mse_loss(tau_pred.flatten(), tau_target.flatten(), reduction='mean')
+
+        # SDF loss
+        sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
+
+        # Orthogonality loss
+        orthogonality_loss = self.orthogonality_loss(z)
+
+        # KL Divergence loss
+        kl_divergence = -0.5 * torch.mean(1 + log_var - mu.pow(2) - log_var.exp())
+        # print(self.kl_weight)
+        # print(f"kl_divergence: {kl_divergence}")
+
+        if not self.training:
+            orthogonality_metric_value = orthogonality_metric(z, self.tau_latent_dim)
+        else:
+            orthogonality_metric_value = 0
+
+        # Regularization loss
+        if self.regularization == 'l1':
+            reg_loss = torch.mean(torch.abs(z))
+        elif self.regularization == 'l2':
+            reg_loss = torch.mean(z.pow(2))
+        else:
+            reg_loss = 0
+
+        total_loss = (
+            sdf_loss
+            + self.tau_loss_weight * tau_loss 
+            + self.orthogonality_loss_weight * orthogonality_loss 
+            + self.reg_weight * reg_loss
+            + self.kl_weight * kl_divergence
+        )
+
+        splitted_loss = {
+            "total_loss": total_loss,
+            "kl_divergence": kl_divergence,
+            "sdf_loss": sdf_loss,
+            "tau_loss": tau_loss,
+            "orthogonality_loss": orthogonality_loss,
+            "reg_loss": reg_loss
+        }
+
+        if not self.training:
+            splitted_loss["orthogonality_metric"] = orthogonality_metric_value
+
+        return total_loss, splitted_loss
+    
+    def reconstruction_loss(self, x_reconstructed, x):
+        x_original = x[:, 2:]
+        reconstruction_loss = F.mse_loss(x_reconstructed, x_original, reduction='mean')
+        return reconstruction_loss, {"reconstruction_loss": reconstruction_loss}
+
+    def sdf(self, z, query_points):
+        z_repeated = z.repeat(query_points.shape[0], 1)
+
+        # Decode
+        sdf_decoder_input = torch.cat([z_repeated, query_points], dim=1)
+        sdf_pred = self.decoder_sdf(sdf_decoder_input)
+
+        return sdf_pred
+    
+def gaussian_kernel(a, b):
+    dim1_1, dim1_2 = a.shape[0], b.shape[0]
+    depth = a.shape[1]
+    a = a.view(dim1_1, 1, depth)
+    b = b.view(1, dim1_2, depth)
+    a_core = a.expand(dim1_1, dim1_2, depth)
+    b_core = b.expand(dim1_1, dim1_2, depth)
+    numerator = (a_core - b_core).pow(2).mean(2)/depth
+    return torch.exp(-numerator)
+
+def MMD(a, b):
+    return gaussian_kernel(a, a).mean() + gaussian_kernel(b, b).mean() - 2*gaussian_kernel(a, b).mean()
+
+class MMD_VAE(AE):
+    def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2, 
+                 tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
+                 regularization=None, reg_weight=1e-4, mmd_weight=1e-4):
+        super(MMD_VAE, self).__init__(input_dim, latent_dim, hidden_dim, tau_latent_dim,
+                                        tau_loss_weight, orthogonality_loss_weight, regularization, reg_weight)
+        
+        self.mmd_weight = mmd_weight
+        
+    def loss_function(self, loss_args):
+        """
+        Calculate the loss function with optional L1 or L2 regularization.
+
+        Args:
+            x_reconstructed (Tensor): Reconstructed input.
+            x_original (Tensor): Original input.
+            sdf_pred (Tensor): Predicted SDF.
+            sdf_target (Tensor): Target SDF.
+            z (Tensor): Latent representations.
+
+        Returns:
+            total_loss (Tensor): Combined loss.
+            radius_sum_loss (Tensor): Reconstruction loss.
+            sdf_loss (Tensor): SDF prediction loss.
+            reg_loss (Tensor or 0): Regularization loss.
+        """
+        tau_pred = loss_args["tau_pred"]
+        tau_target = loss_args["tau_target"]
+        sdf_pred = loss_args["sdf_pred"]
+        sdf_target = loss_args["sdf_target"]
+        z = loss_args["z"]
+
+        # Compute mmd-loss
+        true_samples = torch.randn(200, self.latent_dim, requires_grad=False, device=z.device)
+        mmd_loss = MMD(true_samples, z)
+
+        # Reconstruction loss for input features
+        tau_loss = F.mse_loss(tau_pred.flatten(), tau_target.flatten(), reduction='mean')
+
+        # SDF prediction loss
+        sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
+
+        # Orthogonality loss
+        orthogonality_loss = self.orthogonality_loss(z)
+
+        if not self.training:
+            orthogonality_metric_value = orthogonality_metric(z, self.tau_latent_dim)
+        else:
+            orthogonality_metric_value = 0
+
+        # Regularization loss
+        if self.regularization == 'l1':
+            reg_loss = torch.mean(torch.abs(z))
+        elif self.regularization == 'l2':
+            reg_loss = torch.mean(z.pow(2))
+        else:
+            reg_loss = 0
+
+        total_loss = (
+            sdf_loss
+            + self.tau_loss_weight * tau_loss 
+            + self.orthogonality_loss_weight * orthogonality_loss 
+            + self.reg_weight * reg_loss
+            + self.mmd_weight * mmd_loss
+        )
+
+        
+        splitted_loss = {
+            "total_loss": total_loss,
+            "tau_loss": tau_loss,
+            "sdf_loss": sdf_loss,
+            "orthogonality_loss": orthogonality_loss,
+            "reg_loss": reg_loss,
+            "mmd_loss": mmd_loss
+        }
+
+        if not self.training:
+            splitted_loss["orthogonality_metric"] = orthogonality_metric_value
+
+        return total_loss, splitted_loss
+
+
+class AE_DeepSDF(AE):
+    def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2, 
+                 tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
+                 regularization=None, reg_weight=1e-4):
+        super(AE_DeepSDF, self).__init__(input_dim, latent_dim, hidden_dim, tau_latent_dim,
+                                        tau_loss_weight, orthogonality_loss_weight, regularization, reg_weight)
         
         NetworkSpecs = {
             "latent_size" : latent_dim,
@@ -600,6 +1000,112 @@ class AE_DeepSDF_explicit_radius(AE_explicit_radius):
         }
         
         self.decoder_sdf = Decoder(**NetworkSpecs)
+
+    def init_weights(self):
+        # Initialize encoder layers
+        for layer in self.encoder:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize decoder_input layers
+        for layer in self.decoder_input:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize decoder_tau layers
+        nn.init.xavier_uniform_(self.decoder_tau.weight)
+        nn.init.zeros_(self.decoder_tau.bias)
+
+class VAE_DeepSDF(VAE):
+    def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2, 
+                 tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
+                 kl_weight=1e-4,
+                 regularization=None, reg_weight=1e-4):
+        super(VAE_DeepSDF, self).__init__(input_dim, latent_dim, hidden_dim, tau_latent_dim,
+                                        tau_loss_weight, orthogonality_loss_weight, kl_weight,
+                                        regularization, reg_weight)
+        
+        NetworkSpecs = {
+            "latent_size" : latent_dim,
+            "dims" : [ 512, 512, 512, 512, 512, 512, 512, 512 ],
+            "dropout" : [0, 1, 2, 3, 4, 5, 6, 7],
+            "dropout_prob" : 0.2,
+            "norm_layers" : [0, 1, 2, 3, 4, 5, 6, 7],
+            "latent_in" : [4],
+            "xyz_in_all" : False,
+            "use_tanh" : False,
+            "latent_dropout" : False,
+            "weight_norm" : False
+        }
+        
+        self.decoder_sdf = Decoder(**NetworkSpecs)
+
+    def init_weights(self):
+        # Initialize encoder layers
+        # Initialize encoder layers
+        for layer in self.encoder:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize mu and logvar layers
+        nn.init.xavier_uniform_(self.fc_mu.weight)
+        nn.init.zeros_(self.fc_mu.bias)
+        nn.init.xavier_uniform_(self.fc_logvar.weight)
+        nn.init.zeros_(self.fc_logvar.bias)
+
+        # Initialize decoder_input layers
+        for layer in self.decoder_input:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize decoder_tau layers
+        nn.init.xavier_uniform_(self.decoder_tau.weight)
+        nn.init.zeros_(self.decoder_tau.bias)
+
+class MMD_VAE_DeepSDF(MMD_VAE):
+    def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2, 
+                 tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
+                 regularization=None, reg_weight=1e-4, mmd_weight=1e-4):
+        super(MMD_VAE_DeepSDF, self).__init__(input_dim, latent_dim, hidden_dim, tau_latent_dim,
+                                        tau_loss_weight, orthogonality_loss_weight,
+                                        regularization, reg_weight, mmd_weight)
+        
+        NetworkSpecs = {
+            "latent_size" : latent_dim,
+            "dims" : [ 512, 512, 512, 512, 512, 512, 512, 512 ],
+            "dropout" : [0, 1, 2, 3, 4, 5, 6, 7],
+            "dropout_prob" : 0.2,
+            "norm_layers" : [0, 1, 2, 3, 4, 5, 6, 7],
+            "latent_in" : [4],
+            "xyz_in_all" : False,
+            "use_tanh" : False,
+            "latent_dropout" : False,
+            "weight_norm" : False
+        }
+        
+        self.decoder_sdf = Decoder(**NetworkSpecs)
+
+    def init_weights(self):
+        # Initialize encoder layers
+        for layer in self.encoder:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize decoder_input layers
+        for layer in self.decoder_input:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize decoder_tau layers
+        nn.init.xavier_uniform_(self.decoder_tau.weight)
+        nn.init.zeros_(self.decoder_tau.bias)
+
         
 class LitSdfAE(L.LightningModule):
     def __init__(self, vae_model, learning_rate=1e-4, reg_weight=1e-4, 
@@ -630,22 +1136,23 @@ class LitSdfAE(L.LightningModule):
         epoch = self.current_epoch
         dataloader_idx = epoch % 2
 
-        x, sdf, radius_sum = batch[dataloader_idx]
+        x, sdf, tau = batch[dataloader_idx]
         
         if dataloader_idx == 0:
             if self.reconstruction_decoder_training==True:
                 self.freezing_weights(rec_decoder_training=False)
                 self.reconstruction_decoder_training = False
-            radius_sum_pred, sdf_pred, z = self.vae(x)
-            total_loss, splitted_loss = self.vae.loss_function(
-                radius_sum_pred, radius_sum, sdf_pred, sdf, z
-            )
+            output = self.vae(x)
+            loss_args = output
+            loss_args["tau_target"] = tau
+            loss_args["sdf_target"] = sdf
+            total_loss, splitted_loss = self.vae.loss_function(loss_args)
         else:
             if self.reconstruction_decoder_training==False:
                 self.freezing_weights(rec_decoder_training=True)
                 self.reconstruction_decoder_training = True
-            _, _, x_reconstructed, _ = self.vae(x, reconstruction=True)
-            total_loss, splitted_loss = self.vae.reconstruction_loss(x_reconstructed, x)
+            output  = self.vae(x, reconstruction=True)
+            total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)
 
         for key, value in splitted_loss.items():
             self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
@@ -654,25 +1161,25 @@ class LitSdfAE(L.LightningModule):
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
         if dataloader_idx == 0:
-            x, sdf, radius_sum = batch
+            x, sdf, tau = batch
             # print(f"x: {x.shape}, type: {x.dtype}")
-            radius_sum_pred, sdf_pred, x_reconstructed, z = self.vae(x, reconstruction=True)
+            output = self.vae(x, reconstruction=True)
+            loss_args = output
+            loss_args["tau_target"] = tau
+            loss_args["sdf_target"] = sdf
 
-            
-            total_loss, splitted_loss = self.vae.loss_function(
-                radius_sum_pred, radius_sum, sdf_pred, sdf, z
-            )
+            total_loss, splitted_loss = self.vae.loss_function(loss_args)
 
             for key, value in splitted_loss.items():
                 self.log(f'val_{key}', value, prog_bar=True)
 
-            total_loss, splitted_loss = self.vae.reconstruction_loss(x_reconstructed, x)            
+            total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)            
             for key, value in splitted_loss.items():
                 self.log(f'val_reconstruction_{key}', value, prog_bar=True)
 
         elif dataloader_idx == 1:
-            total_loss = 0
-            total_splitted_loss = {}
+            # total_loss = 0
+            # total_splitted_loss = {}
             xs, sdfs, points_s = batch
             total_mae = 0
             total_rmse = 0
@@ -691,21 +1198,25 @@ class LitSdfAE(L.LightningModule):
                 
                 x_repeated = x.repeat(points.size(0), 1)
                 x_combined = torch.cat((points, x_repeated), dim=1)
-                radius_sum_pred, sdf_pred, z = self.vae(x_combined)
+                output = self.vae(x_combined)
+                tau_pred = output["tau_pred"]
+                sdf_pred = output["sdf_pred"]
+                # z = output["z"]
 
                 sdf_diff = sdf_pred.squeeze() - sdf.squeeze()
 
-                loss, splitted_loss = self.vae.loss_function(
-                    radius_sum_pred, radius_sum_pred, sdf_pred, sdf, z
-                )
+                loss_args = output
+                # loss_args["tau_target"] = tau
+                # loss_args["sdf_target"] = sdf
+                # loss, splitted_loss = self.vae.loss_function(loss_args)
 
-                total_loss += loss
+                # total_loss += loss
 
-                for key, value in splitted_loss.items():
-                    if key not in total_splitted_loss:
-                        total_splitted_loss[key] = value
-                    else:
-                        total_splitted_loss[key] += value
+                # for key, value in splitted_loss.items():
+                #     if key not in total_splitted_loss:
+                #         total_splitted_loss[key] = value
+                #     else:
+                #         total_splitted_loss[key] += value
 
                 # Compute metrics
                 mae, rmse = compute_closeness(sdf_pred, sdf)
@@ -723,21 +1234,21 @@ class LitSdfAE(L.LightningModule):
                 total_smoothness_diff += smoothness_diff
                 total_diff_smoothness += diff_smoothness
 
-            avg_splitted_loss = {key: value / len(batch) for key, value in total_splitted_loss.items()}
+            # avg_splitted_loss = {key: value / len(batch) for key, value in total_splitted_loss.items()}
             avg_mae = total_mae / len(points_s)
             avg_rmse = total_rmse / len(points_s)
             avg_smoothness_pred = total_smoothness_pred / len(points_s)
             avg_smoothness_diff = total_smoothness_diff / len(points_s)
             avg_diff_smoothness = total_diff_smoothness / len(points_s)
 
-            for key, value in avg_splitted_loss.items():
-                self.log(f'val2_{key}', value, prog_bar=True)
+            # for key, value in avg_splitted_loss.items():
+            #     self.log(f'val_{key}', value, prog_bar=True)
 
-            self.log('val2_mae', avg_mae, prog_bar=True)
-            self.log('val2_rmse', avg_rmse, prog_bar=True)
-            self.log('val2_smoothness_pred', avg_smoothness_pred, prog_bar=True)
-            self.log('val2_smoothness_diff', avg_smoothness_diff, prog_bar=True)
-            self.log('val2_diff_smoothness', avg_diff_smoothness, prog_bar=True)
+            self.log('val_mae', avg_mae, prog_bar=True)
+            self.log('val_rmse', avg_rmse, prog_bar=True)
+            self.log('val_smoothness_pred', avg_smoothness_pred, prog_bar=True)
+            self.log('val_smoothness_diff', avg_smoothness_diff, prog_bar=True)
+            self.log('val_diff_smoothness', avg_diff_smoothness, prog_bar=True)
 
         if dataloader_idx == 2:
             x, sdf, tau = batch
@@ -750,11 +1261,14 @@ class LitSdfAE(L.LightningModule):
                 x_i = x[i]
                 # sdf_i = sdf[i]
                 tau_i = tau[i]
-                tau_pred, sdf_pred, z = self.vae(x_i)
+                output = self.vae(x_i)
+                tau_pred = output["tau_pred"]
+                sdf_pred = output["sdf_pred"]
+                z = output["z"]       
 
                 # tau_loss = self.vae.radius_sum_loss(tau_pred, tau_i)
                 tau_loss = F.mse_loss(tau_pred.flatten(), tau_i.flatten(), reduction='mean')
-                ort_std, orig_std, tau_std = orthogonality_metric_std(z, self.vae.rad_latent_dim)
+                ort_std, orig_std, tau_std = orthogonality_metric_std(z, self.vae.tau_latent_dim)
                 total_tau_loss += tau_loss
                 total_ort_std += ort_std
                 total_orig_std += orig_std

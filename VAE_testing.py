@@ -150,6 +150,6 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VAE model.')
     parser.add_argument('--max_epochs', type=int, default=1, help='Maximum number of epochs for training')
-    parser.add_argument('--run_name', type=str, default='uba_reg5em2', help='Name of the run')
+    parser.add_argument('--run_name', type=str, default='uba_NTM_F_reg5em3', help='Name of the run')
     args = parser.parse_args()
     main(args)

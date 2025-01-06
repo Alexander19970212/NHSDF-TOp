@@ -14,32 +14,62 @@ from lightning.pytorch.loggers import TensorBoardLogger
 
 from models.sdf_models import LitSdfAE
 from models.sdf_models import AE
-from models.sdf_models import AE_DeepSDF, AE_DeepSDF_explicit_radius
+from models.sdf_models import AE_DeepSDF
+from models.sdf_models import VAE
+from models.sdf_models import VAE_DeepSDF
+from models.sdf_models import ELBOVAE
+from models.sdf_models import MMDVAE
 from datasets.SDF_dataset import SdfDataset, SdfDatasetSurface, collate_fn_surface
 from datasets.SDF_dataset import RadiusDataset
 import argparse
+import yaml
+import json
 
 # Add the parent directory of NN_TopOpt to the system path
 sys.path.append(os.path.abspath('NN_TopOpt'))
 
+models = {'AE_DeepSDF': AE_DeepSDF,
+          'AE': AE, 
+          'VAE': VAE,
+          'VAE_DeepSDF': VAE_DeepSDF}
+
+def get_model(config):
+    model_type = config['model']['type']
+    if model_type == 'VAE':
+        return VAE(**config['model'])
+    elif model_type == 'AE':
+        return AE(**config['model'])
+    elif model_type == 'VAE_DeepSDF':
+        return VAE_DeepSDF(**config['model'])
+    elif model_type == 'AE_DeepSDF':
+        return AE_DeepSDF(**config['model'])
+    elif model_type == 'ELBOVAE':
+        return ELBOVAE(**config['model'])
+    elif model_type == 'MMDVAE':
+        return MMDVAE(**config['model'])
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
 
 def main(args):
-    root_path = 'shape_datasets'
+    dataset_path = args.dataset_path
+    configs_dir = args.config_dir
+    config_name = args.config_name
+    run_name = f'uba_{config_name}'
 
-    dataset_train_files = [f'{root_path}/ellipse_sdf_dataset_smf22_arc_ratio_5000.csv',
-                    f'{root_path}/triangle_sdf_dataset_smf20_arc_ratio_5000.csv', 
-                    f'{root_path}/quadrangle_sdf_dataset_smf20_arc_ratio_5000.csv']
+    dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_5000.csv',
+                    f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_5000.csv', 
+                    f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_5000.csv']
     
-    dataset_test_files = [f'{root_path}/ellipse_sdf_dataset_smf22_arc_ratio_500_test.csv',
-                 f'{root_path}/triangle_sdf_dataset_smf20_arc_ratio_500_test.csv', 
-                 f'{root_path}/quadrangle_sdf_dataset_smf20_arc_ratio_500_test.csv']
+    dataset_test_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_500_test.csv',
+                 f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_500_test.csv', 
+                 f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_500_test.csv']
     
-    surface_files = [f'{root_path}/ellipse_sdf_surface_dataset_smf22_150.csv',
-                 f'{root_path}/triangle_sdf_surface_dataset_smf20_150.csv',
-                 f'{root_path}/quadrangle_sdf_surface_dataset_smf20_150.csv']
+    surface_files = [f'{dataset_path}/ellipse_sdf_surface_dataset_smf22_150.csv',
+                 f'{dataset_path}/triangle_sdf_surface_dataset_smf20_150.csv',
+                 f'{dataset_path}/quadrangle_sdf_surface_dataset_smf20_150.csv']
     
-    radius_samples_files = [f'{root_path}/triangle_sdf_dataset_smf40_radius_sample_100.csv',
-                            f'{root_path}/quadrangle_sdf_dataset_smf40_radius_sample_100.csv']
+    radius_samples_files = [f'{dataset_path}/triangle_sdf_dataset_smf40_radius_sample_100.csv',
+                            f'{dataset_path}/quadrangle_sdf_dataset_smf40_radius_sample_100.csv']
 
     # dataset_files = ['shape_datasets/ellipse_sdf_dataset_onlMove.csv',
     #                  'shape_datasets/triangle_sdf_dataset_test.csv', 
@@ -124,47 +154,31 @@ def main(args):
         val_check_interval=5000  # Perform validation every 2000 training steps
     )
 
-    # Initialize model with L1 regularization
-    # vae_model = AE_DeepSDF(
-    #     input_dim=dataset.feature_dim, 
-    #     latent_dim=9, 
-    #     hidden_dim=128, 
-    #     regularization='l2',   # Use 'l1', 'l2', or None
-    #     reg_weight=1e-3        # Adjust the weight as needed
-    # )
+    
+    # Load configuration from YAML file
+    with open(f'{configs_dir}/{config_name}.yaml', 'r') as file:
+        config = yaml.safe_load(file)
 
-    vae_model = AE_DeepSDF_explicit_radius(
-        input_dim=test_dataset.feature_dim, 
-        latent_dim=9, 
-        hidden_dim=128, 
-        rad_latent_dim=2,
-        rad_loss_weight=0.1,
-        orthogonality_loss_weight=0.1,
-        regularization='l2',   # Use 'l1', 'l2', or None
-        reg_weight=1e-3        # Adjust the weight as needed
-    )
+    # Initialize VAE model
+    model_params = config['model']['params']
+    model_params['input_dim'] = test_dataset.feature_dim
+    vae_model = get_model(config)
 
-    # vae_model = AE(
-    #         input_dim=dataset.feature_dim, 
-    #         latent_dim=3, 
-    #         hidden_dim=128, 
-    #         regularization='l2',   # Use 'l1', 'l2', or None
-    #         reg_weight=1e-3        # Adjust the weight as needed
-    #     )
-
-    # Initialize the trainer
+    # Initialize VAE trainer
+    trainer_params = config['trainer']
     vae_trainer = LitSdfAE(
-        vae_model=vae_model, 
-        learning_rate=1e-4, 
-        reg_weight=1e-3, 
-        regularization='l2',    # Should match the VAE model's regularization
-        warmup_steps=1000, 
+        vae_model=vae_model,
+        learning_rate=trainer_params['learning_rate'],
+        reg_weight=trainer_params['reg_weight'],
+        regularization=trainer_params['regularization'],
+        warmup_steps=trainer_params['warmup_steps'],
         max_steps=MAX_STEPS
     )
 
     # Train the model
     trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
     trainer.fit(vae_trainer, [train_loader, train_loader], val_dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
+    final_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
 
     # Save model weights
     checkpoint_path = f'model_weights/{args.run_name}.ckpt'
@@ -176,9 +190,29 @@ def main(args):
     torch.save(vae_model.state_dict(), model_weights_path)
     print(f"Model weights saved to {model_weights_path}")
 
+    # Save metrics into a JSON file with run_name
+    combined_metrics = {k: v for d in final_metrics for k, v in d.items()}
+
+    # Save metrics into a JSON file with run_name
+    metrics_filename = args.metrics_file
+    try:
+        with open(metrics_filename, 'r') as f:
+            all_metrics = json.load(f)
+    except FileNotFoundError:
+        all_metrics = {}
+
+    all_metrics[run_name] = combined_metrics
+
+    with open(metrics_filename, 'w') as f:
+        json.dump(all_metrics, f, indent=4)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VAE model.')
     parser.add_argument('--max_epochs', type=int, default=1, help='Maximum number of epochs for training')
-    parser.add_argument('--run_name', type=str, default='uba_NTM_F_reg5em3', help='Name of the run')
+    # parser.add_argument('--run_name', type=str, default='uba_NTM_F_reg5em3', help='Name of the run')
+    parser.add_argument('--dataset_path', type=str, default='shape_datasets', help='Path to the dataset')
+    parser.add_argument('--config_dir', type=str, default='configs/NN_sdf_experiments/architectures', help='Path to the config directory')
+    parser.add_argument('--config_name', type=str, default='AE_DeepSDF', help='Name of the config')
+    parser.add_argument('--metrics_file', type=str, default='src/metrics.json', help='Path to the metrics file')
     args = parser.parse_args()
     main(args)
