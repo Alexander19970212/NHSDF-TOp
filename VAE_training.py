@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from lightning.pytorch import Trainer, seed_everything, callbacks
 from lightning.pytorch.loggers import TensorBoardLogger
 
-from models.sdf_models import LitSdfAE
+from models.sdf_models import LitSdfAE, LitSdfAE_MINE
 from models.sdf_models import AE
 from models.sdf_models import AE_DeepSDF
 from models.sdf_models import VAE
@@ -34,6 +34,9 @@ models = {'AE_DeepSDF': AE_DeepSDF,
           'VAE_DeepSDF': VAE_DeepSDF,
           'MMD_VAE': MMD_VAE,
           'MMD_VAE_DeepSDF': MMD_VAE_DeepSDF}
+
+trainers = {'LitSdfAE': LitSdfAE,
+            'LitSdfAE_MINE': LitSdfAE_MINE}
 
 
 def main(args):
@@ -137,7 +140,7 @@ def main(args):
             # FirstEvalCallback()
         ],
         check_val_every_n_epoch=None,  # Disable validation every epoch
-        val_check_interval=5000  # Perform validation every 2000 training steps
+        val_check_interval=20000  # Perform validation every 2000 training steps
     )
 
     
@@ -151,15 +154,10 @@ def main(args):
     vae_model = models[config['model']['type']](**model_params)
 
     # Initialize VAE trainer
-    trainer_params = config['trainer']
-    vae_trainer = LitSdfAE(
-        vae_model=vae_model,
-        learning_rate=trainer_params['learning_rate'],
-        reg_weight=trainer_params['reg_weight'],
-        regularization=trainer_params['regularization'],
-        warmup_steps=trainer_params['warmup_steps'],
-        max_steps=MAX_STEPS
-    )
+    trainer_params = config['trainer']['params']
+    trainer_params['vae_model'] = vae_model
+    trainer_params['max_steps'] = MAX_STEPS
+    vae_trainer = trainers[config['trainer']['type']](**trainer_params)
 
     # Train the model
     trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader, radius_samples_loader])

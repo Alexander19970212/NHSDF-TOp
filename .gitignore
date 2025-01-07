@@ -21,3 +21,4 @@ NN_TopOpt/carpenter-sdf-topology-optimizer.code-workspace
 ADMM_development.ipynb
 data.zip
 data/
+scripts/scp_weights.sh

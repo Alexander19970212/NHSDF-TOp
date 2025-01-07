@@ -3,17 +3,18 @@ model:
   params:
     latent_dim: 9
     hidden_dim: 128
-    tau_latent_dim: 2
+    tau_latent_dim: 3
     tau_loss_weight: 0.1
     orthogonality_loss_weight: 0.1
-    orthogonality_loss_type: orth_minQQ_Frobenius
+    orthogonality_loss_type: None
     regularization: l2
-    reg_weight: 0.001
+    reg_weight: 0.1
 
 trainer:
-  type: LitSdfAE
+  type: LitSdfAE_MINE
   params:
     learning_rate: 0.0001
-    reg_weight: 0.001
+    reg_weight: 0.1
     regularization: l2
     warmup_steps: 1000
+    info_weight: 0.01

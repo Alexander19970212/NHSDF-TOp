@@ -2,9 +2,9 @@
 
 # Script to run VAE_training.py for all configuration files in a directory
 
-CONFIG_DIR="configs/NN_sdf_experiments/architectures"
+CONFIG_DIR="configs/NN_sdf_experiments/critic_hyperparameters"
 DATASET_PATH="shape_datasets"
-METRICS_FILE="src/metrics_architecture_comparison.json"
+METRICS_FILE="src/metrics_critic_hyperparameters.json"
 MAX_EPOCHS=1  # Adjust as needed
 
 for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do

@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import lightning as L
 from torch.optim.lr_scheduler import LambdaLR, CosineAnnealingLR, SequentialLR
 
+from sklearn.feature_selection import mutual_info_regression
+
 
 def compute_closeness(sdf_pred, sdf_target):
     # Mean Absolute Error
@@ -37,12 +39,53 @@ def orthogonality_metric(z, tau_latent_dim):
     orthogonality_loss = torch.linalg.norm(Q_tau.T @ Q_original, ord=2)
     return orthogonality_loss
 
-def orthogonality_metric_std(z, tau_latent_dim):
+def orthogonality_metrics(z, target, tau_latent_dim):
     z_tau = z[:, :tau_latent_dim]
     z_original = z[:, tau_latent_dim:]
     z_original_std = torch.std(z_original, dim=0)
     z_tau_std = torch.std(z_tau, dim=0)
-    return z_original_std.mean() / z_tau_std.mean(), z_original_std.mean(), z_tau_std.mean()
+
+    mi_original = mutual_info_regression(z_original.detach().cpu().numpy(), target.detach().cpu().numpy())
+    mi_tau = mutual_info_regression(z_tau.detach().cpu().numpy(), target.detach().cpu().numpy())
+
+    metrics = {
+        'mi_original': mi_original.mean(),
+        'mi_tau': mi_tau.mean(),
+        'z_original_std': z_original_std.mean(),
+        'z_tau_std': z_tau_std.mean(),
+        'z_std_ratio': z_original_std.mean() / z_tau_std.mean(),
+        'mi_ratio': mi_original.mean() / mi_tau.mean()
+    }
+
+    return metrics
+
+def orth_minQQ_Frobenius(z, tau_latent_dim):
+    z_tau = z[:, :tau_latent_dim]
+    z_original = z[:, tau_latent_dim:]
+    Q_tau, R_tau = torch.linalg.qr(z_tau)
+    Q_original, R_original = torch.linalg.qr(z_original)
+    return torch.norm(Q_tau.T @ Q_original)
+
+def orth_minWW_Frobenius(z, tau_latent_dim):
+    # W, R = torch.linalg.qr(z)
+    I = torch.eye(z.shape[1], device=z.device)
+    return torch.norm(z.T @ z - I)
+
+def orth_minZZ_Frobenius(z, latent_dim):
+    """
+    to ensure that the explicit radius dimension remains disentangled from other latent features
+    """
+    z_radius = z[:, :latent_dim]
+    z_original = z[:, latent_dim:]
+    orthogonality_loss = torch.norm(z_radius.T @ z_original)
+    return orthogonality_loss
+
+orth_losses = {
+    'orth_minQQ_Frobenius': orth_minQQ_Frobenius,
+    'orth_minZZ_Frobenius': orth_minZZ_Frobenius,
+    'orth_minWW_Frobenius': orth_minWW_Frobenius,
+    'None': None
+}
 
 
 class Decoder(nn.Module):
@@ -151,7 +194,7 @@ class Decoder(nn.Module):
 
         return x
     
-class Decoder_loss(nn.Module):
+class Decoder_loss_old(nn.Module):
     def __init__(self, latent_dim, hidden_dim):
         super(Decoder_loss, self).__init__()
 
@@ -375,6 +418,7 @@ class AE_DeepSDF_old(AE_old):
 class AE(nn.Module):
     def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2,
                  tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
+                 orthogonality_loss_type=None,
                  regularization=None, reg_weight=1e-4):
         """
         VAE model with optional L1 or L2 regularization.
@@ -395,6 +439,12 @@ class AE(nn.Module):
         self.tau_loss_weight = tau_loss_weight
         self.orthogonality_loss_weight = orthogonality_loss_weight
         self.latent_dim = latent_dim
+
+        if orthogonality_loss_type is None:
+            self.orthogonality_loss = None
+        else:
+            print(f"Using orthogonality loss: {orthogonality_loss_type}")
+            self.orthogonality_loss = orth_losses[orthogonality_loss_type]
 
         # Encoder
         self.encoder = nn.Sequential(
@@ -495,23 +545,6 @@ class AE(nn.Module):
     
     # def orthogonality_loss(self, z):
     #     return torch.norm(z.T @ z - torch.eye(z.shape[1]), p='fro')
-
-    def orthogonality_loss(self, z):
-        """
-        to ensure that the explicit radius dimension remains disentangled from other latent features
-        """
-        z_radius = z[:, :self.tau_latent_dim]
-        z_original = z[:, self.tau_latent_dim:]
-        # return torch.norm(z_radius.T @ z_original, p='fro')
-
-        # Q_radius, R_radius = torch.linalg.qr(z_radius)
-        # Q_original, R_original = torch.linalg.qr(z_original)
-
-        # orthogonality_loss = -1 * torch.linalg.norm(Q_radius.T @ Q_original, ord=2)
-        # I = torch.eye(Q_radius.shape[1], Q_original.shape[1], device=Q_radius.device)
-        # orthogonality_loss = torch.norm(Q_radius.T @ Q_original - I, p='fro')
-        orthogonality_loss = torch.norm(z_radius.T @ z_original, p='fro')
-        return orthogonality_loss
         
 
     def loss_function(self, loss_args):
@@ -544,12 +577,15 @@ class AE(nn.Module):
         sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
 
         # Orthogonality loss
-        orthogonality_loss = self.orthogonality_loss(z)
-
-        if not self.training:
-            orthogonality_metric_value = orthogonality_metric(z, self.tau_latent_dim)
+        if self.orthogonality_loss is not None:
+            orthogonality_loss = self.orthogonality_loss(z, self.tau_latent_dim)
         else:
-            orthogonality_metric_value = 0
+            orthogonality_loss = 0
+
+        # if not self.training:
+        #     orthogonality_metric_value = orthogonality_metric(z, self.tau_latent_dim)
+        # else:
+        #     orthogonality_metric_value = 0
 
         # Regularization loss
         if self.regularization == 'l1':
@@ -565,8 +601,7 @@ class AE(nn.Module):
             + self.orthogonality_loss_weight * orthogonality_loss 
             + self.reg_weight * reg_loss
         )
-
-        
+       
         splitted_loss = {
             "total_loss": total_loss,
             "tau_loss": tau_loss,
@@ -575,8 +610,8 @@ class AE(nn.Module):
             "reg_loss": reg_loss
         }
 
-        if not self.training:
-            splitted_loss["orthogonality_metric"] = orthogonality_metric_value
+        # if not self.training:
+        #     splitted_loss["orthogonality_metric"] = orthogonality_metric_value
 
         return total_loss, splitted_loss
     
@@ -600,7 +635,7 @@ class VAE(nn.Module):
     """
     def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2,
                  tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
-                 kl_weight=1e-4,
+                 kl_weight=1e-4, orthogonality_loss_type=None,
                  regularization=None, reg_weight=1e-4):
         """
         Initializes the Standard VAE.
@@ -620,6 +655,11 @@ class VAE(nn.Module):
         self.tau_loss_weight = tau_loss_weight
         self.orthogonality_loss_weight = orthogonality_loss_weight
         self.kl_weight = kl_weight
+
+        if orthogonality_loss_type is None:
+            self.orthogonality_loss = None
+        else:
+            self.orthogonality_loss = orth_losses[orthogonality_loss_type]
 
         # Encoder
         self.encoder = nn.Sequential(
@@ -777,23 +817,6 @@ class VAE(nn.Module):
     def tau(self, z):
         z_radius = z[:, :self.tau_latent_dim]
         return self.decoder_tau(z_radius)
-    
-    def orthogonality_loss(self, z):
-        """
-        to ensure that the explicit radius dimension remains disentangled from other latent features
-        """
-        z_radius = z[:, :self.tau_latent_dim]
-        z_original = z[:, self.tau_latent_dim:]
-        # return torch.norm(z_radius.T @ z_original, p='fro')
-
-        # Q_radius, R_radius = torch.linalg.qr(z_radius)
-        # Q_original, R_original = torch.linalg.qr(z_original)
-
-        # orthogonality_loss = -1 * torch.linalg.norm(Q_radius.T @ Q_original, ord=2)
-        # I = torch.eye(Q_radius.shape[1], Q_original.shape[1], device=Q_radius.device)
-        # orthogonality_loss = torch.norm(Q_radius.T @ Q_original - I, p='fro')
-        orthogonality_loss = torch.norm(z_radius.T @ z_original, p='fro')
-        return orthogonality_loss
 
     def loss_function(self, loss_args):
         """
@@ -828,17 +851,20 @@ class VAE(nn.Module):
         sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
 
         # Orthogonality loss
-        orthogonality_loss = self.orthogonality_loss(z)
+        if self.orthogonality_loss is not None:
+            orthogonality_loss = self.orthogonality_loss(z, self.tau_latent_dim)
+        else:
+            orthogonality_loss = 0
 
         # KL Divergence loss
         kl_divergence = -0.5 * torch.mean(1 + log_var - mu.pow(2) - log_var.exp())
         # print(self.kl_weight)
         # print(f"kl_divergence: {kl_divergence}")
 
-        if not self.training:
-            orthogonality_metric_value = orthogonality_metric(z, self.tau_latent_dim)
-        else:
-            orthogonality_metric_value = 0
+        # if not self.training:
+        #     orthogonality_metric_value = orthogonality_metric(z, self.tau_latent_dim)
+        # else:
+        #     orthogonality_metric_value = 0
 
         # Regularization loss
         if self.regularization == 'l1':
@@ -865,8 +891,8 @@ class VAE(nn.Module):
             "reg_loss": reg_loss
         }
 
-        if not self.training:
-            splitted_loss["orthogonality_metric"] = orthogonality_metric_value
+        # if not self.training:
+        #     splitted_loss["orthogonality_metric"] = orthogonality_metric_value
 
         return total_loss, splitted_loss
     
@@ -883,7 +909,9 @@ class VAE(nn.Module):
         sdf_pred = self.decoder_sdf(sdf_decoder_input)
 
         return sdf_pred
-    
+
+#############################   MMD   #############################
+
 def gaussian_kernel(a, b):
     dim1_1, dim1_2 = a.shape[0], b.shape[0]
     depth = a.shape[1]
@@ -900,11 +928,16 @@ def MMD(a, b):
 class MMD_VAE(AE):
     def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2, 
                  tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
-                 regularization=None, reg_weight=1e-4, mmd_weight=1e-4):
+                 regularization=None,  orthogonality_loss_type=None, reg_weight=1e-4, mmd_weight=1e-4):
         super(MMD_VAE, self).__init__(input_dim, latent_dim, hidden_dim, tau_latent_dim,
-                                        tau_loss_weight, orthogonality_loss_weight, regularization, reg_weight)
+                                        tau_loss_weight, orthogonality_loss_weight,
+                                        orthogonality_loss_type, regularization, reg_weight)
         
         self.mmd_weight = mmd_weight
+        if orthogonality_loss_type is None:
+            self.orthogonality_loss = None
+        else:
+            self.orthogonality_loss = orth_losses[orthogonality_loss_type]
         
     def loss_function(self, loss_args):
         """
@@ -940,12 +973,15 @@ class MMD_VAE(AE):
         sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
 
         # Orthogonality loss
-        orthogonality_loss = self.orthogonality_loss(z)
-
-        if not self.training:
-            orthogonality_metric_value = orthogonality_metric(z, self.tau_latent_dim)
+        if self.orthogonality_loss is not None:
+            orthogonality_loss = self.orthogonality_loss(z, self.tau_latent_dim)
         else:
-            orthogonality_metric_value = 0
+            orthogonality_loss = 0
+
+        # if not self.training:
+        #     orthogonality_metric_value = orthogonality_metric(z, self.tau_latent_dim)
+        # else:
+        #     orthogonality_metric_value = 0
 
         # Regularization loss
         if self.regularization == 'l1':
@@ -973,18 +1009,19 @@ class MMD_VAE(AE):
             "mmd_loss": mmd_loss
         }
 
-        if not self.training:
-            splitted_loss["orthogonality_metric"] = orthogonality_metric_value
+        # if not self.training:
+        #     splitted_loss["orthogonality_metric"] = orthogonality_metric_value
 
         return total_loss, splitted_loss
 
 
 class AE_DeepSDF(AE):
     def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2, 
-                 tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
+                 tau_loss_weight=0.1, orthogonality_loss_weight=0.1, orthogonality_loss_type=None,
                  regularization=None, reg_weight=1e-4):
         super(AE_DeepSDF, self).__init__(input_dim, latent_dim, hidden_dim, tau_latent_dim,
-                                        tau_loss_weight, orthogonality_loss_weight, regularization, reg_weight)
+                                        tau_loss_weight, orthogonality_loss_weight, orthogonality_loss_type,
+                                        regularization, reg_weight)
         
         NetworkSpecs = {
             "latent_size" : latent_dim,
@@ -1021,11 +1058,11 @@ class AE_DeepSDF(AE):
 class VAE_DeepSDF(VAE):
     def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2, 
                  tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
-                 kl_weight=1e-4,
+                 kl_weight=1e-4, orthogonality_loss_type = None,
                  regularization=None, reg_weight=1e-4):
         super(VAE_DeepSDF, self).__init__(input_dim, latent_dim, hidden_dim, tau_latent_dim,
                                         tau_loss_weight, orthogonality_loss_weight, kl_weight,
-                                        regularization, reg_weight)
+                                        orthogonality_loss_type, regularization, reg_weight)
         
         NetworkSpecs = {
             "latent_size" : latent_dim,
@@ -1069,10 +1106,10 @@ class VAE_DeepSDF(VAE):
 class MMD_VAE_DeepSDF(MMD_VAE):
     def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2, 
                  tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
-                 regularization=None, reg_weight=1e-4, mmd_weight=1e-4):
+                 regularization=None, orthogonality_loss_type=None, reg_weight=1e-4, mmd_weight=1e-4):
         super(MMD_VAE_DeepSDF, self).__init__(input_dim, latent_dim, hidden_dim, tau_latent_dim,
                                         tau_loss_weight, orthogonality_loss_weight,
-                                        regularization, reg_weight, mmd_weight)
+                                        regularization, orthogonality_loss_type, reg_weight, mmd_weight)
         
         NetworkSpecs = {
             "latent_size" : latent_dim,
@@ -1253,10 +1290,10 @@ class LitSdfAE(L.LightningModule):
         if dataloader_idx == 2:
             x, sdf, tau = batch
             # print(f"x: {x.shape}, type: {x.dtype}")
+
+            total_metrics = {}
             total_tau_loss = 0
-            total_ort_std = 0
-            total_orig_std = 0
-            total_tau_std = 0
+
             for i in range(len(x)):
                 x_i = x[i]
                 # sdf_i = sdf[i]
@@ -1268,16 +1305,18 @@ class LitSdfAE(L.LightningModule):
 
                 # tau_loss = self.vae.radius_sum_loss(tau_pred, tau_i)
                 tau_loss = F.mse_loss(tau_pred.flatten(), tau_i.flatten(), reduction='mean')
-                ort_std, orig_std, tau_std = orthogonality_metric_std(z, self.vae.tau_latent_dim)
+                splitted_metrics = orthogonality_metrics(z, tau_i, self.vae.tau_latent_dim)
                 total_tau_loss += tau_loss
-                total_ort_std += ort_std
-                total_orig_std += orig_std
-                total_tau_std += tau_std
+                for key, value in splitted_metrics.items():
+                    if key not in total_metrics:
+                        total_metrics[key] = value
+                    else:
+                        total_metrics[key] += value
+
+            for key, value in total_metrics.items():
+                self.log(f'val_{key}', value / len(x), prog_bar=True)
 
             self.log('val_tau_loss', total_tau_loss / len(x), prog_bar=True)
-            self.log('val_ort_std', total_ort_std / len(x), prog_bar=True)
-            self.log('val_orig_std', total_orig_std / len(x), prog_bar=True)
-            self.log('val_tau_std', total_tau_std / len(x), prog_bar=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
@@ -1311,3 +1350,292 @@ class LitSdfAE(L.LightningModule):
             "optimizer": optimizer,
             'lr_scheduler': scheduler
         }
+
+################################################################################################
+# code partially from https://github.com/AliLotfi92/InfoMaxVAE.git
+
+def permute_dims(z):
+    """
+    function to permute z based on indicies
+    """
+    assert z.dim() == 2
+    B, _ = z.size()
+    perm = torch.randperm(B)
+    perm_z = z[perm]
+    return perm_z
+
+class MINE_Critic(nn.Module):
+    def __init__(self, latent_dim, feature_dim, hidden_size=128):
+        super(MINE_Critic, self).__init__()
+        self.fc1 = nn.Linear(latent_dim + feature_dim, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc3 = nn.Linear(hidden_size, 1)
+    
+    def forward(self, z, y):
+        # Concatenate latent vectors and features
+        # print(f"z: {z.shape}, y: {y.shape}")
+        joint = torch.cat([z, y[:, None]], dim=1)
+        out = F.relu(self.fc1(joint))
+        out = F.relu(self.fc2(out))
+        score = self.fc3(out)
+        return score
+    
+class LitSdfAE_MINE(L.LightningModule):
+    def __init__(self, vae_model, learning_rate=1e-4, reg_weight=1e-4,
+                 info_weight=1e-2, regularization=None, warmup_steps=1000, max_steps=10000):
+        super().__init__()
+        self.vae = vae_model
+        self.mine = MINE_Critic(self.vae.latent_dim - self.vae.tau_latent_dim, 1)
+        self.learning_rate = learning_rate
+        self.reg_weight = reg_weight
+        self.regularization = regularization
+        self.warmup_steps = warmup_steps
+        self.max_steps = max_steps
+        self.reconstruction_decoder_training = False
+
+        self.info_weight = info_weight
+            
+        self.save_hyperparameters(logger=True)
+        self.automatic_optimization = False
+
+    def freezing_weights(self, rec_decoder_training=False):
+        for param in self.vae.parameters():
+            param.requires_grad = not rec_decoder_training
+
+        for param in self.vae.decoder_input.parameters():
+            param.requires_grad = rec_decoder_training
+
+    def forward(self, x):
+        return self.vae(x)
+
+    def training_step(self, batch, batch_idx):
+
+        vae_optimizer, mine_optimizer = self.optimizers()
+
+        epoch = self.current_epoch
+        dataloader_idx = epoch % 2
+
+        x, sdf, tau = batch[dataloader_idx]
+        
+        if dataloader_idx == 0:
+            if self.reconstruction_decoder_training==True:
+                self.freezing_weights(rec_decoder_training=False)
+                self.reconstruction_decoder_training = False
+
+            ### VAE training ###
+            output = self.vae(x)
+            loss_args = output
+            loss_args["tau_target"] = tau
+            loss_args["sdf_target"] = sdf
+            total_loss, splitted_loss = self.vae.loss_function(loss_args)
+
+            info_xz = self.estimate_mi(output["z"][:, self.vae.tau_latent_dim:], tau)
+            splitted_loss["info_xz"] = info_xz
+            total_loss -= self.info_weight * info_xz
+
+            vae_optimizer.zero_grad()
+            # self.manual_backward(total_loss)
+            total_loss.backward(retain_graph=True)
+            vae_optimizer.step()
+
+            mine_optimizer.zero_grad()
+            info_xz = self.estimate_mi(output["z"][:, self.vae.tau_latent_dim:], tau)
+            # self.manual_backward(info_xz)
+            info_xz.backward(inputs=list(self.mine.parameters()))
+            mine_optimizer.step()
+
+        else:
+            if self.reconstruction_decoder_training==False:
+                self.freezing_weights(rec_decoder_training=True)
+                self.reconstruction_decoder_training = True
+            output  = self.vae(x, reconstruction=True)
+            total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)
+
+            vae_optimizer.zero_grad()
+            # self.manual_backward(total_loss)
+            total_loss.backward(retain_graph=True)
+            vae_optimizer.step()
+
+        for key, value in splitted_loss.items():
+            self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
+
+        sch1, sch2 = self.lr_schedulers()
+        sch1.step()
+        sch2.step()
+
+        return total_loss
+
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
+        if dataloader_idx == 0:
+            x, sdf, tau = batch
+            # print(f"x: {x.shape}, type: {x.dtype}")
+            output = self.vae(x, reconstruction=True)
+            loss_args = output
+            loss_args["tau_target"] = tau
+            loss_args["sdf_target"] = sdf
+
+            total_loss, splitted_loss = self.vae.loss_function(loss_args)
+
+            for key, value in splitted_loss.items():
+                self.log(f'val_{key}', value, prog_bar=True)
+
+            total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)            
+            for key, value in splitted_loss.items():
+                self.log(f'val_reconstruction_{key}', value, prog_bar=True)
+
+        elif dataloader_idx == 1:
+            # total_loss = 0
+            # total_splitted_loss = {}
+            xs, sdfs, points_s = batch
+            total_mae = 0
+            total_rmse = 0
+            total_smoothness_pred = 0
+            total_smoothness_diff = 0
+            total_diff_smoothness = 0
+
+            for i in range(len(points_s)):
+                x = xs[i]
+                sdf = sdfs[i]
+                points = points_s[i]
+                # radius_sum = radius_sums[i]
+
+                # Attention: it is supposed that points are from a full grid
+                points_per_side = int(np.sqrt(points.shape[0]))
+                
+                x_repeated = x.repeat(points.size(0), 1)
+                x_combined = torch.cat((points, x_repeated), dim=1)
+                output = self.vae(x_combined)
+                tau_pred = output["tau_pred"]
+                sdf_pred = output["sdf_pred"]
+                # z = output["z"]
+
+                sdf_diff = sdf_pred.squeeze() - sdf.squeeze()
+
+                loss_args = output
+                # loss_args["tau_target"] = tau
+                # loss_args["sdf_target"] = sdf
+                # loss, splitted_loss = self.vae.loss_function(loss_args)
+
+                # total_loss += loss
+
+                # for key, value in splitted_loss.items():
+                #     if key not in total_splitted_loss:
+                #         total_splitted_loss[key] = value
+                #     else:
+                #         total_splitted_loss[key] += value
+
+                # Compute metrics
+                mae, rmse = compute_closeness(sdf_pred, sdf)
+                sdf_pred_reshaped = sdf_pred.reshape(points_per_side, points_per_side)
+                sdf_target_reshaped = sdf.reshape(points_per_side, points_per_side)
+                sdf_diff_reshaped = sdf_diff.reshape(points_per_side, points_per_side)
+                smoothness_pred = finite_difference_smoothness_torch(sdf_pred_reshaped)
+                smoothness_target = finite_difference_smoothness_torch(sdf_target_reshaped)
+                smoothness_diff = finite_difference_smoothness_torch(sdf_diff_reshaped)
+                diff_smoothness = smoothness_pred - smoothness_target
+
+                total_mae += mae
+                total_rmse += rmse
+                total_smoothness_pred += smoothness_pred
+                total_smoothness_diff += smoothness_diff
+                total_diff_smoothness += diff_smoothness
+
+            # avg_splitted_loss = {key: value / len(batch) for key, value in total_splitted_loss.items()}
+            avg_mae = total_mae / len(points_s)
+            avg_rmse = total_rmse / len(points_s)
+            avg_smoothness_pred = total_smoothness_pred / len(points_s)
+            avg_smoothness_diff = total_smoothness_diff / len(points_s)
+            avg_diff_smoothness = total_diff_smoothness / len(points_s)
+
+            # for key, value in avg_splitted_loss.items():
+            #     self.log(f'val_{key}', value, prog_bar=True)
+
+            self.log('val_mae', avg_mae, prog_bar=True)
+            self.log('val_rmse', avg_rmse, prog_bar=True)
+            self.log('val_smoothness_pred', avg_smoothness_pred, prog_bar=True)
+            self.log('val_smoothness_diff', avg_smoothness_diff, prog_bar=True)
+            self.log('val_diff_smoothness', avg_diff_smoothness, prog_bar=True)
+
+        if dataloader_idx == 2:
+            x, sdf, tau = batch
+            # print(f"x: {x.shape}, type: {x.dtype}")
+
+            total_metrics = {}
+            total_tau_loss = 0
+
+            for i in range(len(x)):
+                x_i = x[i]
+                # sdf_i = sdf[i]
+                tau_i = tau[i]
+                output = self.vae(x_i)
+                tau_pred = output["tau_pred"]
+                sdf_pred = output["sdf_pred"]
+                z = output["z"]       
+
+                # tau_loss = self.vae.radius_sum_loss(tau_pred, tau_i)
+                tau_loss = F.mse_loss(tau_pred.flatten(), tau_i.flatten(), reduction='mean')
+                splitted_metrics = orthogonality_metrics(z, tau_i, self.vae.tau_latent_dim)
+                total_tau_loss += tau_loss
+                for key, value in splitted_metrics.items():
+                    if key not in total_metrics:
+                        total_metrics[key] = value
+                    else:
+                        total_metrics[key] += value
+
+            for key, value in total_metrics.items():
+                self.log(f'val_{key}', value / len(x), prog_bar=True)
+
+            self.log('val_tau_loss', total_tau_loss / len(x), prog_bar=True)
+
+    def estimate_mi(self, z, tau):
+        # pass x_true and learned features z from the discriminator
+        d_xz = self.mine(z, tau)
+
+        z_perm = permute_dims(z)
+        d_x_z = self.mine(z_perm, tau)
+
+        # TODO: check if this is correct
+
+        info_xz = -(d_xz.mean() - (torch.exp(d_x_z - 1).mean()))
+
+        return info_xz
+    
+    def configure_optimizers(self):
+        vae_optimizer = torch.optim.AdamW(self.vae.parameters(), lr=self.learning_rate)
+        mine_optimizer = torch.optim.AdamW(self.mine.parameters(), lr=self.learning_rate)
+
+        warmup_lr_lambda = lambda step: ((step + 1)%self.max_steps) / self.warmup_steps if step < self.warmup_steps else 1
+        warmup_scheduler = LambdaLR(vae_optimizer, lr_lambda=warmup_lr_lambda)
+
+        cosine_scheduler = CosineAnnealingLR(vae_optimizer, T_max=(self.max_steps - self.warmup_steps), eta_min=0)
+
+        # Start of Selection
+        vae_scheduler = {
+            'scheduler': SequentialLR(
+                vae_optimizer,
+                schedulers=[
+                    warmup_scheduler,
+                    cosine_scheduler,
+                    warmup_scheduler,
+                    cosine_scheduler
+                ],
+                milestones=[
+                    self.warmup_steps,
+                    self.max_steps,
+                    self.max_steps + self.warmup_steps
+                ]
+            ),
+            'interval': 'step',
+            'frequency': 1
+        }
+
+        mine_scheduler = {
+            'scheduler': LambdaLR(
+                mine_optimizer,
+                lr_lambda=lambda step: 1.0 - (step / self.max_steps)
+            ),
+            'interval': 'step',
+            'frequency': 1
+        }
+
+        return [vae_optimizer, mine_optimizer], [vae_scheduler, mine_scheduler]
