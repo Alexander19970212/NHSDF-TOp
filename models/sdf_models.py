@@ -568,6 +568,8 @@ class AE(nn.Module):
         tau_target = loss_args["tau_target"]
         sdf_pred = loss_args["sdf_pred"]
         sdf_target = loss_args["sdf_target"]
+        # x_reconstructed = loss_args["x_reconstructed"]
+        # x_original = loss_args["x_original"]
         z = loss_args["z"]
 
         # Reconstruction loss for input features
@@ -587,6 +589,8 @@ class AE(nn.Module):
         # else:
         #     orthogonality_metric_value = 0
 
+        # reconstruction_loss, _ = self.reconstruction_loss(x_reconstructed, x_original)
+
         # Regularization loss
         if self.regularization == 'l1':
             reg_loss = torch.mean(torch.abs(z))
@@ -600,13 +604,15 @@ class AE(nn.Module):
             + self.tau_loss_weight * tau_loss 
             + self.orthogonality_loss_weight * orthogonality_loss 
             + self.reg_weight * reg_loss
+            # + reconstruction_loss * 0.1
         )
-       
+
         splitted_loss = {
             "total_loss": total_loss,
             "tau_loss": tau_loss,
             "sdf_loss": sdf_loss,
             "orthogonality_loss": orthogonality_loss,
+            # "reconstruction_loss": reconstruction_loss,
             "reg_loss": reg_loss
         }
 
@@ -1165,31 +1171,63 @@ class LitSdfAE(L.LightningModule):
         for param in self.vae.decoder_input.parameters():
             param.requires_grad = rec_decoder_training
 
+        stat = self.count_parameters()
+
+    def count_parameters(self):
+        """Count trainable and frozen parameters."""
+        total_params = 0
+        trainable_params = 0
+        frozen_params = 0
+
+        for name, param in self.vae.named_parameters():
+            num_params = param.numel()
+            total_params += num_params
+            if param.requires_grad:
+                trainable_params += num_params
+            else:
+                frozen_params += num_params
+
+        print(f"Total parameters: {total_params:,}")
+        print(f"Trainable parameters: {trainable_params:,}")
+        print(f"Frozen parameters: {frozen_params:,}")
+        print(f"Percentage of trainable parameters: {100 * trainable_params / total_params:.2f}%")
+
+        return {
+            "total_params": total_params,
+            "trainable_params": trainable_params,
+            "frozen_params": frozen_params
+        }
+
     def forward(self, x):
         return self.vae(x)
 
     def training_step(self, batch, batch_idx):
 
-        epoch = self.current_epoch
-        dataloader_idx = epoch % 2
+        # epoch = self.current_epoch
+        # dataloader_idx = epoch % 2
 
-        x, sdf, tau = batch[dataloader_idx]
+        # x, sdf, tau = batch[dataloader_idx]
+        x, sdf, tau = batch
         
-        if dataloader_idx == 0:
-            if self.reconstruction_decoder_training==True:
-                self.freezing_weights(rec_decoder_training=False)
-                self.reconstruction_decoder_training = False
-            output = self.vae(x)
-            loss_args = output
-            loss_args["tau_target"] = tau
-            loss_args["sdf_target"] = sdf
-            total_loss, splitted_loss = self.vae.loss_function(loss_args)
-        else:
-            if self.reconstruction_decoder_training==False:
-                self.freezing_weights(rec_decoder_training=True)
-                self.reconstruction_decoder_training = True
-            output  = self.vae(x, reconstruction=True)
-            total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)
+        # if dataloader_idx == 0:
+            # if self.reconstruction_decoder_training==True:
+            #     self.freezing_weights(rec_decoder_training=False)
+            #     self.reconstruction_decoder_training = False
+
+        output = self.vae(x)
+        loss_args = output
+        loss_args["tau_target"] = tau
+        loss_args["sdf_target"] = sdf
+        loss_args["x_original"] = x
+        total_loss, splitted_loss = self.vae.loss_function(loss_args)
+
+        # else:
+        #     # if self.reconstruction_decoder_training==False:
+        #     #     self.freezing_weights(rec_decoder_training=True)
+        #     #     self.reconstruction_decoder_training = True
+        #     output  = self.vae(x, reconstruction=True)
+        #     total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)
+        #     total_loss = 0.001*total_loss
 
         for key, value in splitted_loss.items():
             self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
@@ -1204,15 +1242,15 @@ class LitSdfAE(L.LightningModule):
             loss_args = output
             loss_args["tau_target"] = tau
             loss_args["sdf_target"] = sdf
-
+            loss_args["x_original"] = x
             total_loss, splitted_loss = self.vae.loss_function(loss_args)
 
             for key, value in splitted_loss.items():
                 self.log(f'val_{key}', value, prog_bar=True)
 
-            total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)            
-            for key, value in splitted_loss.items():
-                self.log(f'val_reconstruction_{key}', value, prog_bar=True)
+            # total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)            
+            # for key, value in splitted_loss.items():
+            #     self.log(f'val_reconstruction_{key}', value, prog_bar=True)
 
         elif dataloader_idx == 1:
             # total_loss = 0
@@ -1333,13 +1371,13 @@ class LitSdfAE(L.LightningModule):
                 schedulers=[
                     warmup_scheduler,
                     cosine_scheduler,
-                    warmup_scheduler,
-                    cosine_scheduler
+                    # warmup_scheduler,
+                    # cosine_scheduler
                 ],
                 milestones=[
                     self.warmup_steps,
-                    self.max_steps,
-                    self.max_steps + self.warmup_steps
+                    # self.max_steps,
+                    # self.max_steps + self.warmup_steps
                 ]
             ),
             'interval': 'step',
@@ -1381,12 +1419,13 @@ class MINE_Critic(nn.Module):
         return score
     
 class LitSdfAE_MINE(L.LightningModule):
-    def __init__(self, vae_model, learning_rate=1e-4, reg_weight=1e-4,
+    def __init__(self, vae_model, learning_rate=1e-4, critic_learning_rate=1e-4, reg_weight=1e-4,
                  info_weight=1e-2, regularization=None, warmup_steps=1000, max_steps=10000):
         super().__init__()
         self.vae = vae_model
         self.mine = MINE_Critic(self.vae.latent_dim - self.vae.tau_latent_dim, 1)
         self.learning_rate = learning_rate
+        self.critic_learning_rate = critic_learning_rate
         self.reg_weight = reg_weight
         self.regularization = regularization
         self.warmup_steps = warmup_steps
@@ -1412,49 +1451,49 @@ class LitSdfAE_MINE(L.LightningModule):
 
         vae_optimizer, mine_optimizer = self.optimizers()
 
-        epoch = self.current_epoch
-        dataloader_idx = epoch % 2
+        # epoch = self.current_epoch
+        # dataloader_idx = epoch % 2
 
-        x, sdf, tau = batch[dataloader_idx]
+        x, sdf, tau = batch
         
-        if dataloader_idx == 0:
-            if self.reconstruction_decoder_training==True:
-                self.freezing_weights(rec_decoder_training=False)
-                self.reconstruction_decoder_training = False
+        # if dataloader_idx == 0:
+            # if self.reconstruction_decoder_training==True:
+            #     self.freezing_weights(rec_decoder_training=False)
+            #     self.reconstruction_decoder_training = False
 
-            ### VAE training ###
-            output = self.vae(x)
-            loss_args = output
-            loss_args["tau_target"] = tau
-            loss_args["sdf_target"] = sdf
-            total_loss, splitted_loss = self.vae.loss_function(loss_args)
+        ### VAE training ###
+        output = self.vae(x)
+        loss_args = output
+        loss_args["tau_target"] = tau
+        loss_args["sdf_target"] = sdf
+        total_loss, splitted_loss = self.vae.loss_function(loss_args)
 
-            info_xz = self.estimate_mi(output["z"][:, self.vae.tau_latent_dim:], tau)
-            splitted_loss["info_xz"] = info_xz
-            total_loss -= self.info_weight * info_xz
+        info_xz = self.estimate_mi(output["z"][:, self.vae.tau_latent_dim:], tau)
+        splitted_loss["info_xz"] = info_xz
+        total_loss -= self.info_weight * info_xz
 
-            vae_optimizer.zero_grad()
-            # self.manual_backward(total_loss)
-            total_loss.backward(retain_graph=True)
-            vae_optimizer.step()
+        vae_optimizer.zero_grad()
+        # self.manual_backward(total_loss)
+        total_loss.backward(retain_graph=True)
+        vae_optimizer.step()
 
-            mine_optimizer.zero_grad()
-            info_xz = self.estimate_mi(output["z"][:, self.vae.tau_latent_dim:], tau)
-            # self.manual_backward(info_xz)
-            info_xz.backward(inputs=list(self.mine.parameters()))
-            mine_optimizer.step()
+        mine_optimizer.zero_grad()
+        info_xz = self.estimate_mi(output["z"][:, self.vae.tau_latent_dim:], tau)
+        # self.manual_backward(info_xz)
+        info_xz.backward(inputs=list(self.mine.parameters()))
+        mine_optimizer.step()
 
-        else:
-            if self.reconstruction_decoder_training==False:
-                self.freezing_weights(rec_decoder_training=True)
-                self.reconstruction_decoder_training = True
-            output  = self.vae(x, reconstruction=True)
-            total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)
+        # else:
+        #     if self.reconstruction_decoder_training==False:
+        #         self.freezing_weights(rec_decoder_training=True)
+        #         self.reconstruction_decoder_training = True
+        #     output  = self.vae(x, reconstruction=True)
+        #     total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)
 
-            vae_optimizer.zero_grad()
-            # self.manual_backward(total_loss)
-            total_loss.backward(retain_graph=True)
-            vae_optimizer.step()
+        #     vae_optimizer.zero_grad()
+        #     # self.manual_backward(total_loss)
+        #     total_loss.backward(retain_graph=True)
+        #     vae_optimizer.step()
 
         for key, value in splitted_loss.items():
             self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
@@ -1479,9 +1518,9 @@ class LitSdfAE_MINE(L.LightningModule):
             for key, value in splitted_loss.items():
                 self.log(f'val_{key}', value, prog_bar=True)
 
-            total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)            
-            for key, value in splitted_loss.items():
-                self.log(f'val_reconstruction_{key}', value, prog_bar=True)
+            # total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)            
+            # for key, value in splitted_loss.items():
+            #     self.log(f'val_reconstruction_{key}', value, prog_bar=True)
 
         elif dataloader_idx == 1:
             # total_loss = 0
@@ -1602,7 +1641,7 @@ class LitSdfAE_MINE(L.LightningModule):
     
     def configure_optimizers(self):
         vae_optimizer = torch.optim.AdamW(self.vae.parameters(), lr=self.learning_rate)
-        mine_optimizer = torch.optim.AdamW(self.mine.parameters(), lr=self.learning_rate)
+        mine_optimizer = torch.optim.AdamW(self.mine.parameters(), lr=self.critic_learning_rate)
 
         warmup_lr_lambda = lambda step: ((step + 1)%self.max_steps) / self.warmup_steps if step < self.warmup_steps else 1
         warmup_scheduler = LambdaLR(vae_optimizer, lr_lambda=warmup_lr_lambda)
@@ -1616,13 +1655,13 @@ class LitSdfAE_MINE(L.LightningModule):
                 schedulers=[
                     warmup_scheduler,
                     cosine_scheduler,
-                    warmup_scheduler,
-                    cosine_scheduler
+                    # warmup_scheduler,
+                    # cosine_scheduler
                 ],
                 milestones=[
                     self.warmup_steps,
-                    self.max_steps,
-                    self.max_steps + self.warmup_steps
+                    # self.max_steps,
+                    # self.max_steps + self.warmup_steps
                 ]
             ),
             'interval': 'step',

@@ -116,7 +116,7 @@ def main(args):
 
     # Training setup
     trainer = Trainer(
-        max_epochs=MAX_EPOCHS*2, # the first epoch for training all model, the second one for training rec decoder
+        max_epochs=MAX_EPOCHS, # the first epoch for training all model, the second one for training rec decoder
         accelerator='auto',
         devices=1,
         logger=TensorBoardLogger(
@@ -140,7 +140,7 @@ def main(args):
             # FirstEvalCallback()
         ],
         check_val_every_n_epoch=None,  # Disable validation every epoch
-        val_check_interval=20000  # Perform validation every 2000 training steps
+        val_check_interval=50000  # Perform validation every 2000 training steps
     )
 
     
@@ -161,16 +161,16 @@ def main(args):
 
     # Train the model
     trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
-    trainer.fit(vae_trainer, [train_loader, train_loader], val_dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
+    trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
     final_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
 
     # Save model weights
-    checkpoint_path = f'model_weights/{args.run_name}.ckpt'
+    checkpoint_path = f'model_weights/{run_name}.ckpt'
     trainer.save_checkpoint(checkpoint_path)
     print(f"Model weights saved to {checkpoint_path}")
 
     # Save just the model weights
-    model_weights_path = f'model_weights/{args.run_name}.pt'
+    model_weights_path = f'model_weights/{run_name}.pt'
     torch.save(vae_model.state_dict(), model_weights_path)
     print(f"Model weights saved to {model_weights_path}")
 
