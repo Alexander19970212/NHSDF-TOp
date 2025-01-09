@@ -731,10 +731,14 @@ def plot_feature_sdf_item(
     # Remove frame and ticks
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False) 
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
+    ax.spines['top'].set_linestyle((0, (10, 10)))  # 5 points on, 5 points off
+    ax.spines['top'].set_linewidth(2)
+    ax.spines['right'].set_linestyle((0, (10, 10)))
+    ax.spines['right'].set_linewidth(2)
+    ax.spines['bottom'].set_linestyle((0, (10, 10)))
+    ax.spines['bottom'].set_linewidth(2)
+    ax.spines['left'].set_linestyle((0, (10, 10)))
+    ax.spines['left'].set_linewidth(2)
 
     # Remove duplicate labels
     # handles, labels = plt.gca().get_legend_handles_labels()
@@ -744,5 +748,5 @@ def plot_feature_sdf_item(
     # plt.title('Triangle with Rounded Corners')
     plt.tight_layout()
     if filename:
-        plt.savefig(filename, bbox_inches='tight', pad_inches=0)
+        plt.savefig(filename, bbox_inches='tight', pad_inches=0.05)
     plt.show()
