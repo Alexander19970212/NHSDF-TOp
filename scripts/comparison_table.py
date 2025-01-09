@@ -6,35 +6,35 @@ def create_comparison_table():
 
     headers = ['val_sdf_loss/dataloader_idx_0',
             'val_tau_loss/dataloader_idx_0',
-            'val_reconstruction_reconstruction_loss/dataloader_idx_0',
+            'val_reg_loss/dataloader_idx_0',
             'val_smoothness_diff/dataloader_idx_1',
-            'val_tau_loss/dataloader_idx_2', 
-            'val_ort_std/dataloader_idx_2', 
-            'val_orig_std/dataloader_idx_2', 
-            'val_tau_std/dataloader_idx_2']
+            'val_mi_original/dataloader_idx_2', 
+            'val_mi_tau/dataloader_idx_2', 
+            'val_mi_ratio/dataloader_idx_2', 
+            'val_z_std_ratio/dataloader_idx_2',
+            'val_tau_loss/dataloader_idx_2'
+            ]
 
     import pandas as pd
 
     table_headers = [
-        'MSE_sdf', 'MSE_tau', 'MSE_reconstruction', 'smoothness_diff',
-        'MSE_tau', 'ort_std', 'orig_std', 'tau_std'
+        'MSE_sdf', 'MSE_tau', 'L_reg', 'smoothness_diff',
+        'MI_original', 'MI_tau', 'ratio_mi', 'ratio_std', 'MSE_tau_2'
     ]
 
     latex_table_headers = [
         r"$MSE_{sdf}$", r"$MSE_{\tau}$*",
-        r"$MSE_{\chi}$", r"Smooth",
-        r"$MSE_{\tau}$", r"orto",
-        r"$STD(Z_{\bar{\tau}})$", r"$STD(Z_{\bar{\tau}})$"
+        r"$L_{reg}$", r"Smooth",
+        r"$MI_{original}$", r"$MI_{\tau}$", r"ratio_{mi}", r"ratio_{std}", r"$MSE_{\tau}$"
     ]
 
     metrics_smaller_is_better = [
-        'MSE_sdf', 'MSE_tau', 'MSE_reconstruction',
-        'smoothness_diff', 'MSE_tau', 'ort_std', 'orig_std'
+        'MSE_sdf', 'MSE_tau', 'L_reg',
+        'smoothness_diff', 'MI_original', 'ratio_mi', 'ratio_std', 'MSE_tau_2'
     ]
 
-    metrics_larger_is_better = ['tau_std']
-
-    results_path = 'src/metrics.json'
+    metrics_larger_is_better = ['MI_tau']
+    results_path = 'src/metrics_critic_hyperparameters.json'
 
     with open(results_path, 'r') as file:
         results = json.load(file)

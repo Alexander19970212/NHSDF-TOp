@@ -491,3 +491,258 @@ def plot_sample_from_df(df, points_df, sample_index=0):
     plt.xlabel('x')
     plt.ylabel('y')
     plt.show()
+
+#########################################################################
+from triangle_sdf import generate_triangle
+from quadrangle_sdf import generate_quadrangle
+from ellipse_sdf import ellipse_sdf
+import matplotlib.tri as tri
+
+def plot_feature_sdf_item(
+        smooth_factor=40,
+        num_points=100,
+        scatter_cmap='viridis',
+        filename=None,
+        axes_length=1,
+        min_radius=0.1,
+        line_width=0.001,
+        sdf_threshold_min=0.001,
+        sdf_threshold_max=0.999,
+        feature_type='triangle',
+        text_size=45
+):
+    
+    # Create figure and axis
+    plt.figure(figsize=(8, 8))
+    ax = plt.gca()
+
+
+    if feature_type == 'triangle':
+        while True:
+            vertices = generate_triangle()
+            line_segments, arc_segments, arcs_intersection = (
+                get_rounded_polygon_segments_rand_radius(vertices, min_radius))
+            if arcs_intersection == False:
+                break
+
+    elif feature_type == 'quadrangle':
+        while True:
+            vertices = generate_quadrangle()
+            line_segments, arc_segments, arcs_intersection = (
+                get_rounded_polygon_segments_rand_radius(vertices, 0.1))
+            if arcs_intersection == False:
+                break
+
+    if feature_type == 'triangle' or feature_type == 'quadrangle':
+        perimeter, line_perimeter, arc_perimeter = compute_perimeter(line_segments, arc_segments)
+        # arc_ratio = arc_perimeter / perimeter
+        arc_radii = np.array([radius for _, _, _, radius in arc_segments])
+        vertces_list = []
+
+    if feature_type == 'triangle':
+        v1, v2, v3 = vertices
+        vertces_list.append(v1)
+        vertces_list.append(v2)
+        vertces_list.append(v3)
+        # Sample more points near the triangle
+        feature_center = (v1 + v2 + v3) / 3
+
+    elif feature_type == 'quadrangle':
+        v1, v2, v3, v4 = vertices
+        vertces_list.append(v1)
+        vertces_list.append(v2)
+        vertces_list.append(v3)
+        vertces_list.append(v4)
+        # Sample more points near the quadrangle
+        feature_center = (v1 + v2 + v3 + v4) / 4
+    else:
+        feature_center = np.array([0, 0])
+    
+    
+    # Gaussian sampling around the triangle
+    # points_gaussian = np.random.normal(loc=feature_center, scale=0.25, size=(num_points, 2))
+    # points_gaussian = np.clip(points_gaussian, -0.8, 0.8)
+
+    # if feature_type == 'triangle' or feature_type == 'quadrangle':
+    #     # Generate points in the vertices
+    #     points_in_vertices = []
+    #     for center, radius in zip(vertces_list, arc_radii):
+    #         points_in_circle = np.random.normal(loc=center, scale=0.2, size=(int(num_points/3), 2))
+    #         points_in_circle = np.clip(points_in_circle, -1, 1)
+    #         points_in_vertices.append(points_in_circle)
+        
+    #     points_in_vertices = np.vstack(points_in_vertices)
+
+    #     points = np.vstack([points_gaussian, points_in_vertices])
+    # else:
+    #     points = points_gaussian
+
+    point_per_side = int(np.sqrt(num_points))
+    x = np.linspace(-axes_length, axes_length, point_per_side)
+    y = np.linspace(-axes_length, axes_length, point_per_side)
+    X, Y = np.meshgrid(x, y)
+    points = np.array([X.flatten(), Y.flatten()]).T
+
+    # Remove points that are too close to each other
+
+    # min_distance = 0.05  # Minimum distance between points
+    # keep_indices = []
+    # for i in range(len(points)):
+    #     # If this point is already marked for removal, skip it
+    #     if i not in keep_indices:
+    #         # Calculate distances to all other points
+    #         distances = np.linalg.norm(points[i] - points, axis=1)
+    #         # Find points that are too close (excluding self)
+    #         close_points = np.where(distances < min_distance)[0]
+    #         # If this point hasn't been marked for removal yet, keep it and remove others
+    #         if not any(j in keep_indices for j in close_points):
+    #             keep_indices.append(i)
+        
+    # points = points[keep_indices]
+
+    if feature_type == 'triangle' or feature_type == 'quadrangle':
+        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
+    else:   
+        a = 0.5
+        b_w = np.random.uniform(0.5, 1.5)  # Semi-minor axis (smaller than a)
+        b = a * b_w
+        
+        sdf = ellipse_sdf(points, a, b)
+        sdf = 1/(1 + np.exp(smooth_factor*sdf))
+
+    points = points[sdf > sdf_threshold_min]
+    sdf = sdf[sdf > sdf_threshold_min]
+
+    points = points[sdf < sdf_threshold_max]
+    sdf = sdf[sdf < sdf_threshold_max]
+
+    # Plot points colored by SDF using pcolormesh
+    # x_unique = np.unique(points[:, 0])
+    # y_unique = np.unique(points[:, 1])
+    # X, Y = np.meshgrid(x_unique, y_unique)
+    # Z = sdf.reshape(len(y_unique), len(x_unique))
+    # Create triangulation from points
+    # Create triangulation with max edge length constraint to avoid large triangles
+    triang = tri.Triangulation(points[:, 0], points[:, 1])
+    # Remove triangles with edges longer than threshold
+    max_edge_length = 0.1  # Adjust this threshold as needed
+    triangles = triang.triangles
+    x = triang.x
+    y = triang.y
+    mask = np.ones(len(triangles), dtype=bool)
+    
+    for i, triangle in enumerate(triangles):
+        # Get vertices of triangle
+        verts = np.column_stack((x[triangle], y[triangle]))
+        # Calculate edge lengths
+        edges = np.roll(verts, -1, axis=0) - verts
+        edge_lengths = np.sqrt(np.sum(edges**2, axis=1))
+        # Mask triangles with long edges
+        if np.any(edge_lengths > max_edge_length):
+            mask[i] = False
+            
+    triang.set_mask(~mask)
+    mesh = ax.tripcolor(triang, sdf, cmap=scatter_cmap, shading='gouraud')
+    # 'PiYG'
+
+    if feature_type == 'triangle' or feature_type == 'quadrangle':
+        # Plot dashed lines between vertices
+        # Extract x and y coordinates from vertices
+        x_coords = [v[0] for v in vertices]
+        y_coords = [v[1] for v in vertices]
+        # Add first vertex again to close the polygon
+        x_coords.append(vertices[0][0])
+        y_coords.append(vertices[0][1])
+        ax.plot(x_coords, y_coords, 'k--', alpha=0.5)
+    
+    # Add coordinate axes
+    ax.arrow(x=-axes_length*0.75, y=0, dx=2*axes_length*0.75, dy=0, color='k', alpha=0.3, linewidth=1.5, head_width=0.05, head_length=0.05, length_includes_head=True)
+    ax.arrow(x=0, y=-axes_length*0.75, dx=0, dy=2*axes_length*0.75, color='k', alpha=0.3, linewidth=1.5, head_width=0.05, head_length=0.05, length_includes_head=True)
+
+    if feature_type == 'triangle' or feature_type == 'quadrangle':
+        # Plot vertices and labels
+        v_x = [v[0] for v in vertices]
+        v_y = [v[1] for v in vertices]
+        ax.scatter(v_x, v_y, color='black', marker='+', s=600, zorder=50, linewidth=6)
+        ax.scatter(v_x, v_y, color='darkgreen', marker='+', s=400, zorder=50, linewidth=3)
+
+        ax.text(v1[0]+0.035, v1[0]-0.035, '$v_1, R_1$', fontsize=text_size, ha='left', va='top', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+        ax.text(v2[0]-0.04, v2[1]-0.035, '$v_2, R_2$', fontsize=text_size, ha='right', va='top', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+        ax.text(v3[0]-0.035, v3[1]+0.035, '$v_3, R_3$', fontsize=text_size, ha='left', va='bottom', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+        if feature_type == 'quadrangle':
+            ax.text(v4[0]+0.04, v4[1]+0.035, '$v_4, R_4$', fontsize=text_size, ha='left', va='bottom', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+
+        # Plot line segments
+        for start, end in line_segments:
+            ax.plot([start[0], end[0]], [start[1], end[1]], 'g-', label='Line segments', linewidth=line_width)
+
+        # Plot arc segments
+        for center, start_angle, end_angle, radius in arc_segments:
+            # Calculate angles for arc
+            
+            # Ensure we draw the shorter arc
+            if abs(end_angle - start_angle) > np.pi:
+                if end_angle > start_angle:
+                    start_angle += 2*np.pi
+                else:
+                    end_angle += 2*np.pi
+                    
+            # Create points along arc
+            theta = np.linspace(start_angle, end_angle, 100)
+            x = center[0] + radius * np.cos(theta)
+            y = center[1] + radius * np.sin(theta)
+            ax.plot(x, y, 'r-', label='Arc segments', linewidth=line_width)
+
+    if feature_type == 'ellipse':
+        # Create ellipse patch
+        from matplotlib.patches import Ellipse
+        ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='r', linewidth=line_width)
+        
+        ax.add_patch(ellipse)
+
+        # Add dimension lines for semi-major and semi-minor axes
+        # Semi-major axis (a)
+        ax.plot([0, a+0.03], [-b, -b], 'k:', linewidth=1.5)
+        # ax.plot([-a, 0], [0, 0], 'k:', linewidth=1.5)
+        # ax.text(a/2, 0.05, 'a', fontsize=20, ha='center', va='bottom')
+        
+        # Semi-minor axis (b) 
+        ax.annotate('', xy=(a+0.03, -b), xytext=(a+0.03, 0), arrowprops=dict(arrowstyle='<->', linestyle='--', linewidth=2.5, color='k', mutation_scale=25))
+        # ax.plot([0, 0], [-b, 0], 'k:', linewidth=1.5)
+        # ax.text(a, - b/2, 'b', fontsize=20, ha='left', va='center')
+        label_b = ax.text(a+0.065, - b/2, 'b', fontsize=text_size, ha='left', va='center', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+        # label_b.set_bbox(dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+        
+        # Add small ticks at ends
+        # tick_size = 0.02
+        # a-axis ticks
+        # ax.plot([a, a], [-tick_size, tick_size], 'k-', linewidth=1.5)
+        # ax.plot([-a, -a], [-tick_size, tick_size], 'k-', linewidth=1.5)
+        # # b-axis ticks
+        # ax.plot([-tick_size, tick_size], [b, b], 'k-', linewidth=1.5)
+        # ax.plot([-tick_size, tick_size], [-b, -b], 'k-', linewidth=1.5)
+
+
+    # Set equal aspect ratio and limits
+    ax.set_aspect('equal')
+    ax.set_xlim(-axes_length*0.8, axes_length*0.8)
+    ax.set_ylim(-axes_length*0.8, axes_length*0.8)
+
+    # Remove frame and ticks
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False) 
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+
+    # Remove duplicate labels
+    # handles, labels = plt.gca().get_legend_handles_labels()
+    # by_label = dict(zip(labels, handles))
+    # plt.legend(by_label.values(), by_label.keys())
+
+    # plt.title('Triangle with Rounded Corners')
+    plt.tight_layout()
+    if filename:
+        plt.savefig(filename, bbox_inches='tight', pad_inches=0)
+    plt.show()
