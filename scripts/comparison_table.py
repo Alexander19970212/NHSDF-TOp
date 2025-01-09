@@ -35,7 +35,8 @@ def create_comparison_table():
 
     metrics_larger_is_better = ['MI_tau']
     # results_path = 'src/metrics_critic_hyperparameters.json'
-    results_path = 'src/metrics_critic_lr.json'
+    # results_path = 'src/metrics_critic_lr.json'
+    results_path = 'src/metrics_model_arch_minMI.json'
 
     with open(results_path, 'r') as file:
         results = json.load(file)
