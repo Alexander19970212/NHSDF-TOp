@@ -661,6 +661,7 @@ class VAE(nn.Module):
         self.tau_loss_weight = tau_loss_weight
         self.orthogonality_loss_weight = orthogonality_loss_weight
         self.kl_weight = kl_weight
+        self.latent_dim = latent_dim
 
         if orthogonality_loss_type is None:
             self.orthogonality_loss = None
