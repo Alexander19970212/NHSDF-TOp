@@ -8,7 +8,7 @@ model:
     orthogonality_loss_weight: 0.1
     regularization: None
     orthogonality_loss_type: None
-    reg_weight: 0.001
+    reg_weight: 0.1
     mmd_weight: 0.01
 
 trainer:

@@ -9,7 +9,7 @@ model:
     orthogonality_loss_type: None
     regularization: None
     kl_weight: 0.1
-    reg_weight: 0.001
+    reg_weight: 0.1
 
 trainer:
   type: LitSdfAE_MINE
