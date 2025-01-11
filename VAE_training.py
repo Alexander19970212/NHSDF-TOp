@@ -129,7 +129,7 @@ def main(args):
     trainer = Trainer(
         max_epochs=MAX_EPOCHS, # the first epoch for training all model, the second one for training rec decoder
         accelerator='auto',
-        devices=4,
+        devices=1,
         logger=TensorBoardLogger(
             name='VAEi', 
             save_dir='./logs', 
