@@ -666,11 +666,16 @@ def plot_feature_sdf_item(
         ax.scatter(v_x, v_y, color='black', marker='+', s=600, zorder=50, linewidth=6)
         ax.scatter(v_x, v_y, color='darkgreen', marker='+', s=400, zorder=50, linewidth=3)
 
-        ax.text(v1[0]+0.035, v1[0]-0.035, '$v_1, R_1$', fontsize=text_size, ha='left', va='top', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
-        ax.text(v2[0]-0.04, v2[1]-0.035, '$v_2, R_2$', fontsize=text_size, ha='right', va='top', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
-        ax.text(v3[0]-0.035, v3[1]+0.035, '$v_3, R_3$', fontsize=text_size, ha='left', va='bottom', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+        if feature_type == 'triangle':
+            ax.text(v1[0]+0.035, v1[0]-0.035, '$v_1, R_1$', fontsize=text_size, ha='left', va='top', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+            ax.text(v2[0]-0.04, v2[1]-0.035, '$v_2, R_2$', fontsize=text_size, ha='right', va='top', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+            ax.text(v3[0]-0.035, v3[1]+0.035, '$v_3, R_3$', fontsize=text_size, ha='left', va='bottom', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+           
         if feature_type == 'quadrangle':
-            ax.text(v4[0]+0.04, v4[1]+0.035, '$v_4, R_4$', fontsize=text_size, ha='left', va='bottom', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+            ax.text(v1[0]+0.035, v1[0]-0.035, '$v_4, R_4$', fontsize=text_size, ha='left', va='top', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+            ax.text(v2[0]-0.04, v2[1]-0.035, '$v_5, R_5$', fontsize=text_size, ha='right', va='top', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+            ax.text(v3[0]-0.035, v3[1]+0.035, '$v_6, R_6$', fontsize=text_size, ha='left', va='bottom', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+            ax.text(v4[0]+0.04, v4[1]+0.035, '$v_7, R_7$', fontsize=text_size, ha='left', va='bottom', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
 
         # Plot line segments
         for start, end in line_segments:
