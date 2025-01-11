@@ -4,7 +4,7 @@
 
 CONFIG_DIR="configs/NN_sdf_experiments/critic_lr2"
 DATASET_PATH="shape_datasets"
-METRICS_FILE="src/metrics_critic_lr.json"
+METRICS_FILE="src/metrics_critic_lr2.json"
 MAX_EPOCHS=1  # Adjust as needed
 
 for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do
