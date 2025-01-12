@@ -57,7 +57,7 @@ def main(args):
     dataset_path = args.dataset_path
     configs_dir = args.config_dir
     config_name = args.config_name
-    run_name = f'uba_{config_name}_2'
+    run_name = f'uba_{config_name}'
 
     dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_5000.csv',
                     f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_5000.csv', 

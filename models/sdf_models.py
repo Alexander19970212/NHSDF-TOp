@@ -45,6 +45,11 @@ def orthogonality_metrics(z, target, tau_latent_dim):
     z_original_std = torch.std(z_original, dim=0)
     z_tau_std = torch.std(z_tau, dim=0)
 
+    # print("z_original", z_original)
+    # print("z_tau", z_tau)
+
+    # print("Target", target)
+
     mi_original = mutual_info_regression(z_original.detach().cpu().numpy(), target.detach().cpu().numpy())
     mi_tau = mutual_info_regression(z_tau.detach().cpu().numpy(), target.detach().cpu().numpy())
 
@@ -54,8 +59,13 @@ def orthogonality_metrics(z, target, tau_latent_dim):
         'z_original_std': z_original_std.mean(),
         'z_tau_std': z_tau_std.mean(),
         'z_std_ratio': z_original_std.mean() / z_tau_std.mean(),
-        'mi_ratio': mi_original.mean() / mi_tau.mean()
+        # 'mi_ratio': mi_original.mean() / mi_tau.mean()
     }
+
+    if mi_tau.mean() != 0:
+        metrics['mi_ratio'] = mi_original.mean() / mi_tau.mean()
+    # else:
+        # metrics['mi_ratio'] = 0
 
     return metrics
 
@@ -758,6 +768,7 @@ class VAE(nn.Module):
             mu (Tensor): Mean of the latent distribution.
             log_var (Tensor): Log variance of the latent distribution.
         """
+
         h = self.encoder(x)
         mu = self.fc_mu(h)
         log_var = self.fc_logvar(h)
@@ -774,9 +785,15 @@ class VAE(nn.Module):
         Returns:
             z (Tensor): Sampled latent vector.
         """
-        std = torch.exp(0.5 * log_var)
-        eps = torch.randn_like(std)
-        return mu + eps * std
+        # std = torch.exp(0.5 * log_var)
+        # eps = torch.randn_like(std)
+
+
+        std = log_var.mul(0.5).exp_()
+        eps = std.data.new(std.size()).normal_()
+        return eps.mul(std).add_(mu)
+
+        # return mu + eps * std
 
     def forward(self, x, reconstruction=False):
         """
@@ -864,7 +881,10 @@ class VAE(nn.Module):
             orthogonality_loss = 0
 
         # KL Divergence loss
-        kl_divergence = -0.5 * torch.mean(1 + log_var - mu.pow(2) - log_var.exp())
+        # kl_divergence = -0.5 * torch.mean(1 + log_var - mu.pow(2) - log_var.exp())
+
+        kl_divergence = -0.5 * (1 + log_var - mu ** 2 - log_var.exp()).sum(1).mean()
+
         # print(self.kl_weight)
         # print(f"kl_divergence: {kl_divergence}")
 
@@ -1425,6 +1445,8 @@ class LitSdfAE_MINE(L.LightningModule):
         super().__init__()
         self.vae = vae_model
         self.mine = MINE_Critic(self.vae.latent_dim - self.vae.tau_latent_dim, 1)
+        self.mine_tau = MINE_Critic(self.vae.tau_latent_dim, 1)
+
         self.learning_rate = learning_rate
         self.critic_learning_rate = critic_learning_rate
         self.reg_weight = reg_weight
@@ -1450,7 +1472,7 @@ class LitSdfAE_MINE(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
 
-        vae_optimizer, mine_optimizer = self.optimizers()
+        vae_optimizer, mine_optimizer, mine_tau_optimizer = self.optimizers()
 
         # epoch = self.current_epoch
         # dataloader_idx = epoch % 2
@@ -1470,8 +1492,11 @@ class LitSdfAE_MINE(L.LightningModule):
         total_loss, splitted_loss = self.vae.loss_function(loss_args)
 
         info_xz = self.estimate_mi(output["z"][:, self.vae.tau_latent_dim:], tau)
+        info_xz_tau = self.estimate_mi_tau(output["z"][:, :self.vae.tau_latent_dim], tau)
         splitted_loss["info_xz"] = info_xz
+        splitted_loss["info_xz_tau"] = info_xz_tau
         total_loss -= self.info_weight * info_xz
+        total_loss += self.info_weight * info_xz_tau
 
         vae_optimizer.zero_grad()
         # self.manual_backward(total_loss)
@@ -1483,6 +1508,12 @@ class LitSdfAE_MINE(L.LightningModule):
         # self.manual_backward(info_xz)
         info_xz.backward(inputs=list(self.mine.parameters()))
         mine_optimizer.step()
+
+        mine_tau_optimizer.zero_grad()
+        info_xz_tau = self.estimate_mi_tau(output["z"][:, :self.vae.tau_latent_dim], tau)
+        # self.manual_backward(info_xz_tau)
+        info_xz_tau.backward(inputs=list(self.mine_tau.parameters()))
+        mine_tau_optimizer.step()
 
         # else:
         #     if self.reconstruction_decoder_training==False:
@@ -1499,9 +1530,15 @@ class LitSdfAE_MINE(L.LightningModule):
         for key, value in splitted_loss.items():
             self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
 
-        sch1, sch2 = self.lr_schedulers()
+        sch1, sch2, sch3 = self.lr_schedulers()
         sch1.step()
         sch2.step()
+        sch3.step()
+
+        # Log learning rates
+        self.log('lr_vae', vae_optimizer.param_groups[0]['lr'], prog_bar=True)
+        self.log('lr_mine', mine_optimizer.param_groups[0]['lr'], prog_bar=True) 
+        self.log('lr_mine_tau', mine_tau_optimizer.param_groups[0]['lr'], prog_bar=True)
 
         return total_loss
 
@@ -1640,10 +1677,23 @@ class LitSdfAE_MINE(L.LightningModule):
 
         return info_xz
     
+    def estimate_mi_tau(self, z, tau):
+        # pass x_true and learned features z from the discriminator
+        d_xz = self.mine_tau(z, tau)
+
+        z_perm = permute_dims(z)
+        d_x_z = self.mine_tau(z_perm, tau)
+
+        # TODO: check if this is correct
+
+        info_xz = -(d_xz.mean() - (torch.exp(d_x_z - 1).mean()))
+
+        return info_xz
+    
     def configure_optimizers(self):
         vae_optimizer = torch.optim.AdamW(self.vae.parameters(), lr=self.learning_rate)
         mine_optimizer = torch.optim.AdamW(self.mine.parameters(), lr=self.critic_learning_rate)
-
+        mine_tau_optimizer = torch.optim.AdamW(self.mine_tau.parameters(), lr=self.critic_learning_rate)
         warmup_lr_lambda = lambda step: ((step + 1)%self.max_steps) / self.warmup_steps if step < self.warmup_steps else 1
         warmup_scheduler = LambdaLR(vae_optimizer, lr_lambda=warmup_lr_lambda)
 
@@ -1678,4 +1728,13 @@ class LitSdfAE_MINE(L.LightningModule):
             'frequency': 1
         }
 
-        return [vae_optimizer, mine_optimizer], [vae_scheduler, mine_scheduler]
+        mine_tau_scheduler = {  
+            'scheduler': LambdaLR(
+                mine_tau_optimizer,
+                lr_lambda=lambda step: 1.0 - (step / self.max_steps)
+            ),
+            'interval': 'step',
+            'frequency': 1
+        }
+
+        return [vae_optimizer, mine_optimizer, mine_tau_optimizer], [vae_scheduler, mine_scheduler, mine_tau_scheduler]
