@@ -37,7 +37,7 @@ def create_comparison_table():
     # results_path = 'src/metrics_critic_hyperparameters.json'
     # results_path = 'src/metrics_critic_lr.json'
     # results_path = 'src/metrics_model_arch_minMI.json'
-    results_path = 'src/metrics_model_arch_minmi_l2.json'
+    results_path = 'src/metrics_critic_minmax_lr.json'
 
     with open(results_path, 'r') as file:
         results = json.load(file)
