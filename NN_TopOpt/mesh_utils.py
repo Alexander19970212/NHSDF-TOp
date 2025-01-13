@@ -78,7 +78,7 @@ class LoadedMesh2D:
         print('Whole area', self.areas.sum())
 
     def plot(self):
-        fig = plt.figure(figsize=(12, 4))
+        fig = plt.figure()
         x = self.q[:, 0]
         y = self.q[:, 1]
         triangulation = mtri.Triangulation(x.ravel(), y.ravel(), self.me)
@@ -89,25 +89,24 @@ class LoadedMesh2D:
         plt.show()
 
     def plot_topology(self, xPhys, filename=None):
-        fig = plt.figure(figsize=(12, 4))
+        # fig = plt.figure(figsize=(12, 4))
+        
         x = self.q[:, 0]
         y = self.q[:, 1]
         triangulation = mtri.Triangulation(x.ravel(), y.ravel(), self.me)
-        # plt.scatter(x, y, color='red')
-        # plt.triplot(triangulation, mask = x > 0.5) #, 'g-h')
-        plt.tripcolor(triangulation, facecolors=xPhys)
+        fig = plt.figure(figsize=(6, 6 * (y.max() / x.max())))
+        
+        plt.xlim(0, x.max())
+        plt.ylim(0, y.max())
+        plt.tripcolor(triangulation, facecolors=xPhys, cmap='gray_r')
         plt.axis('equal')
-        if filename != None:
-            # plt.gca().set_position([0, 0, 1, 1])
+
+        if filename is not None:
             plt.gca().set_axis_off()
-            plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0)
-            plt.margins(0,0)
+            plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+            plt.margins(0, 0)
             plt.axis('off')
-            # ax.axis('off')
-            # ax.margins(0,0)
-            # ax.xaxis.set_major_locator(plt.NullLocator())
-            # ax.yaxis.set_major_locator(plt.NullLocator())
-            plt.savefig(filename, bbox_inches='tight', pad_inches=0)
+            plt.savefig(filename, bbox_inches='tight', pad_inches=0, transparent=True)
         plt.show()
 
     def plot_displacement(self, u):

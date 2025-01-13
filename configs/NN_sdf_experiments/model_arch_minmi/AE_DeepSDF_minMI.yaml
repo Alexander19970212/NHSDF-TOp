@@ -18,4 +18,4 @@ trainer:
     reg_weight: 0.1
     regularization: l2
     warmup_steps: 1000
-    info_weight: 1
+    info_weight: 100
