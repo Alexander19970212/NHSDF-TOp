@@ -1437,6 +1437,7 @@ class MINE_Critic(nn.Module):
         out = F.relu(self.fc1(joint))
         out = F.relu(self.fc2(out))
         score = self.fc3(out)
+        score = torch.sigmoid(score)
         return score
     
 class LitSdfAE_MINE(L.LightningModule):
