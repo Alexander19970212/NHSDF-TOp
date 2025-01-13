@@ -4,7 +4,7 @@
 
 CONFIG_DIR="configs/NN_sdf_experiments/model_arch_minmi2"
 DATASET_PATH="shape_datasets"
-METRICS_FILE="src/metrics_model_arch_minMI.json"
+METRICS_FILE="src/metrics_model_arch_minMaxMI.json"
 MAX_EPOCHS=1  # Adjust as needed
 
 for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do

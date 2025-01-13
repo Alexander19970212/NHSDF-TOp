@@ -88,7 +88,7 @@ class LoadedMesh2D:
         plt.axis('equal')
         plt.show()
 
-    def plot_topology(self, xPhys, fname=None):
+    def plot_topology(self, xPhys, filename=None):
         fig = plt.figure(figsize=(12, 4))
         x = self.q[:, 0]
         y = self.q[:, 1]
@@ -97,8 +97,17 @@ class LoadedMesh2D:
         # plt.triplot(triangulation, mask = x > 0.5) #, 'g-h')
         plt.tripcolor(triangulation, facecolors=xPhys)
         plt.axis('equal')
-        if fname != None:
-            plt.savefig(fname)
+        if filename != None:
+            # plt.gca().set_position([0, 0, 1, 1])
+            plt.gca().set_axis_off()
+            plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0)
+            plt.margins(0,0)
+            plt.axis('off')
+            # ax.axis('off')
+            # ax.margins(0,0)
+            # ax.xaxis.set_major_locator(plt.NullLocator())
+            # ax.yaxis.set_major_locator(plt.NullLocator())
+            plt.savefig(filename, bbox_inches='tight', pad_inches=0)
         plt.show()
 
     def plot_displacement(self, u):

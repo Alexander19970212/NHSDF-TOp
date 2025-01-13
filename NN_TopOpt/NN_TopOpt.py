@@ -266,7 +266,7 @@ class FeatureMappingTopOpt:
         with open('test_problems/problems.json', 'w') as f:
             json.dump(problem_list, f)
 
-from models.sdf_models import AE_DeepSDF, Decoder_loss, AE_DeepSDF_explicit_radius
+from models.sdf_models import AE_DeepSDF
 from models.rs_loss_models import RSLossPredictorResNet50
 
 class FeatureMappingDecSDF(torch.nn.Module):

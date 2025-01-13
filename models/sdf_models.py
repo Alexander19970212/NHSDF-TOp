@@ -64,8 +64,8 @@ def orthogonality_metrics(z, target, tau_latent_dim):
 
     if mi_tau.mean() != 0:
         metrics['mi_ratio'] = mi_original.mean() / mi_tau.mean()
-    # else:
-        # metrics['mi_ratio'] = 0
+    else:
+        metrics['mi_ratio'] = 100
 
     return metrics
 
