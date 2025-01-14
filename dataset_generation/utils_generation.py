@@ -450,7 +450,7 @@ def points_to_line_distance(points, line_start, line_end): # +|
     dist = np.linalg.norm(points - nearest, axis=1)
     return dist
 
-def signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=40): # + |
+def signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=40, heaviside=True): # + |
     distances = []
     for line_segment in line_segments:
         distances.append(points_to_line_distance(points, line_segment[0], line_segment[1]))
@@ -467,7 +467,10 @@ def signed_distance_polygon(points, line_segments, arc_segments, vertices, smoot
     inside_grid, middle_points_intermideate_line_segments = if_points_in_polygon(points, line_segments, arc_segments, vertices)
 
     min_distances[~inside_grid] = -min_distances[~inside_grid]
-    return 1/(1 + np.exp(-smooth_factor*min_distances))
+    if heaviside:
+        return 1/(1 + np.exp(-smooth_factor*min_distances))
+    else:
+        return min_distances
 
 # Plot a sample from the generated DataFrame
 def plot_sample_from_df(df, points_df, sample_index=0):
@@ -497,7 +500,7 @@ from triangle_sdf import generate_triangle
 from quadrangle_sdf import generate_quadrangle
 from ellipse_sdf import ellipse_sdf
 import matplotlib.tri as tri
-
+from matplotlib.colors import TwoSlopeNorm
 def plot_feature_sdf_item(
         smooth_factor=40,
         num_points=100,
@@ -751,6 +754,198 @@ def plot_feature_sdf_item(
     # plt.legend(by_label.values(), by_label.keys())
 
     # plt.title('Triangle with Rounded Corners')
+    plt.tight_layout()
+    if filename:
+        plt.savefig(filename, bbox_inches='tight', pad_inches=0.05)
+    plt.show()
+
+def plot_sdf_heav_item(
+        smooth_factor=40,
+        num_points=100,
+        scatter_cmap='viridis',
+        filename=None,
+        axes_length=1,
+        min_radius=0.1,
+        line_width=0.001,
+        sdf_threshold_min=0.001,
+        sdf_threshold_max=0.999,
+        feature_type='triangle',
+        text_size=45,
+        azimuth=75,
+        elev=21
+):
+    
+    # # Create figure and axis
+    # plt.figure(figsize=(8, 8))
+    # ax = plt.gca()
+
+
+    if feature_type == 'triangle':
+        while True:
+            vertices = generate_triangle()
+            line_segments, arc_segments, arcs_intersection = (
+                get_rounded_polygon_segments_rand_radius(vertices, min_radius))
+            if arcs_intersection == False:
+                break
+
+    elif feature_type == 'quadrangle':
+        while True:
+            vertices = generate_quadrangle()
+            line_segments, arc_segments, arcs_intersection = (
+                get_rounded_polygon_segments_rand_radius(vertices, 0.1))
+            if arcs_intersection == False:
+                break
+
+    if feature_type == 'triangle' or feature_type == 'quadrangle':
+        perimeter, line_perimeter, arc_perimeter = compute_perimeter(line_segments, arc_segments)
+        # arc_ratio = arc_perimeter / perimeter
+        arc_radii = np.array([radius for _, _, _, radius in arc_segments])
+        vertces_list = []
+
+    if feature_type == 'triangle':
+        v1, v2, v3 = vertices
+        vertces_list.append(v1)
+        vertces_list.append(v2)
+        vertces_list.append(v3)
+        # Sample more points near the triangle
+        feature_center = (v1 + v2 + v3) / 3
+
+    elif feature_type == 'quadrangle':
+        v1, v2, v3, v4 = vertices
+        vertces_list.append(v1)
+        vertces_list.append(v2)
+        vertces_list.append(v3)
+        vertces_list.append(v4)
+        # Sample more points near the quadrangle
+        feature_center = (v1 + v2 + v3 + v4) / 4
+    else:
+        feature_center = np.array([0, 0])
+    
+
+
+    point_per_side = int(np.sqrt(num_points))
+    x = np.linspace(-axes_length, axes_length, point_per_side)
+    y = np.linspace(-axes_length, axes_length, point_per_side)
+    X, Y = np.meshgrid(x, y)
+    points = np.array([X.flatten(), Y.flatten()]).T
+
+
+    if feature_type == 'triangle' or feature_type == 'quadrangle':
+        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor, heaviside=False)
+        heaviside = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor, heaviside=True)
+    else:   
+        a = 0.5
+        b_w = np.random.uniform(0.5, 1.5)  # Semi-minor axis (smaller than a)
+        b = a * b_w
+        
+        sdf = ellipse_sdf(points, a, b)
+        heaviside = 1/(1 + np.exp(smooth_factor*sdf))
+
+    fig = plt.figure(figsize=(12, 4))
+
+    # First subplot: 2D Feature Contour
+    ax1 = fig.add_subplot(1, 3, 1)
+    # Second subplot: 3D Surface of SDF
+    from mpl_toolkits.mplot3d import Axes3D  # Ensure 3D plotting is available
+    ax2 = fig.add_subplot(1, 3, 2, projection='3d')
+
+    # azimuth, elev = 75, 21
+    ax2.view_init(elev, azimuth)
+
+    triang1 = tri.Triangulation(points[:, 0], points[:, 1])
+    # Adjust the colormap to center around 0
+    norm = TwoSlopeNorm(vcenter=0, vmin=sdf.min(), vmax=sdf.max())
+    mesh1 = ax1.tripcolor(triang1, sdf, cmap=scatter_cmap, shading='gouraud', norm=norm)
+
+    X = points[:, 0].reshape((point_per_side, point_per_side))
+    Y = points[:, 1].reshape((point_per_side, point_per_side))
+    Z = sdf.reshape((point_per_side, point_per_side))
+    # Adjust the colormap to center around 0
+    z_offset = 0.05
+
+    if feature_type == 'triangle' or feature_type == 'quadrangle':
+
+        # Plot line segments
+        for start, end in line_segments:
+            ax1.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=line_width)
+            # ax2.plot([start[0], end[0]], [start[1], end[1]], [z_offset, z_offset], 'g-', linewidth=line_width)
+
+        # Plot arc segments
+        for center, start_angle, end_angle, radius in arc_segments:
+            # Calculate angles for arc
+            
+            # Ensure we draw the shorter arc
+            if abs(end_angle - start_angle) > np.pi:
+                if end_angle > start_angle:
+                    start_angle += 2*np.pi
+                else:
+                    end_angle += 2*np.pi
+                    
+            # Create points along arc
+            theta = np.linspace(start_angle, end_angle, 100)
+            x = center[0] + radius * np.cos(theta)
+            y = center[1] + radius * np.sin(theta)
+            ax1.plot(x, y, 'r-', linewidth=line_width)
+            # ax2.plot(x, y, np.zeros_like(x)+z_offset, 'r-', linewidth=line_width)
+
+        # Plot the surface after plotting the segments to ensure they are not obscured
+        surf1 = ax2.plot_surface(X, Y, Z, cmap=scatter_cmap, edgecolor='none', alpha=1, norm=norm)
+
+            
+    if feature_type == 'ellipse':
+        # Create ellipse patch
+        from matplotlib.patches import Ellipse
+        ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='r', linewidth=line_width)
+        
+        ax1.add_patch(ellipse)
+
+        # Add dimension lines for semi-major and semi-minor axes
+        # Semi-major axis (a)
+        ax1.plot([0, a+0.03], [-b, -b], 'k:', linewidth=1.5)
+        
+        # Semi-minor axis (b) 
+        ax1.annotate('', xy=(a+0.03, -b), xytext=(a+0.03, 0), arrowprops=dict(arrowstyle='<->', linestyle='--', linewidth=2.5, color='k', mutation_scale=25))
+        label_b = ax1.text(a+0.065, - b/2, 'b', fontsize=text_size, ha='left', va='center', bbox=dict(facecolor='white', edgecolor='black', alpha=0.9, linewidth=2))
+
+    # Set equal aspect ratio and limits for 2D contour
+    ax1.set_aspect('equal')
+    ax1.set_xlim(-axes_length, axes_length)
+    ax1.set_ylim(-axes_length, axes_length)
+    ax1.set_title('Feature Contour', fontsize=text_size)
+
+    # Remove frame and ticks for 2D contour
+    # ax1.set_xticks([])
+    # ax1.set_yticks([])
+    # ax1.spines['top'].set_visible(False)
+    # ax1.spines['right'].set_visible(False)
+    # ax1.spines['bottom'].set_visible(False)
+    # ax1.spines['left'].set_visible(False)
+
+    
+    
+    ax2.set_title('SDF Surface', fontsize=text_size)
+    ax2.set_xlabel('X', fontsize=8)
+    ax2.set_ylabel('Y', fontsize=8)
+    # ax2.set_zlabel('SDF', fontsize=8)
+    ax2.set_xlim(-axes_length, axes_length)
+    ax2.set_ylim(-axes_length, axes_length)
+    ax2.set_xticks(np.linspace(-axes_length, axes_length, 5))  # Make ticks more rare
+    ax2.set_yticks(np.linspace(-axes_length, axes_length, 5))  # Make ticks more rare
+
+    # Third subplot: 3D Surface with Heaviside
+    ax3 = fig.add_subplot(1, 3, 3, projection='3d')
+    ax3.view_init(elev, azimuth)
+    H = heaviside.reshape((point_per_side, point_per_side))
+    surf2 = ax3.plot_surface(X, Y, H, cmap=scatter_cmap, edgecolor='none', alpha=0.8)
+    ax3.set_title('Heaviside Surface', fontsize=text_size)
+    ax3.set_xlabel('X', fontsize=8)
+    ax3.set_ylabel('Y', fontsize=8)
+    # ax3.set_zlabel('Heaviside', fontsize=8)
+    ax3.set_xlim(-axes_length, axes_length)
+    ax3.set_ylim(-axes_length, axes_length)
+    ax3.set_xticks(np.linspace(-axes_length, axes_length, 5))  # Make ticks more rare
+    ax3.set_yticks(np.linspace(-axes_length, axes_length, 5))  # Make ticks more rare
+
     plt.tight_layout()
     if filename:
         plt.savefig(filename, bbox_inches='tight', pad_inches=0.05)
