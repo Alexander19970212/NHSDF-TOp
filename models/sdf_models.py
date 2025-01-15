@@ -703,10 +703,17 @@ class VAE(nn.Module):
             nn.Linear(hidden_dim, hidden_dim * 2),
             nn.BatchNorm1d(hidden_dim * 2),
             nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim * 4),
+            nn.BatchNorm1d(hidden_dim * 4),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 4, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim * 2, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
             nn.LeakyReLU(0.2),
-            nn.Linear(hidden_dim, input_dim-2)
+            nn.Linear(hidden_dim, input_dim - 2),
+            nn.Tanh()
         )
 
         # Decoder for SDF prediction
@@ -1739,3 +1746,78 @@ class LitSdfAE_MINE(L.LightningModule):
         }
 
         return [vae_optimizer, mine_optimizer, mine_tau_optimizer], [vae_scheduler, mine_scheduler, mine_tau_scheduler]
+
+class LitSdfAE_Reconstruction(L.LightningModule):
+    def __init__(self, vae_model, learning_rate=1e-4, critic_learning_rate=1e-4, reg_weight=1e-4,
+                 info_weight=1e-2, regularization=None, warmup_steps=1000, max_steps=10000):
+        super().__init__()
+        self.vae = vae_model
+
+        self.learning_rate = learning_rate
+        self.warmup_steps = warmup_steps
+        self.max_steps = max_steps
+
+        self.freezing_weights()
+
+        self.save_hyperparameters(logger=True)
+
+    def freezing_weights(self):
+        for param in self.vae.parameters():
+            param.requires_grad = False
+
+        for param in self.vae.decoder_input.parameters():
+            param.requires_grad = True
+
+    def forward(self, x):
+        return self.vae(x)
+
+    def training_step(self, batch, batch_idx):
+        x, sdf, tau = batch
+
+        output = self.vae(x, reconstruction=True)
+        total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)
+
+        for key, value in splitted_loss.items():
+            self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
+
+        return total_loss
+
+    def validation_step(self, batch, batch_idx):
+        
+        x, sdf, tau = batch
+        output = self.vae(x, reconstruction=True)
+
+        total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)
+
+        for key, value in splitted_loss.items():
+            self.log(f'val_{key}', value, prog_bar=True)
+
+    
+    def configure_optimizers(self):
+        vae_optimizer = torch.optim.AdamW(self.vae.parameters(), lr=self.learning_rate)
+        warmup_lr_lambda = lambda step: ((step + 1)%self.max_steps) / self.warmup_steps if step < self.warmup_steps else 1
+        warmup_scheduler = LambdaLR(vae_optimizer, lr_lambda=warmup_lr_lambda)
+
+        cosine_scheduler = CosineAnnealingLR(vae_optimizer, T_max=(self.max_steps - self.warmup_steps), eta_min=0)
+
+        # Start of Selection
+        vae_scheduler = {
+            'scheduler': SequentialLR(
+                vae_optimizer,
+                schedulers=[
+                    warmup_scheduler,
+                    cosine_scheduler
+                ],
+                milestones=[
+                    self.warmup_steps
+                ]
+            ),
+            'interval': 'step',
+            'frequency': 1
+        }
+
+
+        return {
+            "optimizer": vae_optimizer,
+            'lr_scheduler': vae_scheduler
+        }

@@ -136,6 +136,47 @@ def generate_ellipse_sdf_surface_dataset(
     
     return df, points_df
 
+def generate_ellipse_reconstruction_dataset(
+        num_ellipse=1000,
+        smooth_factor=44,
+        filename='ellipse_reconstruction_dataset',
+        axes_length=1):
+    """
+    Generate a dataset of points and their SDFs for random ellipses.
+    Each ellipse is defined by its center, semi-major axis, semi-minor axis and rotation angle.
+    """
+    # Lists to store our data
+    data = []
+    
+    for _ in tqdm(range(num_ellipse)):
+        # Generate random ellipse parameters
+        center = np.array([0, 0])  # Center fixed at (0, 0)
+        # a = np.random.uniform(0.2, 0.8)  # Semi-major axis
+        a = 0.5
+        b_w = np.random.uniform(0.5, 1.5)  # Semi-minor axis (smaller than a)
+        b = a * b_w
+        
+        data.append([
+            b_w,  # Semi-axes ratio
+            1
+        ])
+    
+    # Create DataFrame
+    columns = [
+        'semi_axes_ratio',
+        'arc_ratio'
+    ]
+    df = pd.DataFrame(data, columns=columns)
+    
+    # Save to CSV
+    df.to_csv(f'{filename}.csv', index=False)
+    print(f"Dataset saved to {filename}")
+
+    
+    return df
+
+##########################################################################################
+
 def plot_ellipse_sdf_dataset(df, points_per_ellipse=1000):
     # Plot a few examples to verify
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))

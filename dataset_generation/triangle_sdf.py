@@ -461,6 +461,69 @@ def generate_traingle_random_radius_dataset(
 
     return df
 
+def generate_traingle_reconstruction_dataset(
+        num_triangle=100,
+        smooth_factor=40,
+        filename='triangle_reconstruction_dataset',
+        axes_length=1   
+):
+    """
+    Generate dataset of signed distances for random quadrangle
+    
+    Parameters:
+    - num_triangle: number of random triangle to generate
+    - sample_per_triangle: number sample with random radiuses for each triangle
+    - filename: output CSV file name
+    """
+    # Lists to store our data
+    data = []
+    triangle_count = 0
+    
+    # Generate multiple triangles
+    from tqdm import tqdm
+
+    # Generate multiple triangles
+    for _ in tqdm(range(num_triangle)):
+        # Generate random quadrangle vertices
+        while True:
+            vertices = generate_triangle()
+            # vertices = generate_triangle()
+            line_segments, arc_segments, arcs_intersection = (
+                get_rounded_polygon_segments_rand_radius(vertices, 0.1))
+            if arcs_intersection == False:
+                break
+
+        v1, v2, v3 = vertices
+        arc_radii = np.array([radius for _, _, _, radius in arc_segments])
+
+        perimeter, line_perimeter, arc_perimeter = compute_perimeter(line_segments, arc_segments)
+        arc_ratio = arc_perimeter / perimeter
+
+        row = [
+                v3[0], v3[1],        # third vertex
+                arc_radii[0],
+                arc_radii[1],
+                arc_radii[2],
+                arc_ratio
+        ]
+        data.append(row)
+
+
+    # Convert to DataFrame
+    columns = [
+        'v1_x', 'v1_y',
+        'r_t1', 'r_t2', 'r_t3', # t means triangle
+        'arc_ratio'
+    ]
+    
+    df = pd.DataFrame(data, columns=columns)
+    
+    # Save to CSV
+    df.to_csv(f'{filename}.csv', index=False)
+    print(f"Dataset saved to {filename}")
+
+    return df
+
 #################################################################################################################
 
 def plot_triangle_sdf_dataset(df, points_per_triangle=500):

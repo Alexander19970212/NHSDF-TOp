@@ -496,11 +496,7 @@ def plot_sample_from_df(df, points_df, sample_index=0):
     plt.show()
 
 #########################################################################
-from triangle_sdf import generate_triangle
-from quadrangle_sdf import generate_quadrangle
-from ellipse_sdf import ellipse_sdf
-import matplotlib.tri as tri
-from matplotlib.colors import TwoSlopeNorm
+
 def plot_feature_sdf_item(
         smooth_factor=40,
         num_points=100,
@@ -514,7 +510,12 @@ def plot_feature_sdf_item(
         feature_type='triangle',
         text_size=45
 ):
-    
+    from triangle_sdf import generate_triangle
+    from quadrangle_sdf import generate_quadrangle
+    from ellipse_sdf import ellipse_sdf
+    import matplotlib.tri as tri
+    from matplotlib.colors import TwoSlopeNorm
+
     # Create figure and axis
     plt.figure(figsize=(8, 8))
     ax = plt.gca()
