@@ -14,6 +14,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 
 # Add parent directory to path since script is run from parent dir
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'datasets'))
 
 from models.sdf_models import LitSdfAE, LitSdfAE_MINE
 from models.sdf_models import AE
@@ -22,8 +23,10 @@ from models.sdf_models import VAE
 from models.sdf_models import VAE_DeepSDF
 from models.sdf_models import MMD_VAE
 from models.sdf_models import MMD_VAE_DeepSDF
-from datasets.SDF_dataset import SdfDataset, SdfDatasetSurface, collate_fn_surface
-from datasets.SDF_dataset import RadiusDataset
+try:
+    from SDF_dataset import SdfDataset, SdfDatasetSurface, collate_fn_surface, RadiusDataset
+except ImportError:
+    from datasets.SDF_dataset import SdfDataset, SdfDatasetSurface, collate_fn_surface, RadiusDataset
 import argparse
 import yaml
 import json
