@@ -12,12 +12,8 @@ import matplotlib.pyplot as plt
 from lightning.pytorch import Trainer, seed_everything, callbacks
 from lightning.pytorch.loggers import TensorBoardLogger
 
-
-sys.path.append(os.path.abspath('.'))
-sys.path.append(os.path.abspath('..'))
-sys.path.append(os.path.abspath('../models'))
-sys.path.append(os.path.abspath('../datasets'))
-# sys.path.append(os.path.abspath('./datasets'))
+# Add parent directory to path since script is run from parent dir
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models.sdf_models import LitSdfAE, LitSdfAE_MINE
 from models.sdf_models import AE
