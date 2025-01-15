@@ -13,6 +13,7 @@ from lightning.pytorch import Trainer, seed_everything, callbacks
 from lightning.pytorch.loggers import TensorBoardLogger
 
 sys.path.append(os.path.abspath('..'))
+sys.path.append(os.path.abspath('../models'))
 
 from models.sdf_models import LitSdfAE, LitSdfAE_MINE
 from models.sdf_models import AE
