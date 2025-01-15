@@ -13,7 +13,7 @@ for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do
 
     echo "Running VAE_training.py with config: $CONFIG_NAME"
 
-    python VAE_training.py \
+    python train/VAE_training.py \
         --max_epochs "$MAX_EPOCHS" \
         --dataset_path "$DATASET_PATH" \
         --config_dir "$CONFIG_DIR" \
