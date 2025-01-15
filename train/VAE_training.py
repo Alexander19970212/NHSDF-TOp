@@ -17,7 +17,7 @@ sys.path.append(os.path.abspath('.'))
 sys.path.append(os.path.abspath('..'))
 sys.path.append(os.path.abspath('../models'))
 sys.path.append(os.path.abspath('../datasets'))
-sys.path.append(os.path.abspath('./datasets'))
+# sys.path.append(os.path.abspath('./datasets'))
 
 from models.sdf_models import LitSdfAE, LitSdfAE_MINE
 from models.sdf_models import AE
