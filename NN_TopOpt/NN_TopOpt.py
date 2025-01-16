@@ -16,12 +16,27 @@ from scipy import sparse
 from random import randint, randrange
 import json
 
-from NN_TopOpt.mesh_utils import LoadedMesh2D
+import yaml
+
+# from NN_TopOpt.mesh_utils import LoadedMesh2D
+from mesh_utils import LoadedMesh2D
 import time
 
-from NN_TopOpt.TopOpt import SIMP_basic
-from NN_TopOpt.TopOpt import TopOptimizer2D
-from NN_TopOpt.TopOpt import fit_ellipsoid
+# from NN_TopOpt.TopOpt import SIMP_basic
+# from NN_TopOpt.TopOpt import TopOptimizer2D
+# from NN_TopOpt.TopOpt import fit_ellipsoid
+
+from TopOpt import SIMP_basic
+from TopOpt import TopOptimizer2D
+from TopOpt import fit_ellipsoid
+
+from models.sdf_models import AE_DeepSDF, AE, VAE, VAE_DeepSDF, MMD_VAE, MMD_VAE_DeepSDF
+models = {'AE_DeepSDF': AE_DeepSDF,
+          'AE': AE, 
+          'VAE': VAE,
+          'VAE_DeepSDF': VAE_DeepSDF,
+          'MMD_VAE': MMD_VAE,
+          'MMD_VAE_DeepSDF': MMD_VAE_DeepSDF}
 
 
 def if_nan(tensor):
@@ -69,7 +84,7 @@ class FeatureMappingTopOpt:
         }
 
         self.max_iter = args["args"]["max_iter"]
-        self.rs_loss_start_iter = args["args"]["rs_loss_start_iter"]
+        # self.rs_loss_start_iter = args["args"]["rs_loss_start_iter"]
         self.volfrac = args["args"]["volfrac"]
         self.N_g_x = args["args"]["N_g_x"]
         self.N_g_y = args["args"]["N_g_y"]
@@ -168,11 +183,11 @@ class FeatureMappingTopOpt:
         # loss.backward()
     
         # Get gradients using autograd.grad instead of .grad attribute
-        if self.global_i >= self.rs_loss_start_iter+2:
-            print("rs_loss: ", splitted_loss["rs_loss"])
-            grad_H = torch.autograd.grad(splitted_loss["rs_loss"], self.gaussian_core.H_inverted, create_graph=False, retain_graph=True)[0]
-        else:
-            grad_H = torch.autograd.grad(splitted_loss["compliance"], self.gaussian_core.H, create_graph=False, retain_graph=True)[0]
+        # if self.global_i >= self.rs_loss_start_iter+2:
+        #     print("rs_loss: ", splitted_loss["rs_loss"])
+        #     grad_H = torch.autograd.grad(splitted_loss["rs_loss"], self.gaussian_core.H_inverted, create_graph=False, retain_graph=True)[0]
+        # else:
+        grad_H = torch.autograd.grad(splitted_loss["compliance"], self.gaussian_core.H, create_graph=False, retain_graph=True)[0]
 
         # Convert to numpy and reshape to 2D grid
         grad_magnitude = torch.sqrt(grad_H**2).numpy()
@@ -1083,6 +1098,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         super().__init__()
 
         self.saved_model_name = args["args"]["saved_model_name"]
+        self.config_dir = args["args"]["config_dir"]
         num_samples = args["args"]["N_g"]
 
         self.coords = coords.to(torch.float32)   
@@ -1090,44 +1106,46 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.volumes_sum = self.volumes.sum()
 
         # load stats for latent space
-        latent_goal = args["args"]["latent_goal"]
-        data = np.load(f"model_weights/{self.saved_model_name}_{latent_goal}_stats.npz")
-        self.latent_mins = torch.tensor(data['latent_mins'], dtype=torch.float32) * 1.2
-        self.latent_maxs = torch.tensor(data['latent_maxs'], dtype=torch.float32) * 1.2
-        self.latent_dim = self.latent_mins.shape[0]
+        # latent_goal = args["args"]["latent_goal"]
+        z_limits = np.load(f"../z_limits/{self.saved_model_name}_stats.npz")
+        latent_mins = torch.tensor(z_limits['latent_mins'], dtype=torch.float32) * 1.2
+        latent_maxs = torch.tensor(z_limits['latent_maxs'], dtype=torch.float32) * 1.2
+        latent_dim = latent_mins.shape[0]
 
+        saved_model_path = f'../model_weights/uba_{self.saved_model_name}.pt'
 
-        self.model = AE_DeepSDF_explicit_radius(
-            input_dim=17, 
-            latent_dim=self.latent_dim, 
-            hidden_dim=128, 
-            rad_latent_dim=2,
-            rad_loss_weight=0.1,
-            regularization='l2',   # Use 'l1', 'l2', or None
-            reg_weight=1e-3        # Adjust the weight as needed
-        )
-        self.model.load_state_dict(torch.load(f"model_weights/{self.saved_model_name}.pt"), strict=False)
+        # Load configuration from YAML file
+        with open(f'{self.config_dir}/{self.saved_model_name}.yaml', 'r') as file:
+            config = yaml.safe_load(file)
+
+        # Initialize VAE model
+        model_params = config['model']['params']
+        model_params['input_dim'] = latent_dim
+        self.model = models[config['model']['type']](**model_params)
+
+        # Load pre-trained weights for the model
+        state_dict = torch.load(saved_model_path)
+        new_state_dict = self.model.state_dict()
+
+        # Update the new_state_dict with the loaded state_dict, ignoring size mismatches
+        for key in state_dict:
+            if key in new_state_dict and state_dict[key].size() == new_state_dict[key].size():
+                new_state_dict[key] = state_dict[key]
+
+        self.model.load_state_dict(new_state_dict)
         self.model.eval()
 
-        # create model for rs_loss
-        # checkpoint_path = 'model_weights/rs_loss_conv_combined.ckpt'
-        checkpoint_path = 'model_weights/rs_loss_conv.ckpt'
-        self.rs_loss_predictor = RSLossPredictorResNet50.load_from_checkpoint(checkpoint_path)
-        self.rs_loss_predictor.eval()
-
         # create variable constraints #######################################################################
-        self.sigma_min = 0.002
-        self.sigma_max = 0.1
 
-        self.scale_sigma = torch.tensor(0.06)
-        self.scale_max = torch.tensor(0.6)
+        self.scale_sigma = torch.tensor(0.1)
+        self.scale_max = torch.tensor(1.5)
         self.scale_min = torch.tensor(0.05)
 
         self.rotation_min = -torch.pi/2
         self.rotation_max = torch.pi/2
 
-        self.shape_var_mins = self.latent_mins
-        self.shape_var_maxs = self.latent_maxs
+        self.shape_var_mins = latent_mins
+        self.shape_var_maxs = latent_maxs
 
         x_min = coords[:, 0].min()
         x_max = coords[:, 0].max()
@@ -1146,22 +1164,29 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         num_samples = args["args"]["N_g"]
         
         # initialize the feature centers according to the grid
-        center_x = 0.3
-        center_y = 0.1
-        x = torch.linspace(0.05, 0.55, args["args"]["N_g_x"])
-        y = torch.linspace(0.05, 0.15, args["args"]["N_g_y"])
+        center_x = (x_max - x_min)/2
+        center_y = (y_max - y_min)/2
+        x_grid_offset = (x_max - x_min)*0.05
+        y_grid_offset = (y_max - y_min)*0.05
+        x = torch.linspace(x_min + x_grid_offset, x_max - x_grid_offset, args["args"]["N_g_x"])
+        y = torch.linspace(y_min + y_grid_offset, y_max - y_grid_offset, args["args"]["N_g_y"])
         x = x + (x.mean() - center_x)
         y = y - (y.mean() - center_y)
         grid_x, grid_y = torch.meshgrid(x, y, indexing='ij')
+        print("grid_x: ", grid_x)
+        print("grid_y: ", grid_y)
+        print("center_x: ", center_x)
+        print("center_y: ", center_y)
         dist_means_init = torch.stack([grid_x.flatten(), grid_y.flatten()], dim=1)[:args["args"]["N_g_x"]*args["args"]["N_g_y"]]
         init_num_samples = dist_means_init.shape[0]
 
         # Create input vector for encoder
-        encoder_input = torch.zeros(init_num_samples, 17)
+        encoder_input = torch.zeros(init_num_samples, latent_dim)
         encoder_input[:, 3] = 1  # Start from circles
 
         # get initial latent vectors
-        _, _, z = self.model(encoder_input)
+        output = self.model(encoder_input)
+        z = output['z']
         z = torch.clamp(z, self.shape_var_mins, self.shape_var_maxs)
 
         shape_variables = torch.zeros((num_samples, z.shape[1])).to(torch.float32)
@@ -1217,10 +1242,10 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.volfrac_w = args["args"]["volfrac_w"]
         self.gaussian_overlap_w = args["args"]["gaussian_overlap_w"]
         self.gaussian_overlap_scale = args["args"]["gaussian_overlap_scale"]
-        self.ff_loss_w = args["args"]["ff_loss_w"]
+        self.rc_loss_w = args["args"]["rc_loss_w"]
         self.smooth_k = args["args"]["smooth_k"]
-        self.rs_loss = args["args"]["rs_loss"]
-        self.rs_loss_start_iter = args["args"]["rs_loss_start_iter"]
+        # self.rs_loss = args["args"]["rs_loss"]
+        # self.rs_loss_start_iter = args["args"]["rs_loss_start_iter"]
 
         self.merging_markers = args["args"]["merging_markers"]
         self.merging_adaptation = args["args"]["merging_adaptation"]
@@ -1396,11 +1421,6 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         rotation = self.rotation_min + (self.rotation_max - self.rotation_min)*torch.sigmoid(W_rotation).view(batch_size)
         offsets = self.coord_min + (self.coord_max - self.coord_min)*torch.sigmoid(W_offsets)
 
-        # print("rotation: ", rotation.shape)
-        # print("offsets: ", offsets.shape)
-        # print("base_scale: ", base_scale.shape)
-        # print("coords: ", self.coords.shape)
-
         cos_rot = torch.cos(rotation)
         sin_rot = torch.sin(rotation)
 
@@ -1417,9 +1437,6 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         scaled_xy = xy /((base_scale[:, None, None, None])+1e-8)
         scaled_xy_shifted = xy/(self.gaussian_overlap_scale*base_scale[:, None, None, None]+1e-8)
-
-        # print("scaled_xy: ", scaled_xy.shape)
-        # print("R: ", R.shape)
 
         # Apply rotation to coordinates
         rotated_scaled_xy = torch.einsum('bij,bxyj->bxyi', R, scaled_xy)
@@ -1438,79 +1455,28 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
             # print("mask: ", mask.sum())
             mask_shifted = (rotated_scaled_xy_shifted[i].abs().max(dim=-1)[0] < 1)
             # print("mask_shifted: ", mask_shifted.sum())
-            sdfs = self.model.sdf(shape_var[i], rotated_scaled_xy[i, mask, :])
+            heaviside = self.model.sdf(shape_var[i], rotated_scaled_xy[i, mask, :])
             # print("sdfs: ", sdfs.min(), sdfs.max())
-            sdfs_shifted = self.model.sdf(shape_var[i], rotated_scaled_xy_shifted[i, mask_shifted, :])
-            kernel[mask, i] = sdfs.squeeze()#.double()
-            kernel_shifted[mask_shifted, i] = sdfs_shifted.squeeze()#.double()
+            heaviside_shifted = self.model.sdf(shape_var[i], rotated_scaled_xy_shifted[i, mask_shifted, :])
+            kernel[mask, i] = heaviside.squeeze()#.double()
+            kernel_shifted[mask_shifted, i] = heaviside_shifted.squeeze()#.double()
 
         if self.if_merging_preparation(global_i):
             self.compute_merging_pairs(kernel)
 
-        kernel_sum = kernel.sum(dim=1)+1e-8
-
-        self.H = (1 - self.Emin)*torch.sigmoid(-self.smooth_k*(kernel_sum - 0.5)) + self.Emin
+        # Kreisselmeier-Steinhause
+        sm_coeff = 40
+        exp_kernel_sum = torch.exp(sm_coeff*kernel).sum(dim=1)+1e-8
+        # exp_kernel_sum_shifted = torch.exp(kernel_shifted).sum(dim=1)+1e-8
+        # self.H = (1 - self.Emin)*torch.sigmoid(-self.smooth_k*(kernel_sum - 0.5)) + self.Emin
+        print("sm_f_limits: ", torch.log(exp_kernel_sum).min()/sm_coeff, torch.log(exp_kernel_sum).max()/sm_coeff)
+        self.H = (1 - self.Emin)*(1 - torch.log(exp_kernel_sum)/sm_coeff) + self.Emin
         # self.H_splitted = torch.sigmoid(0.1*self.smooth_k*(kernel_shifted - 0.5))
         self.H_splitted = kernel_shifted
         self.H_splitted_sum = self.H_splitted.sum(dim=1)
-        self.H_inverted = kernel_sum*0.5
+        # self.H_inverted = kernel_sum*0.5
 
-        grid_batch = []
-
-        # if global_i >= self.rs_loss_start_iter:
-        #     for i in range(batch_size):
-        #         half_side = 1.5
-        #         mask = (rotated_scaled_xy[i].abs().max(dim=-1)[0] < half_side)
-        #         rotated_scaled_xy_rs = rotated_scaled_xy[i, mask, :]
-
-        #         mapped_grid = _points_to_grid(rotated_scaled_xy_rs, self.H_inverted[mask], half_side=half_side)
-        #         grid_batch.append(mapped_grid)
-        #         # rs_loss_pred = self.rs_loss_predictor(rotated_scaled_xy_rs)
-
-        #         # Reshape grid for visualization
-        #         # grid_size = 40
-        #         # grid_2d = mapped_grid.reshape(grid_size, grid_size).detach().numpy()
-        #         # grid_2d = mapped_grid[0].detach().numpy()
-                
-        #         # plt.figure(figsize=(6,6))
-        #         # plt.imshow(grid_2d, cmap='viridis', origin='lower')
-        #         # plt.colorbar()
-        #         # plt.title('Mapped Grid')
-        #         # plt.axis('equal')
-        #         # plt.show()
-
-        #         # print("rs_loss_pred: ", rs_loss_pred.shape)
-
-        #     rs_loss_grid = torch.stack(grid_batch)
-        #     self.rs_loss_vector = self.rs_loss_predictor(rs_loss_grid)
-
-        #     print("rs_loss: ", self.rs_loss_vector.min(), self.rs_loss_vector.max())
-        
-        # H_splitted_sum_clipped = self.H_splitted_sum.clone()
-        # H_splitted_sum_clipped[H_splitted_sum_clipped>0.8] = 0
-        # H_splitted_sum_clipped[H_splitted_sum_clipped<0.2] = 0 
-
-        # Compute entropy for H_splitted_sum
-        # Add small epsilon to avoid log(0)
-        # epsilon = 1e-8
-        # p = H_splitted_sum_clipped + epsilon
-        # p = p / (p.sum() + epsilon)  # Normalize to get probability distribution
-        # entropy = -torch.sum(p * torch.log(p))
-
-        # Create entropy plot
-        # plt.figure(figsize=(12, 4))
-        # plt.subplot(121)
-        # plt.tricontourf(self.coords[:, 0], self.coords[:, 1], p.detach().numpy(), cmap='viridis', levels=20)
-        # plt.colorbar()
-        # plt.title(f'Normalized H_splitted_sum (Entropy: {entropy.item():.4f})')
-        # plt.axis('equal')
-
-        # Create scatter plot of H_splitted_sum using coords
-        # plt.figure(figsize=(12, 4))
-        # plt.tricontourf(self.coords[:, 0], self.coords[:, 1], self.H_splitted_sum.detach().numpy(), cmap='viridis', levels=20)
-        # plt.colorbar()
-        # plt.title('H_splitted_sum')
-        # plt.axis('equal')
+        # grid_batch = []
 
         self.H_splitted_sum_clipped = torch.nn.functional.relu(
             self.H_splitted_sum - 1
@@ -1533,23 +1499,24 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.W_rotation.grad.data[~evolving_mask] = 0.0
         self.W_offsets.grad.data[~evolving_mask] = 0.0
 
-        if global_i < 100:
-            torch.nn.utils.clip_grad_norm_(self.W_offsets, max_norm=30)
-            torch.nn.utils.clip_grad_norm_(self.W_scale, max_norm=20)
-            torch.nn.utils.clip_grad_norm_(self.W_shape_var, max_norm=3)
-            torch.nn.utils.clip_grad_norm_(self.W_rotation, max_norm=5)
-        else:
-            torch.nn.utils.clip_grad_norm_(self.W_offsets, max_norm=10)
-            torch.nn.utils.clip_grad_norm_(self.W_scale, max_norm=10)
-            torch.nn.utils.clip_grad_norm_(self.W_shape_var, max_norm=3)
-            torch.nn.utils.clip_grad_norm_(self.W_rotation, max_norm=5)
+        # if global_i < 100:
+        #     torch.nn.utils.clip_grad_norm_(self.W_offsets, max_norm=30)
+        #     torch.nn.utils.clip_grad_norm_(self.W_scale, max_norm=20)
+        #     torch.nn.utils.clip_grad_norm_(self.W_shape_var, max_norm=3)
+        #     torch.nn.utils.clip_grad_norm_(self.W_rotation, max_norm=5)
+        # else:
+        #     torch.nn.utils.clip_grad_norm_(self.W_offsets, max_norm=10)
+        #     torch.nn.utils.clip_grad_norm_(self.W_scale, max_norm=10)
+        #     torch.nn.utils.clip_grad_norm_(self.W_shape_var, max_norm=3)
+        #     torch.nn.utils.clip_grad_norm_(self.W_rotation, max_norm=5)
         
-    def compute_ff_loss(self, global_i): # form factor loss
+    def compute_rc_loss(self, global_i): # form factor loss
         
         if global_i > 40:
             W_shape_var = self.W_shape_var[self.persistent_mask]
             shape_var = (self.shape_var_maxs - self.shape_var_mins)*torch.sigmoid(W_shape_var) + self.shape_var_mins             
-            radius_sum = self.model.radius_sum(shape_var[:, :2])
+            radius_sum = torch.nn.functional.relu(self.model.tau(shape_var)-0.1)
+
 
             print("radius_sum: ", radius_sum.min(), radius_sum.max(), radius_sum.sum())
 
@@ -1566,7 +1533,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
     
     def forward(self, ce, global_i):
 
-        ff_loss = self.compute_ff_loss(global_i)
+        rc_loss = self.compute_rc_loss(global_i)
 
         # Add numerical stability to compliance calculation
         H_vec = torch.clamp(self.H, min=self.Emin, max=self.Emax)**self.penal
@@ -1588,46 +1555,29 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         print("volume: ", self.H.T @ self.volumes, volfrac_goal, volume_goal, volfrac_loss_pre)
         print("compliance: ", compliance)
         print("gaussian_overlap: ", gaussian_overlap)
-        print("ff_loss: ", ff_loss)
+        print("rc_loss: ", rc_loss)
 
         # check the sign
         # Start of Selection
         obj_ce = (
             -compliance * self.compliance_w
-            + ff_loss * self.ff_loss_w
+            + rc_loss * self.rc_loss_w
             + volfrac_loss_pre * self.volfrac_w
             + gaussian_overlap * self.gaussian_overlap_w
         )
         obj_real = (
             compliance * self.compliance_w
-            + ff_loss * self.ff_loss_w
+            + rc_loss * self.rc_loss_w
             + volfrac_loss_pre * self.volfrac_w
             + gaussian_overlap * self.gaussian_overlap_w
         )
 
-        if self.rs_loss and global_i >= self.rs_loss_start_iter+1:
-            # print("indices: ", len(self.rs_loss_neighbors_indices), self.rs_loss_neighbors_indices[0].shape)
-            # rs_loss, _ = compute_rs_loss(self.coords[:, 0], self.coords[:, 1], self.H_splitted_sum,
-            #                           self.rs_loss_neighbors_indices, self.rs_loss_inverted_matrices, 
-            #                           self.rs_loss_e, self.rs_loss_convex_threshold,
-            #                           self.rs_loss_plato_threshold, self.rs_loss_small_cos_dist_threshold,
-            #                           visualize=True)
-            rs_loss = self.rs_loss_vector.mean()
-            rs_loss_weighted = rs_loss * self.rs_loss_w
-
-            obj_real += rs_loss_weighted
-            obj_ce += rs_loss_weighted
-
-        else:
-
-            rs_loss = torch.tensor(0.0)
 
         splitted_loss = {
             "gaussian_overlap": gaussian_overlap,
             "volfrac_loss_pre": volfrac_loss_pre,
             "compliance": compliance,
-            "ff_loss": ff_loss,
-            "rs_loss": rs_loss,
+            "rc_loss": rc_loss,
             "obj_ce": obj_ce,
             "obj_real": obj_real,
         }

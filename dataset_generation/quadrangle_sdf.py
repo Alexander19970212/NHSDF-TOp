@@ -199,6 +199,7 @@ def generate_rounded_quadrangle_sdf_dataset(
         points_per_quadrangle=100,
         smooth_factor=40,
         min_radius=0.01,
+        max_radius_limit=3,
         filename='quadrangle_sdf_dataset.csv'
 ):
     """
@@ -219,7 +220,7 @@ def generate_rounded_quadrangle_sdf_dataset(
             vertices = generate_quadrangle()
             # vertices = generate_triangle()
             line_segments, arc_segments, arcs_intersection = (
-                get_rounded_polygon_segments_rand_radius(vertices, min_radius))
+                get_rounded_polygon_segments_rand_radius(vertices, min_radius, max_radius_limit=max_radius_limit))
             if arcs_intersection == False:
                 break
 
@@ -269,10 +270,10 @@ def generate_rounded_quadrangle_sdf_dataset(
                 point[0], point[1],  # point coordinates
                 v3[0], v3[1],        # third vertex
                 v4[0], v4[1],        # fourth vertex
-                arc_radii[0],
-                arc_radii[1],
-                arc_radii[2],
-                arc_radii[3],
+                arc_radii[0]/max_radius_limit, # normalized radius
+                arc_radii[1]/max_radius_limit, # normalized radius
+                arc_radii[2]/max_radius_limit, # normalized radius
+                arc_radii[3]/max_radius_limit, # normalized radius
                 sdf[i],
                 arc_ratio
             ]
@@ -300,6 +301,7 @@ def generate_rounded_quadrangle_sdf_surface_dataset(
         points_per_quadrangle=1000,
         smooth_factor=40,
         filename='../shape_datasets/quadrangle_sdf_surface_dataset_test',
+        max_radius_limit=3,
         axes_length=1):
     """
     Generate dataset of signed distances for random quadrangle
@@ -325,7 +327,7 @@ def generate_rounded_quadrangle_sdf_surface_dataset(
             vertices = generate_quadrangle()
             # vertices = generate_triangle()
             line_segments, arc_segments, arcs_intersection = (
-                get_rounded_polygon_segments_rand_radius(vertices, 0.1))
+                get_rounded_polygon_segments_rand_radius(vertices, 0.1, max_radius_limit=max_radius_limit))
             if arcs_intersection == False:
                 break
 
@@ -344,10 +346,10 @@ def generate_rounded_quadrangle_sdf_surface_dataset(
         row = [
             v3[0], v3[1],        # third vertex
             v4[0], v4[1],        # fourth vertex
-            arc_radii[0],
-            arc_radii[1],
-            arc_radii[2],
-            arc_radii[3],
+            arc_radii[0]/max_radius_limit, # normalized radius
+            arc_radii[1]/max_radius_limit, # normalized radius
+            arc_radii[2]/max_radius_limit, # normalized radius
+            arc_radii[3]/max_radius_limit, # normalized radius
             sdf_str               # signed distance value as string
         ]
         data.append(row)
@@ -379,7 +381,8 @@ def generate_quadrangle_reconstruction_dataset(
         num_quadrangle=1000,
         smooth_factor=40,
         filename='quadrangle_reconstruction_dataset',
-        axes_length=1):
+        axes_length=1,
+        max_radius_limit=3):
     """
     Generate dataset of signed distances for random quadrangle
     
@@ -398,7 +401,7 @@ def generate_quadrangle_reconstruction_dataset(
             vertices = generate_quadrangle()
             # vertices = generate_triangle()
             line_segments, arc_segments, arcs_intersection = (
-                get_rounded_polygon_segments_rand_radius(vertices, 0.1))
+                get_rounded_polygon_segments_rand_radius(vertices, 0.1, max_radius_limit=max_radius_limit))
             if arcs_intersection == False:
                 break
 
@@ -412,10 +415,10 @@ def generate_quadrangle_reconstruction_dataset(
         row = [
             v3[0], v3[1],        # third vertex
             v4[0], v4[1],        # fourth vertex
-            arc_radii[0],
-            arc_radii[1],
-            arc_radii[2],
-            arc_radii[3],
+            arc_radii[0]/max_radius_limit, # normalized radius
+            arc_radii[1]/max_radius_limit, # normalized radius
+            arc_radii[2]/max_radius_limit, # normalized radius
+            arc_radii[3]/max_radius_limit, # normalized radius
             arc_ratio
         ]
         data.append(row)
@@ -442,6 +445,7 @@ def generate_quadrangle_random_radius_dataset(
         sample_per_quadrangle=100,
         smooth_factor=40,
         filename='quadrangle_random_radius_dataset',
+        max_radius_limit=3,
         axes_length=1   
 ):
     """
@@ -467,7 +471,7 @@ def generate_quadrangle_random_radius_dataset(
             success_count = 0
             while True:
                 line_segments, arc_segments, arcs_intersection = (
-                    get_rounded_polygon_segments_rand_radius(vertices, 0.1))
+                    get_rounded_polygon_segments_rand_radius(vertices, 0.1, max_radius_limit=max_radius_limit))
                 
                 if arcs_intersection == True:
                     failed_count += 1
@@ -486,10 +490,10 @@ def generate_quadrangle_random_radius_dataset(
                     row = [ f'qd_{quadrangle_count}',
                             v3[0], v3[1],        # third vertex
                             v4[0], v4[1],        # fourth vertex
-                            arc_radii[0],
-                            arc_radii[1],
-                            arc_radii[2],
-                            arc_radii[3],
+                            arc_radii[0]/max_radius_limit, # normalized radius
+                            arc_radii[1]/max_radius_limit, # normalized radius
+                            arc_radii[2]/max_radius_limit, # normalized radius
+                            arc_radii[3]/max_radius_limit, # normalized radius
                             arc_ratio
                         ]
                     data.append(row)

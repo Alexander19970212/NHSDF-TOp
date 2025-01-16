@@ -457,11 +457,31 @@ class AE(nn.Module):
             self.orthogonality_loss = orth_losses[orthogonality_loss_type]
 
         # Encoder
+        # self.encoder = nn.Sequential(
+        #     nn.Linear(input_dim-2, hidden_dim),
+        #     nn.BatchNorm1d(hidden_dim),
+        #     nn.LeakyReLU(0.2),
+        #     nn.Linear(hidden_dim, hidden_dim * 2),
+        #     nn.BatchNorm1d(hidden_dim * 2),
+        #     nn.LeakyReLU(0.2),
+        #     nn.Linear(hidden_dim * 2, hidden_dim),
+        #     nn.BatchNorm1d(hidden_dim),
+        #     nn.LeakyReLU(0.2),
+        #     nn.Linear(hidden_dim, latent_dim)
+        # )
+
+        # Encoder
         self.encoder = nn.Sequential(
             nn.Linear(input_dim-2, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
             nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim * 4),
+            nn.BatchNorm1d(hidden_dim * 4),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 4, hidden_dim * 2),
             nn.BatchNorm1d(hidden_dim * 2),
             nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim * 2, hidden_dim),
@@ -488,11 +508,30 @@ class AE(nn.Module):
         )
 
         # Decoder for input reconstruction
+        # self.decoder_input = nn.Sequential(
+        #     nn.Linear(latent_dim, hidden_dim),
+        #     nn.BatchNorm1d(hidden_dim),
+        #     nn.LeakyReLU(0.2),
+        #     nn.Linear(hidden_dim, hidden_dim * 2),
+        #     nn.BatchNorm1d(hidden_dim * 2),
+        #     nn.LeakyReLU(0.2),
+        #     nn.Linear(hidden_dim * 2, hidden_dim),
+        #     nn.BatchNorm1d(hidden_dim),
+        #     nn.LeakyReLU(0.2),
+        #     nn.Linear(hidden_dim, input_dim-2)
+        # )
+
         self.decoder_input = nn.Sequential(
             nn.Linear(latent_dim, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
             nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim * 4),
+            nn.BatchNorm1d(hidden_dim * 4),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 4, hidden_dim * 2),
             nn.BatchNorm1d(hidden_dim * 2),
             nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim * 2, hidden_dim),
@@ -526,7 +565,7 @@ class AE(nn.Module):
                 nn.init.xavier_uniform_(layer.weight)
                 nn.init.zeros_(layer.bias)
 
-    def forward(self, x, reconstruction=False):
+    def forward(self, x, reconstruction=False, Heaviside=True):
         # Encode
         query_points = x[:, :2]
         z = self.encoder(x[:, 2:])  # Only use x[2:] features
@@ -534,18 +573,19 @@ class AE(nn.Module):
         z_tau = z[:, :self.tau_latent_dim]
         tau_pred = self.decoder_tau(z_tau)
 
-        sdf_decoder_input = torch.cat([z, query_points], dim=1)
-        sdf_pred = self.decoder_sdf(sdf_decoder_input)
-
         output = {
             "tau_pred": tau_pred,
-            "sdf_pred": sdf_pred,
             "z": z
         }
 
         if reconstruction:
             x_reconstructed = self.decoder_input(z)
             output["x_reconstructed"] = x_reconstructed
+ 
+        if Heaviside:
+            sdf_decoder_input = torch.cat([z, query_points], dim=1)
+            sdf_pred = self.decoder_sdf(sdf_decoder_input)
+            output["sdf_pred"] = sdf_pred
 
         return output
     
@@ -557,7 +597,7 @@ class AE(nn.Module):
     #     return torch.norm(z.T @ z - torch.eye(z.shape[1]), p='fro')
         
 
-    def loss_function(self, loss_args):
+    def loss_function(self, loss_args, Heaviside=True, Reconstruction=False):
         """
         Calculate the loss function with optional L1 or L2 regularization.
 
@@ -576,8 +616,8 @@ class AE(nn.Module):
         """
         tau_pred = loss_args["tau_pred"]
         tau_target = loss_args["tau_target"]
-        sdf_pred = loss_args["sdf_pred"]
-        sdf_target = loss_args["sdf_target"]
+        # sdf_pred = loss_args["sdf_pred"]
+        # sdf_target = loss_args["sdf_target"]
         # x_reconstructed = loss_args["x_reconstructed"]
         # x_original = loss_args["x_original"]
         z = loss_args["z"]
@@ -586,13 +626,13 @@ class AE(nn.Module):
         tau_loss = F.mse_loss(tau_pred.flatten(), tau_target.flatten(), reduction='mean')
 
         # SDF prediction loss
-        sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
+        # sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
 
         # Orthogonality loss
-        if self.orthogonality_loss is not None:
-            orthogonality_loss = self.orthogonality_loss(z, self.tau_latent_dim)
-        else:
-            orthogonality_loss = 0
+        # if self.orthogonality_loss is not None:
+        #     orthogonality_loss = self.orthogonality_loss(z, self.tau_latent_dim)
+        # else:
+        #     orthogonality_loss = 0
 
         # if not self.training:
         #     orthogonality_metric_value = orthogonality_metric(z, self.tau_latent_dim)
@@ -610,9 +650,9 @@ class AE(nn.Module):
             reg_loss = 0
 
         total_loss = (
-            sdf_loss
-            + self.tau_loss_weight * tau_loss 
-            + self.orthogonality_loss_weight * orthogonality_loss 
+            # sdf_loss
+            self.tau_loss_weight * tau_loss 
+            # + self.orthogonality_loss_weight * orthogonality_loss 
             + self.reg_weight * reg_loss
             # + reconstruction_loss * 0.1
         )
@@ -620,14 +660,30 @@ class AE(nn.Module):
         splitted_loss = {
             "total_loss": total_loss,
             "tau_loss": tau_loss,
-            "sdf_loss": sdf_loss,
-            "orthogonality_loss": orthogonality_loss,
+            # "sdf_loss": sdf_loss,
+            # "orthogonality_loss": orthogonality_loss,
             # "reconstruction_loss": reconstruction_loss,
             "reg_loss": reg_loss
         }
 
         # if not self.training:
         #     splitted_loss["orthogonality_metric"] = orthogonality_metric_value
+
+        if Heaviside:
+            sdf_pred = loss_args["sdf_pred"]
+            sdf_target = loss_args["sdf_target"]
+            sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
+            splitted_loss["sdf_loss"] = sdf_loss
+            total_loss += sdf_loss
+
+        if Reconstruction:
+            x_reconstructed = loss_args["x_reconstructed"]
+            x_original = loss_args["x_original"]
+            reconstruction_loss = F.mse_loss(x_reconstructed, x_original, reduction='mean')
+            splitted_loss["reconstruction_loss"] = reconstruction_loss
+            total_loss += reconstruction_loss
+
+        splitted_loss["total_loss"] = total_loss
 
         return total_loss, splitted_loss
     
@@ -703,17 +759,10 @@ class VAE(nn.Module):
             nn.Linear(hidden_dim, hidden_dim * 2),
             nn.BatchNorm1d(hidden_dim * 2),
             nn.LeakyReLU(0.2),
-            nn.Linear(hidden_dim * 2, hidden_dim * 4),
-            nn.BatchNorm1d(hidden_dim * 4),
-            nn.LeakyReLU(0.2),
-            nn.Linear(hidden_dim * 4, hidden_dim * 2),
-            nn.BatchNorm1d(hidden_dim * 2),
-            nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim * 2, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
             nn.LeakyReLU(0.2),
-            nn.Linear(hidden_dim, input_dim - 2),
-            nn.Tanh()
+            nn.Linear(hidden_dim, input_dim-2)
         )
 
         # Decoder for SDF prediction
@@ -802,7 +851,7 @@ class VAE(nn.Module):
 
         # return mu + eps * std
 
-    def forward(self, x, reconstruction=False):
+    def forward(self, x, reconstruction=False, Heaviside=True):
         """
         Forward pass through the VAE.
 
@@ -828,16 +877,19 @@ class VAE(nn.Module):
         z_tau = z[:, :self.tau_latent_dim]
         tau_pred = self.decoder_tau(z_tau)
 
-        sdf_decoder_input = torch.cat([z, query_points], dim=1)
-        sdf_pred = self.decoder_sdf(sdf_decoder_input)
+        
 
         output = {
             "tau_pred": tau_pred,
-            "sdf_pred": sdf_pred,
             "z": z,
             "mu": mu,
             "log_var": log_var
         }
+
+        if Heaviside:
+            sdf_decoder_input = torch.cat([z, query_points], dim=1)
+            sdf_pred = self.decoder_sdf(sdf_decoder_input)
+            output["sdf_pred"] = sdf_pred
 
         if reconstruction:
             x_reconstructed = self.decoder_input(z)
@@ -846,21 +898,19 @@ class VAE(nn.Module):
         return output
         
     def tau(self, z):
-        z_radius = z[:, :self.tau_latent_dim]
-        return self.decoder_tau(z_radius)
+        z_tau = z[:, :self.tau_latent_dim]
+        return self.decoder_tau(z_tau)
 
-    def loss_function(self, loss_args):
+    def loss_function(self, loss_args, Heaviside=True, Reconstruction=False):
         """
         Calculates the loss function with optional L1 or L2 regularization.
 
         Args:
             loss_args (dict): Dictionary containing the following keys:
-                - "recon_x" (Tensor): Reconstructed input.
-                - "x_original" (Tensor): Original input.
+                - "tau_pred" (Tensor): Predicted tau.
                 - "mu" (Tensor): Mean of the latent distribution.
                 - "log_var" (Tensor): Log variance of the latent distribution.
                 - "z" (Tensor): Latent representations.
-            only_recon (bool, optional): Flag to compute only reconstruction loss. Defaults to False.
 
         Returns:
             total_loss (Tensor): Combined loss.
@@ -870,22 +920,13 @@ class VAE(nn.Module):
         log_var = loss_args["log_var"]
         tau_pred = loss_args["tau_pred"]
         tau_target = loss_args["tau_target"]
-        sdf_pred = loss_args["sdf_pred"]
-        sdf_target = loss_args["sdf_target"]
         z = loss_args["z"]
 
         # Reconstruction loss
         # recon_loss = F.mse_loss(recon_x, x_original, reduction='mean')
         tau_loss = F.mse_loss(tau_pred.flatten(), tau_target.flatten(), reduction='mean')
 
-        # SDF loss
-        sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
 
-        # Orthogonality loss
-        if self.orthogonality_loss is not None:
-            orthogonality_loss = self.orthogonality_loss(z, self.tau_latent_dim)
-        else:
-            orthogonality_loss = 0
 
         # KL Divergence loss
         # kl_divergence = -0.5 * torch.mean(1 + log_var - mu.pow(2) - log_var.exp())
@@ -909,24 +950,35 @@ class VAE(nn.Module):
             reg_loss = 0
 
         total_loss = (
-            sdf_loss
+            # sdf_loss
             + self.tau_loss_weight * tau_loss 
-            + self.orthogonality_loss_weight * orthogonality_loss 
             + self.reg_weight * reg_loss
             + self.kl_weight * kl_divergence
         )
 
         splitted_loss = {
-            "total_loss": total_loss,
+            # "total_loss": total_loss,
             "kl_divergence": kl_divergence,
-            "sdf_loss": sdf_loss,
+            # "sdf_loss": sdf_loss,
             "tau_loss": tau_loss,
-            "orthogonality_loss": orthogonality_loss,
             "reg_loss": reg_loss
         }
 
-        # if not self.training:
-        #     splitted_loss["orthogonality_metric"] = orthogonality_metric_value
+        if Heaviside:
+            sdf_pred = loss_args["sdf_pred"]
+            sdf_target = loss_args["sdf_target"]
+            sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
+            splitted_loss["sdf_loss"] = sdf_loss
+            total_loss += sdf_loss
+
+        if Reconstruction:
+            x_reconstructed = loss_args["x_reconstructed"]
+            x_original = loss_args["x_original"]
+            reconstruction_loss = F.mse_loss(x_reconstructed, x_original, reduction='mean')
+            splitted_loss["reconstruction_loss"] = reconstruction_loss
+            total_loss += reconstruction_loss
+
+        splitted_loss["total_loss"] = total_loss
 
         return total_loss, splitted_loss
     
@@ -1746,6 +1798,90 @@ class LitSdfAE_MINE(L.LightningModule):
         }
 
         return [vae_optimizer, mine_optimizer, mine_tau_optimizer], [vae_scheduler, mine_scheduler, mine_tau_scheduler]
+
+class LitRecon_MINE(LitSdfAE_MINE):
+    def __init__(self, vae_model, learning_rate=1e-4, critic_learning_rate=1e-4, reg_weight=1e-4,
+                 info_weight=1e-2, regularization=None, warmup_steps=1000, max_steps=10000):
+        super().__init__(vae_model, learning_rate, critic_learning_rate, reg_weight, info_weight, regularization, warmup_steps, max_steps)
+
+        self.freezing_weights()
+
+    def freezing_weights(self):
+        print("Freezing weights SDF decoder")
+        for param in self.vae.parameters():
+            param.requires_grad = True
+
+        for param in self.vae.decoder_sdf.parameters():
+            param.requires_grad = False
+
+    def training_step(self, batch, batch_idx):
+        vae_optimizer, mine_optimizer, mine_tau_optimizer = self.optimizers()
+
+        x, sdf, tau = batch
+    
+        ### VAE training ###
+        output = self.vae(x, reconstruction=True, Heaviside=False)
+        loss_args = output
+        loss_args["tau_target"] = tau
+        loss_args["x_original"] = x[:, 2:]
+        total_loss, splitted_loss = self.vae.loss_function(loss_args, Reconstruction=True, Heaviside=False)
+
+        info_xz = self.estimate_mi(output["z"][:, self.vae.tau_latent_dim:], tau)
+        info_xz_tau = self.estimate_mi_tau(output["z"][:, :self.vae.tau_latent_dim], tau)
+        splitted_loss["info_xz"] = info_xz
+        splitted_loss["info_xz_tau"] = info_xz_tau
+        total_loss -= self.info_weight * info_xz
+        total_loss += self.info_weight * info_xz_tau
+
+        vae_optimizer.zero_grad()
+        # self.manual_backward(total_loss)
+        total_loss.backward(retain_graph=True)
+        vae_optimizer.step()
+
+        mine_optimizer.zero_grad()
+        info_xz = self.estimate_mi(output["z"][:, self.vae.tau_latent_dim:], tau)
+        # self.manual_backward(info_xz)
+        info_xz.backward(inputs=list(self.mine.parameters()))
+        mine_optimizer.step()
+
+        mine_tau_optimizer.zero_grad()
+        info_xz_tau = self.estimate_mi_tau(output["z"][:, :self.vae.tau_latent_dim], tau)
+        # self.manual_backward(info_xz_tau)
+        info_xz_tau.backward(inputs=list(self.mine_tau.parameters()))
+        mine_tau_optimizer.step()
+
+        for key, value in splitted_loss.items():
+            self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
+
+        sch1, sch2, sch3 = self.lr_schedulers()
+        sch1.step()
+        sch2.step()
+        sch3.step()
+
+        # Log learning rates
+        self.log('lr_vae', vae_optimizer.param_groups[0]['lr'], prog_bar=True)
+        self.log('lr_mine', mine_optimizer.param_groups[0]['lr'], prog_bar=True) 
+        self.log('lr_mine_tau', mine_tau_optimizer.param_groups[0]['lr'], prog_bar=True)
+
+        return total_loss
+    
+    def validation_step(self, batch, batch_idx):
+        x, sdf, tau = batch
+        output = self.vae(x, reconstruction=True, Heaviside=False)
+        loss_args = output
+        loss_args["tau_target"] = tau
+        loss_args["x_original"] = x[:, 2:]
+        total_loss, splitted_loss = self.vae.loss_function(loss_args, Reconstruction=True, Heaviside=False)
+
+        for key, value in splitted_loss.items():
+            self.log(f'val_{key}', value, prog_bar=True, batch_size=x.shape[0])
+
+        ortho_metrics = orthogonality_metrics(output["z"], tau, self.vae.tau_latent_dim)
+        for key, value in ortho_metrics.items():
+            self.log(f'val_ortho_{key}', value, prog_bar=True, batch_size=x.shape[0])
+
+        return total_loss
+
 
 class LitSdfAE_Reconstruction(L.LightningModule):
     def __init__(self, vae_model, learning_rate=1e-4, critic_learning_rate=1e-4, reg_weight=1e-4,

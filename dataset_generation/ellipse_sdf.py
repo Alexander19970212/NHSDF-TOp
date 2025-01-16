@@ -35,6 +35,8 @@ def ellipse_sdf(points, a, b):
 def generate_ellipse_sdf_dataset(num_ellipse=1000,
                                  points_per_ellipse=500,
                                  smooth_factor=44,
+                                 min_ratio=0.5,
+                                 max_ratio=1.5,
                                  filename='shape_datasets/ellipse_sdf_dataset.csv'):
     """
     Generate a dataset of points and their SDFs for random ellipses.
@@ -47,7 +49,7 @@ def generate_ellipse_sdf_dataset(num_ellipse=1000,
         center = np.array([0, 0])  # Center fixed at (0, 0)
         # a = np.random.uniform(0.2, 0.8)  # Semi-major axis
         a = 0.5
-        b_w = np.random.uniform(0.5, 1.5)  # Semi-minor axis (smaller than a)
+        b_w = np.random.uniform(min_ratio, max_ratio)  # Semi-minor axis (smaller than a)
         b = a * b_w
         # Generate random points
         points = np.random.uniform(-1, 1, (points_per_ellipse, 2))
@@ -58,7 +60,7 @@ def generate_ellipse_sdf_dataset(num_ellipse=1000,
         for i, point in enumerate(points):
             data.append([
                 point[0], point[1],  # Point coordinates
-                b_w,  # Semi-axes ratio
+                b_w/max_ratio,  # normalized semi-axes ratio
                 sdf[i],
                 1
             ])
@@ -83,6 +85,8 @@ def generate_ellipse_sdf_surface_dataset(
         points_per_ellipse=1000,
         smooth_factor=44,
         filename='../shape_datasets/ellipse_sdf_surface_dataset_test',
+        min_ratio=0.5,
+        max_ratio=1.5,
         axes_length=1):
     """
     Generate a dataset of points and their SDFs for random ellipses.
@@ -102,7 +106,7 @@ def generate_ellipse_sdf_surface_dataset(
         center = np.array([0, 0])  # Center fixed at (0, 0)
         # a = np.random.uniform(0.2, 0.8)  # Semi-major axis
         a = 0.5
-        b_w = np.random.uniform(0.5, 1.5)  # Semi-minor axis (smaller than a)
+        b_w = np.random.uniform(min_ratio, max_ratio)  # Semi-minor axis (smaller than a)
         b = a * b_w
         
         sdf = ellipse_sdf(points, a, b)
@@ -111,7 +115,7 @@ def generate_ellipse_sdf_surface_dataset(
         sdf_str = ','.join(map(str, sdf.tolist()))
         
         data.append([
-            b_w,  # Semi-axes ratio
+            b_w/max_ratio,  # normalized semi-axes ratio
             sdf_str
         ])
     
@@ -140,6 +144,8 @@ def generate_ellipse_reconstruction_dataset(
         num_ellipse=1000,
         smooth_factor=44,
         filename='ellipse_reconstruction_dataset',
+        min_ratio=0.5,
+        max_ratio=1.5,
         axes_length=1):
     """
     Generate a dataset of points and their SDFs for random ellipses.
@@ -153,11 +159,11 @@ def generate_ellipse_reconstruction_dataset(
         center = np.array([0, 0])  # Center fixed at (0, 0)
         # a = np.random.uniform(0.2, 0.8)  # Semi-major axis
         a = 0.5
-        b_w = np.random.uniform(0.5, 1.5)  # Semi-minor axis (smaller than a)
+        b_w = np.random.uniform(min_ratio, max_ratio)  # Semi-minor axis (smaller than a)
         b = a * b_w
         
         data.append([
-            b_w,  # Semi-axes ratio
+            b_w/max_ratio,  # normalized semi-axes ratio
             1
         ])
     

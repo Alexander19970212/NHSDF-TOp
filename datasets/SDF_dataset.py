@@ -196,7 +196,7 @@ class ReconstructionDataset(Dataset):
             if self.n_classes == 1:
                 df["class"] = 0
             else:
-                df["class"] = (class_i+1)/(self.n_classes-1)
+                df["class"] = class_i/(self.n_classes-1)
 
         self.data = pd.concat(dfs, ignore_index=True)
         self.data = self.data.reindex(columns=feature_names, fill_value=0)

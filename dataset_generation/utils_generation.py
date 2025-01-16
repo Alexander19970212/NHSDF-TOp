@@ -222,7 +222,7 @@ def get_rounded_polygon_segments(vertices, radius): # + -> |
     return line_segments, arc_segments, arcs_intersection
 
 
-def get_rounded_polygon_segments_rand_radius(vertices, min_radius = 0.01): # + ->
+def get_rounded_polygon_segments_rand_radius(vertices, min_radius = 0.01, max_radius_limit = 3): # + ->
     """Get arc segments and line segments for a polygon with rounded corners."""
     
     line_segments_cut, _,  arcs_intersection = get_rounded_polygon_segments(vertices, min_radius)
@@ -267,7 +267,7 @@ def get_rounded_polygon_segments_rand_radius(vertices, min_radius = 0.01): # + -
             B2 = midd_seg_2[1]
 
             max_radius, center = maximal_rounding_radius(A1, A2, B1, B2)
-            
+            max_radius = min(max_radius, max_radius_limit)
             if np.random.uniform(0, 1) < 0.5:
                 valid_radius = np.random.uniform(min_radius, max_radius)
             else:

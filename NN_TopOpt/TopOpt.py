@@ -15,7 +15,8 @@ import os
 
 import cvxpy as cp
 
-from NN_TopOpt.mesh_utils import LoadedMesh2D
+# from NN_TopOpt.mesh_utils import LoadedMesh2D
+from mesh_utils import LoadedMesh2D
 
 def BuildIkFunc0():
   return lambda me,k: np.array([2*me[k,0],2*me[k,0]+1,
@@ -59,12 +60,12 @@ class TopOptimizer2D:
         
         self.problem_name = args['problem_name']
         # load problems config
-        with open('test_problems/problems.json', 'r') as fp:
+        with open('../test_problems/problems.json', 'r') as fp:
             problem_list = json.load(fp)
 
         self.problem_args = problem_list[self.problem_name]
 
-        self.Th = LoadedMesh2D(self.problem_args["meshfile"])
+        self.Th = LoadedMesh2D(f'../{self.problem_args["meshfile"]}')
 
         # to save indeces and K_e for assembling global stiffness matrix
         self.ik = []
@@ -291,10 +292,10 @@ class TopOptimizer2D:
             
             K_free = K[self.free_dof,:][:,self.free_dof]
 
-            if counter == 30:
-                self.F_free_to_invest = F_free.copy()
-                self.K_free_to_invest = K_free.copy()
-                break
+            # if counter == 30:
+            #     self.F_free_to_invest = F_free.copy()
+            #     self.K_free_to_invest = K_free.copy()
+            #     break
 
             # compute SLE
             # print("compute SLE")

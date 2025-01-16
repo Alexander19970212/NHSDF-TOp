@@ -23,3 +23,4 @@ data.zip
 data/
 scripts/scp_weights.sh
 dataset_generation/plots_for_paper.ipynb
+reserv/
