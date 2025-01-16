@@ -30,6 +30,8 @@ from TopOpt import SIMP_basic
 from TopOpt import TopOptimizer2D
 from TopOpt import fit_ellipsoid
 
+from dataset_generation.utils_generation import extract_geometry
+
 from models.sdf_models import AE_DeepSDF, AE, VAE, VAE_DeepSDF, MMD_VAE, MMD_VAE_DeepSDF
 models = {'AE_DeepSDF': AE_DeepSDF,
           'AE': AE, 
@@ -1101,6 +1103,8 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.config_dir = args["args"]["config_dir"]
         num_samples = args["args"]["N_g"]
 
+        input_dim = 17
+
         self.coords = coords.to(torch.float32)   
         self.volumes = volumes.to(torch.float32)
         self.volumes_sum = self.volumes.sum()
@@ -1112,7 +1116,10 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         latent_maxs = torch.tensor(z_limits['latent_maxs'], dtype=torch.float32) * 1.2
         latent_dim = latent_mins.shape[0]
 
-        saved_model_path = f'../model_weights/uba_{self.saved_model_name}.pt'
+        saved_model_path = f'../model_weights/local_{self.saved_model_name}_test6.pt'
+
+        print("saved_model_path: ", saved_model_path)
+        print("latent_dim: ", latent_dim)
 
         # Load configuration from YAML file
         with open(f'{self.config_dir}/{self.saved_model_name}.yaml', 'r') as file:
@@ -1120,19 +1127,19 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         # Initialize VAE model
         model_params = config['model']['params']
-        model_params['input_dim'] = latent_dim
+        model_params['input_dim'] = input_dim
         self.model = models[config['model']['type']](**model_params)
 
         # Load pre-trained weights for the model
         state_dict = torch.load(saved_model_path)
-        new_state_dict = self.model.state_dict()
+        # new_state_dict = self.model.state_dict()
 
-        # Update the new_state_dict with the loaded state_dict, ignoring size mismatches
-        for key in state_dict:
-            if key in new_state_dict and state_dict[key].size() == new_state_dict[key].size():
-                new_state_dict[key] = state_dict[key]
+        # # Update the new_state_dict with the loaded state_dict, ignoring size mismatches
+        # for key in state_dict:
+        #     if key in new_state_dict and state_dict[key].size() == new_state_dict[key].size():
+        #         new_state_dict[key] = state_dict[key]
 
-        self.model.load_state_dict(new_state_dict)
+        self.model.load_state_dict(state_dict)
         self.model.eval()
 
         # create variable constraints #######################################################################
@@ -1181,8 +1188,8 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         init_num_samples = dist_means_init.shape[0]
 
         # Create input vector for encoder
-        encoder_input = torch.zeros(init_num_samples, latent_dim)
-        encoder_input[:, 3] = 1  # Start from circles
+        encoder_input = torch.zeros(init_num_samples, input_dim)
+        encoder_input[:, 3] = 1/1.5  # Start from circles
 
         # get initial latent vectors
         output = self.model(encoder_input)
@@ -1252,6 +1259,56 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         self.points_inside_elements = {}
         self.point_ids_inside_elements = {}
+
+    def get_geometry(self):
+
+        W_scale = self.W_scale[self.persistent_mask]
+        W_shape_var = self.W_shape_var[self.persistent_mask] 
+        W_rotation = self.W_rotation[self.persistent_mask]
+        W_offsets = self.W_offsets[self.persistent_mask]
+        batch_size = W_scale.shape[0]
+
+        base_scale = (self.scale_max - self.scale_min)*torch.sigmoid(W_scale) + self.scale_min
+
+        shape_var = (self.shape_var_maxs - self.shape_var_mins)*torch.sigmoid(W_shape_var) + self.shape_var_mins    
+        rotation = self.rotation_min + (self.rotation_max - self.rotation_min)*torch.sigmoid(W_rotation).view(batch_size)
+        offsets = self.coord_min + (self.coord_max - self.coord_min)*torch.sigmoid(W_offsets)
+
+        cos_rot = torch.cos(rotation)
+        sin_rot = torch.sin(rotation)
+
+        # rotation matrix
+        R = torch.stack([
+            torch.stack([cos_rot, -sin_rot], dim=-1),
+            torch.stack([sin_rot, cos_rot], dim=-1)
+        ], dim=-2)
+
+        # print("shape_var: ", shape_var.shape)
+        chis = self.model.decoder_input(shape_var).clone()
+        # print("chis: ", chis.shape)
+        base_scale = base_scale.detach().cpu().numpy()
+        offsets = offsets.detach().cpu().numpy()
+        rotation = rotation.detach().cpu().numpy()
+        R = R.detach().cpu().numpy()
+
+        geometry_features = []
+
+        for i in range(batch_size):
+            geometry_type, geometry_params = extract_geometry(chis[i].detach().cpu().numpy())
+
+            if geometry_type == "ellipse":
+                a = geometry_params[1]*base_scale[i]
+                b = geometry_params[2]*base_scale[i]
+                geometry_features.append(["ellipse", a, b, offsets[i], -rotation[i]])
+
+            elif geometry_type == "polygon":
+                vertices = geometry_params[0]*base_scale[i] - offsets[i]
+                radiuses = geometry_params[1]*base_scale[i]
+                print(R[i])
+                vertices = vertices @ R[i]
+                geometry_features.append(["polygon", vertices, radiuses])
+
+        return geometry_features
 
     def if_merging_preparation(self, global_i):
         if global_i + 1 in self.merging_markers:
@@ -1466,10 +1523,12 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         # Kreisselmeier-Steinhause
         sm_coeff = 40
+        kernel_sum = kernel.sum(dim=1)
+        kernel = torch.sigmoid(self.smooth_k*(kernel - 0.5))
         exp_kernel_sum = torch.exp(sm_coeff*kernel).sum(dim=1)+1e-8
         # exp_kernel_sum_shifted = torch.exp(kernel_shifted).sum(dim=1)+1e-8
         # self.H = (1 - self.Emin)*torch.sigmoid(-self.smooth_k*(kernel_sum - 0.5)) + self.Emin
-        print("sm_f_limits: ", torch.log(exp_kernel_sum).min()/sm_coeff, torch.log(exp_kernel_sum).max()/sm_coeff)
+        # print("sm_f_limits: ", torch.log(exp_kernel_sum).min()/sm_coeff, torch.log(exp_kernel_sum).max()/sm_coeff)
         self.H = (1 - self.Emin)*(1 - torch.log(exp_kernel_sum)/sm_coeff) + self.Emin
         # self.H_splitted = torch.sigmoid(0.1*self.smooth_k*(kernel_shifted - 0.5))
         self.H_splitted = kernel_shifted

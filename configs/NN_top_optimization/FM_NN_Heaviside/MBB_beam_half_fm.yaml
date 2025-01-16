@@ -14,7 +14,7 @@ params:
   cleaning_offset: 5
   merging_markers: [100]
   merging_adaptation: 1
-  volfrac: 0.6
+  volfrac: 0.5
   volfrac_increment: 0.2
   volfrac_increment_marker: 20
   volfrac_increment_duration: 30
@@ -23,8 +23,8 @@ params:
   N_g_x: 6
   N_g_y: 1
   max_iter: 80
-  saved_model_name: VAE_DeepSDF_minMI
-  config_dir: ../configs/NN_sdf_experiments/model_arch_minmi2
+  saved_model_name: AE_DeepSDF_ReconDec
+  config_dir: ../configs/NN_sdf_experiments/recon_MILoss
   merging_marker: 10
   merging_adaptation_length: 10
   compliance_w: 1

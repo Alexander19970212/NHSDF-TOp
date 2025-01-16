@@ -264,8 +264,8 @@ class TopOptimizer2D:
         np.save(f"{directory}/ik.npy", self.ik)
         np.save(f"{directory}/jk.npy", self.jk)
 
-    def plot_final_result(self, filename=None):
-        self.Th.plot_topology(self.x, filename=filename)
+    def plot_final_result(self, geometry_features = None, filename=None):
+        self.Th.plot_topology(self.x, geometry_features, filename=filename)
 
     def save_solution(self, directory):
         np.save(f"{directory}/u.npy", self.u)

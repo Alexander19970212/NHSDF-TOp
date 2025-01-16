@@ -495,6 +495,96 @@ def plot_sample_from_df(df, points_df, sample_index=0):
     plt.ylabel('y')
     plt.show()
 
+#### Reconstruction utils ########
+
+
+def get_rounded_polygon(vertices, radiuses): # + ->
+    """Get arc segments and line segments for a polygon with rounded corners."""
+    
+    
+    num_vertices = vertices.shape[0]
+    line_segments = []
+    arc_segments = []
+    arc_ends = []
+    v_p_distances = []
+
+    first_middle_segments = []
+    second_middle_segments = [] 
+
+    # random_variables = np.random.uniform(0.2, 0.8, num_vertices)
+
+    for i in range(num_vertices):
+        v1 = vertices[i]
+        v2 = vertices[(i + 1) % num_vertices]
+        v3 = vertices[(i + 2) % num_vertices]
+        radius = radiuses[(i) % num_vertices]
+
+        p1_new, p2_new, center, start_angle, end_angle = get_corner_points(v1, v2, v3, radius)
+    
+        v_p_distances.append(np.linalg.norm(v2 - p2_new))
+        arc_ends.append((p2_new, p1_new))
+        arc_segments.append((center, start_angle, end_angle, radius))            
+
+    for i in range(num_vertices):
+        line_segments.append((arc_ends[i][0], arc_ends[(i + 1) % num_vertices][1]))
+        
+    return line_segments, arc_segments, False
+
+def extract_geometry(chi):
+    line_width = 2
+    
+    geometry_label = chi[0]
+    geometry_label = round(geometry_label * 2) / 2
+
+    if geometry_label == 0:
+        sigmas_ratio = chi[1]*1.5
+        a = 0.5
+        b = a * sigmas_ratio
+        return "ellipse", [sigmas_ratio, a, b]
+
+    else:
+        v1 = np.array([-0.5, -0.5])  # First point of the edge parallel to x-axis
+        v2 = np.array([0.5, -0.5])   # Second point of the edge parallel to x-axis 
+        vertices = [v1, v2]
+        radiuses = []
+
+        if geometry_label == 0.5:
+            x3 = chi[2]
+            y3 = chi[3]
+            v3 = np.array([x3, y3])
+
+            vertices.append(v3)
+
+            for i in range(3):
+                radiuses.append(chi[i+4])
+
+        elif geometry_label == 1:
+            x3 = chi[7]
+            y3 = chi[8]
+            x4 = chi[9]
+            y4 = chi[10]
+
+            v3 = np.array([x3, y3])
+            v4 = np.array([x4, y4])
+
+            vertices.append(v3)
+            vertices.append(v4)
+
+            for i in range(4):
+                radiuses.append(chi[i+11])
+
+        else:
+            print("Unknown geometry label: ", geometry_label, chi)
+            return None, None
+
+        vertices = np.array(vertices)
+        radiuses = np.array(radiuses)*3
+        radiuses = np.clip(radiuses, 0.01, None)
+
+        line_segments, arc_segments, arcs_intersection = get_rounded_polygon(vertices, radiuses)
+
+        return "polygon", [vertices, radiuses, line_segments, arc_segments]
+
 #########################################################################
 
 def plot_feature_sdf_item(

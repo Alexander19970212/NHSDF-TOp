@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.tri as mtri
+from matplotlib.patches import Ellipse, Polygon
 from tqdm import tqdm
 import gmsh
 
@@ -88,7 +89,7 @@ class LoadedMesh2D:
         plt.axis('equal')
         plt.show()
 
-    def plot_topology(self, xPhys, filename=None):
+    def plot_topology(self, xPhys, geometry_features = None, filename=None):
         # fig = plt.figure(figsize=(12, 4))
         
         x = self.q[:, 0]
@@ -100,6 +101,24 @@ class LoadedMesh2D:
         plt.ylim(0, y.max())
         plt.tripcolor(triangulation, facecolors=xPhys, cmap='gray_r')
         plt.axis('equal')
+
+        if geometry_features is not None:
+            for geometry_feature in geometry_features:
+                geometry_type = geometry_feature[0]
+                if geometry_type == "ellipse":
+                    a = geometry_feature[1]
+                    b = geometry_feature[2]
+                    center = geometry_feature[3]
+                    rotation = geometry_feature[4]
+                    rotation = rotation * 180 / np.pi
+                    ellipse = Ellipse(center, 2*a, 2*b, angle=rotation, fill=False, color='red', linewidth=2)
+                    plt.gca().add_patch(ellipse)
+
+                elif geometry_type == "polygon":
+                    vertices = geometry_feature[1]
+                    radiuses = geometry_feature[2]
+                    polygon = Polygon(vertices, fill=False, color='red', linewidth=4)
+                    plt.gca().add_patch(polygon)
 
         if filename is not None:
             plt.gca().set_axis_off()

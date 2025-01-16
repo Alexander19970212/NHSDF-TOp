@@ -579,7 +579,9 @@ class AE(nn.Module):
         }
 
         if reconstruction:
+            print("z: ", z.shape)
             x_reconstructed = self.decoder_input(z)
+            print("x_reconstructed: ", x_reconstructed.shape)
             output["x_reconstructed"] = x_reconstructed
  
         if Heaviside:
