@@ -4,7 +4,7 @@
 
 CONFIG_DIR="configs/NN_sdf_experiments/model_arch"
 DATASET_PATH="shape_datasets"
-METRICS_FILE="src/metrics_model_arch_with_mi.json"
+METRICS_FILE="src/metrics_model_arch_without_mi2.json"
 MAX_EPOCHS=1  # Adjust as needed
 
 for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do
