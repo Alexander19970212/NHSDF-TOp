@@ -34,6 +34,10 @@ import json
 import os 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1' # safer to use before loading lightning.gpu
 
+# Clean CUDA cache
+torch.cuda.empty_cache()
+
+
 # Set all random seeds for reproducibility
 seed = 42
 torch.manual_seed(seed)
