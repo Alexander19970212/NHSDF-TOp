@@ -1882,7 +1882,6 @@ class LitRecon_MINE(LitSdfAE_MINE):
 
         return total_loss
 
-
 class LitSdfAE_Reconstruction(L.LightningModule):
     def __init__(self, vae_model, learning_rate=1e-4, critic_learning_rate=1e-4, reg_weight=1e-4,
                  info_weight=1e-2, regularization=None, warmup_steps=1000, max_steps=10000):
@@ -1927,6 +1926,131 @@ class LitSdfAE_Reconstruction(L.LightningModule):
 
         for key, value in splitted_loss.items():
             self.log(f'val_{key}', value, prog_bar=True)
+
+    
+    def configure_optimizers(self):
+        vae_optimizer = torch.optim.AdamW(self.vae.parameters(), lr=self.learning_rate)
+        warmup_lr_lambda = lambda step: ((step + 1)%self.max_steps) / self.warmup_steps if step < self.warmup_steps else 1
+        warmup_scheduler = LambdaLR(vae_optimizer, lr_lambda=warmup_lr_lambda)
+
+        cosine_scheduler = CosineAnnealingLR(vae_optimizer, T_max=(self.max_steps - self.warmup_steps), eta_min=0)
+
+        # Start of Selection
+        vae_scheduler = {
+            'scheduler': SequentialLR(
+                vae_optimizer,
+                schedulers=[
+                    warmup_scheduler,
+                    cosine_scheduler
+                ],
+                milestones=[
+                    self.warmup_steps
+                ]
+            ),
+            'interval': 'step',
+            'frequency': 1
+        }
+
+
+        return {
+            "optimizer": vae_optimizer,
+            'lr_scheduler': vae_scheduler
+        }
+    
+class LitSdfAE_HvDecoder(L.LightningModule):
+    def __init__(self, vae_model, learning_rate=1e-4, critic_learning_rate=1e-4, reg_weight=1e-4,
+                 info_weight=1e-2, regularization=None, warmup_steps=1000, max_steps=10000):
+        super().__init__()
+        self.vae = vae_model
+
+        self.learning_rate = learning_rate
+        self.warmup_steps = warmup_steps
+        self.max_steps = max_steps
+
+        self.freezing_weights()
+
+        self.save_hyperparameters(logger=True)
+
+    def freezing_weights(self):
+        print("Freezing weights, except for the SDF decoder")
+        for param in self.vae.parameters():
+            param.requires_grad = False
+
+        for param in self.vae.decoder_sdf.parameters():
+            param.requires_grad = True
+
+    def forward(self, x):
+        return self.vae(x)
+
+    def training_step(self, batch, batch_idx):
+        x, sdf, tau = batch
+
+        output = self.vae(x, reconstruction=False, Heaviside=True)
+        loss_args = output
+        loss_args["tau_target"] = tau
+        loss_args["sdf_target"] = sdf
+        total_loss, splitted_loss = self.vae.loss_function(loss_args, Reconstruction=False, Heaviside=True)
+
+        for key, value in splitted_loss.items():
+            self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
+
+        return total_loss
+
+    def validation_step(self, batch, batch_idx, dataloader_idx):
+        if dataloader_idx == 0:
+            x, sdf, tau = batch
+            output = self.vae(x, reconstruction=False, Heaviside=True)
+            loss_args = output
+            loss_args["tau_target"] = tau
+            loss_args["sdf_target"] = sdf
+
+            total_loss, splitted_loss = self.vae.loss_function(loss_args, Reconstruction=False, Heaviside=True)
+
+            for key, value in splitted_loss.items():
+                self.log(f'val_{key}', value, prog_bar=True)
+
+
+        elif dataloader_idx == 1:
+            xs, sdfs, points_s = batch
+            total_mae = 0
+            total_rmse = 0
+            total_smoothness_pred = 0
+            total_smoothness_diff = 0
+
+            for i in range(len(points_s)):
+                x = xs[i]
+                sdf = sdfs[i]
+                points = points_s[i]
+
+                # Attention: it is supposed that points are from a full grid
+                points_per_side = int(np.sqrt(points.shape[0]))
+                
+                x_repeated = x.repeat(points.size(0), 1)
+                x_combined = torch.cat((points, x_repeated), dim=1)
+                output = self.vae(x_combined)
+                sdf_pred = output["sdf_pred"]
+
+                sdf_diff = sdf_pred.squeeze() - sdf.squeeze()
+
+                # Compute metrics
+                mae, rmse = compute_closeness(sdf_pred, sdf)
+                sdf_pred_reshaped = sdf_pred.reshape(points_per_side, points_per_side)
+                sdf_diff_reshaped = sdf_diff.reshape(points_per_side, points_per_side)
+                smoothness_pred = finite_difference_smoothness_torch(sdf_pred_reshaped)
+                smoothness_diff = finite_difference_smoothness_torch(sdf_diff_reshaped)
+
+                total_mae += mae
+                total_rmse += rmse
+                total_smoothness_pred += smoothness_pred
+                total_smoothness_diff += smoothness_diff
+
+            avg_mae = total_mae / len(points_s)
+            avg_rmse = total_rmse / len(points_s)
+            avg_smoothness_diff = total_smoothness_diff / len(points_s)
+
+            self.log('val_mae', avg_mae, prog_bar=True)
+            self.log('val_rmse', avg_rmse, prog_bar=True)
+            self.log('val_smoothness_diff', avg_smoothness_diff, prog_bar=True)
 
     
     def configure_optimizers(self):
