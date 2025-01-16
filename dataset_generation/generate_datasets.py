@@ -9,6 +9,9 @@ from quadrangle_sdf import generate_rounded_quadrangle_sdf_surface_dataset, plot
 from triangle_sdf import generate_rounded_triangle_sdf_surface_dataset, plot_triangle_sdf_dataset
 from triangle_sdf import generate_traingle_random_radius_dataset
 from quadrangle_sdf import generate_quadrangle_random_radius_dataset
+from triangle_sdf import generate_traingle_reconstruction_dataset
+from quadrangle_sdf import generate_quadrangle_reconstruction_dataset
+from ellipse_sdf import generate_ellipse_reconstruction_dataset
 
 import argparse
 
@@ -64,6 +67,33 @@ def main(args):
 
     dataset_path = f'{root_path}/quadrangle_sdf_dataset_smf40_radius_sample_100'
     df = generate_quadrangle_random_radius_dataset(num_quadrangle=100, sample_per_quadrangle=100, smooth_factor=40, filename=dataset_path)
+
+    #################### reconstruction dataset ####################
+
+    n_features_per_shape = 600000
+    # root_path = '../shape_datasets'
+
+    # training dataset
+    dataset_path = f'{root_path}/triangle_reconstruction_dataset_train'
+    df = generate_traingle_reconstruction_dataset(num_triangle=n_features_per_shape, smooth_factor=20, filename=dataset_path)
+
+    dataset_path = f'{root_path}/quadrangle_reconstruction_dataset_train'
+    df = generate_quadrangle_reconstruction_dataset(num_quadrangle=n_features_per_shape, smooth_factor=20, filename=dataset_path)
+
+    dataset_path = f'{root_path}/ellipse_reconstruction_dataset_train'
+    df = generate_ellipse_reconstruction_dataset(num_ellipse=n_features_per_shape, smooth_factor=22, filename=dataset_path)
+
+    n_features_per_shape = 10000
+
+    # test dataset
+    dataset_path = f'{root_path}/triangle_reconstruction_dataset_test'
+    df = generate_traingle_reconstruction_dataset(num_triangle=n_features_per_shape, smooth_factor=20, filename=dataset_path)
+
+    dataset_path = f'{root_path}/quadrangle_reconstruction_dataset_test'
+    df = generate_quadrangle_reconstruction_dataset(num_quadrangle=n_features_per_shape, smooth_factor=20, filename=dataset_path)
+
+    dataset_path = f'{root_path}/ellipse_reconstruction_dataset_test'
+    df = generate_ellipse_reconstruction_dataset(num_ellipse=n_features_per_shape, smooth_factor=22, filename=dataset_path)
 
 
 if __name__ == "__main__":
