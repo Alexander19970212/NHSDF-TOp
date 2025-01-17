@@ -1116,7 +1116,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         latent_maxs = torch.tensor(z_limits['latent_maxs'], dtype=torch.float32) * 1.2
         latent_dim = latent_mins.shape[0]
 
-        saved_model_path = f'../model_weights/local_{self.saved_model_name}_test6.pt'
+        saved_model_path = f'../model_weights/uba_{self.saved_model_name}.pt'
 
         print("saved_model_path: ", saved_model_path)
         print("latent_dim: ", latent_dim)
@@ -1302,10 +1302,11 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
                 geometry_features.append(["ellipse", a, b, offsets[i], -rotation[i]])
 
             elif geometry_type == "polygon":
-                vertices = geometry_params[0]*base_scale[i] - offsets[i]
+                vertices = geometry_params[0] @ R[i]
+                vertices = vertices*base_scale[i] + offsets[i]
                 radiuses = geometry_params[1]*base_scale[i]
-                print(R[i])
-                vertices = vertices @ R[i]
+                # print(R[i])
+                # vertices = vertices @ R[i]
                 geometry_features.append(["polygon", vertices, radiuses])
 
         return geometry_features
@@ -1606,12 +1607,12 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         # Safeguard the loss calculations
         # TODO: change to vectorproduct with volume vectors
         volfrac_loss_pre = torch.nn.functional.relu(
-            self.H.T @ self.volumes - volume_goal
+            self.H.T @ self.volumes/volume_goal - 1
         )
         
         gaussian_overlap = self.H_splitted_sum_clipped.mean()
 
-        print("volume: ", self.H.T @ self.volumes, volfrac_goal, volume_goal, volfrac_loss_pre)
+        print("current volfrac: ", self.H.T @ self.volumes/self.volumes.sum(), "volfrac_goal: ", volfrac_goal, "volfrac_loss_pre: ", volfrac_loss_pre)
         print("compliance: ", compliance)
         print("gaussian_overlap: ", gaussian_overlap)
         print("rc_loss: ", rc_loss)

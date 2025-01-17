@@ -117,7 +117,7 @@ class LoadedMesh2D:
                 elif geometry_type == "polygon":
                     vertices = geometry_feature[1]
                     radiuses = geometry_feature[2]
-                    polygon = Polygon(vertices, fill=False, color='red', linewidth=4)
+                    polygon = Polygon(vertices, fill=False, color='red', linewidth=2)
                     plt.gca().add_patch(polygon)
 
         if filename is not None:

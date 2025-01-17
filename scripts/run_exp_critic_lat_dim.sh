@@ -4,7 +4,7 @@
 
 CONFIG_DIR="configs/NN_sdf_experiments/lat_dim"
 DATASET_PATH="shape_datasets"
-METRICS_FILE="src/metrics_lat_dim.json"
+METRICS_FILE="src/metrics_lat_dim2.json"
 MAX_EPOCHS=1  # Adjust as needed
 
 for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do

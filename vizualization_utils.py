@@ -7,6 +7,8 @@ from os import listdir
 from os.path import isfile, join
 from prettytable import PrettyTable
 
+import torch
+
 import matplotlib.animation
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -18,6 +20,8 @@ from os import listdir
 from os.path import isfile, join
 import numpy as np
 import time
+
+
 
 def extract_scalars_from_event_file(event_file):
     """Extract scalar data from a TensorBoard event file."""
@@ -282,4 +286,108 @@ def plot_objective_history(file_names):
     plt.show()
 
     plt.tight_layout()
+    plt.show()
+
+class_names = ['Ellipse', 'Triangle', 'Quadrangle']
+
+def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
+    """Visualize the latent space"""
+    model.eval()
+    latent_vectors = []
+    X = []
+    sdf = []
+    sdf_target = []
+    class_labels = []
+    with torch.no_grad():
+        for batch in dataloader:
+            output = model(batch[0])
+            # print(output)
+            latent_vectors.append(output["z"])
+            X.append(batch[0])
+            sdf.append(output["sdf_pred"])
+            sdf_target.append(batch[1])
+            class_labels.append(batch[0][:, 2])
+            if len(latent_vectors) * batch[0].shape[0] >= num_samples:
+                break
+                
+    latent_vectors = torch.cat(latent_vectors, dim=0)[:num_samples]
+    latent_vectors = latent_vectors.cpu().numpy()
+
+    # Use t-SNE for dimensionality reduction
+    from sklearn.manifold import TSNE
+    tsne = TSNE(n_components=2, random_state=42)
+    latent_2d = tsne.fit_transform(latent_vectors)
+
+    
+    # Concatenate and convert class labels
+    class_labels = torch.cat(class_labels, dim=0)[:num_samples].cpu().numpy()
+    class_labels = [class_names[int(label*2)] for label in class_labels]
+    
+    # Plot the reduced dimensions with colors based on class labels
+    plt.figure(figsize=(8,8))
+    # Convert class labels to numeric values for coloring
+    unique_labels = list(set(class_labels))
+    label_to_num = {label: i for i, label in enumerate(unique_labels)}
+    numeric_labels = [label_to_num[label] for label in class_labels]
+
+    # print(numeric_labels)
+    # print(unique_labels)
+    for i, label in enumerate(class_names):
+        class_bids = [x == label for x in class_labels]
+        # Get points for this class
+        class_points = latent_2d[class_bids]
+
+        plt.scatter(class_points[:, 0], class_points[:, 1], label=label, alpha=0.5)
+
+    plt.scatter(latent_2d[:,0], latent_2d[:,1], c=numeric_labels, alpha=0.5)
+
+    plt.title('Latent Space Distribution')
+    plt.xlabel('First Latent Dimension')
+    plt.ylabel('Second Latent Dimension')
+    plt.legend()
+    if filename is not None:
+        plt.savefig(filename)
+
+    plt.show()
+
+def plot_latent_space_radius_sum(model, dataloader, latent_dim=3, num_samples=4000, filename = None):
+    """Visualize the latent space"""
+    model.eval()
+    latent_vectors = []
+    X = []
+    radius_sum_real = []
+    sdf = []
+    sdf_target = []
+    class_labels = []
+    with torch.no_grad():
+        for batch in dataloader:
+            output = model(batch[0])
+            latent_vectors.append(output["z"])
+            X.append(batch[0])
+            radius_sum_real.append(batch[2])
+            sdf.append(output["sdf_pred"])
+            sdf_target.append(batch[1])
+            class_labels.append(batch[0][:, 2])
+            if len(latent_vectors) * batch[0].shape[0] >= num_samples:
+                break
+                
+    latent_vectors = torch.cat(latent_vectors, dim=0)[:num_samples]
+    latent_vectors = latent_vectors.cpu().numpy()
+
+    latent_vectors_radius_sum = latent_vectors[:, :latent_dim]
+
+    radius_sum_real = torch.cat(radius_sum_real, dim=0)[:num_samples]
+    radius_sum_real = radius_sum_real.cpu().numpy()
+
+    plt.figure(figsize=(10, 8))
+    scatter = plt.scatter(latent_vectors_radius_sum[:, 0], latent_vectors_radius_sum[:, 1], c=radius_sum_real, cmap='viridis', alpha=0.5)
+    plt.colorbar(scatter, label='Radius Sum')
+    plt.title('Latent Space with Radius Sum')
+    plt.xlabel('First Latent Dimension')
+    plt.ylabel('Second Latent Dimension')
+    plt.legend()
+
+    if filename is not None:
+        plt.savefig(filename)
+
     plt.show()
