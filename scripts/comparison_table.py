@@ -1,4 +1,5 @@
 import json
+import os
 from prettytable import PrettyTable
 
 def create_comparison_table():
@@ -50,8 +51,11 @@ def create_comparison_table():
 
     reconstruction_results_path = "src/reconstruction_metrics.json"
 
-    with open(reconstruction_results_path, 'r') as file:
-        reconstruction_results = json.load(file)
+    if os.path.exists(reconstruction_results_path):
+        with open(reconstruction_results_path, 'r') as file:
+            reconstruction_results = json.load(file)
+    else:
+        reconstruction_results = {}
 
     with open(results_path, 'r') as file:
         results = json.load(file)
