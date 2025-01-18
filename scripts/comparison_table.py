@@ -12,25 +12,28 @@ def create_comparison_table():
             'val_mi_tau/dataloader_idx_2', 
             'val_mi_ratio/dataloader_idx_2', 
             'val_z_std_ratio/dataloader_idx_2',
-            'val_tau_loss/dataloader_idx_2'
+            # 'val_tau_loss/dataloader_idx_2',
+            'val_reconstruction_loss'
             ]
 
     import pandas as pd
 
     table_headers = [
         'MSE_sdf', 'MSE_tau', 'L_reg', 'smoothness_diff',
-        'MI_original', 'MI_tau', 'ratio_mi', 'ratio_std', 'MSE_tau_2'
+        'MI_original', 'MI_tau', 'ratio_mi', 'ratio_std', 'MSE_chi'
+        #   'MSE_tau_2'
     ]
 
     latex_table_headers = [
         r"$MSE_{sdf}$", r"$MSE_{\tau}$*",
         r"$L_{reg}$", r"Smooth",
-        r"$MI_{original}$", r"$MI_{\tau}$", r"ratio_{mi}", r"ratio_{std}", r"$MSE_{\tau}$"
+        r"$MI_{original}$", r"$MI_{\tau}$", r"ratio_{mi}", r"ratio_{std}", r"$MSE_{\chi}$"
+        #   r"$MSE_{\tau}$"
     ]
 
     metrics_smaller_is_better = [
         'MSE_sdf', 'MSE_tau', 'L_reg',
-        'smoothness_diff', 'MI_original', 'ratio_mi', 'ratio_std', 'MSE_tau_2'
+        'smoothness_diff', 'MI_original', 'ratio_mi', 'ratio_std', 'MSE_chi'
     ]
 
     metrics_larger_is_better = ['MI_tau']
@@ -41,11 +44,25 @@ def create_comparison_table():
     # results_path = 'src/metrics_model_arch_minMaxMI.json'
     # results_path = "src/metrics_model_arch_with_mi.json"
     # results_path = "src/metrics_minmi_lammi.json"
-    results_path = "src/metrics_model_arch_minMaxMI_2.json"
+    # results_path = "src/metrics_model_arch_minMaxMI_2.json"
     # results_path = "src/metrics_model_arch_without_mi2.json"
+    results_path = "src/metrics_lat_dim2.json"
+
+    reconstruction_results_path = "src/reconstruction_metrics.json"
+
+    with open(reconstruction_results_path, 'r') as file:
+        reconstruction_results = json.load(file)
 
     with open(results_path, 'r') as file:
         results = json.load(file)
+
+        for model_name, metrics in reconstruction_results.items():
+            if model_name in results:
+                combined_metrics = {**metrics, **results[model_name]}
+            else:
+                combined_metrics = metrics
+
+            results[model_name] = combined_metrics
 
         table = PrettyTable()
         table.field_names = ["Model"] + table_headers

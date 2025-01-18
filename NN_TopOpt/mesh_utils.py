@@ -95,7 +95,7 @@ class LoadedMesh2D:
         x = self.q[:, 0]
         y = self.q[:, 1]
         triangulation = mtri.Triangulation(x.ravel(), y.ravel(), self.me)
-        fig = plt.figure(figsize=(6, 6 * (y.max() / x.max())))
+        fig = plt.figure(figsize=(12, 12 * (y.max() / x.max())))
         
         plt.xlim(0, x.max())
         plt.ylim(0, y.max())
@@ -111,14 +111,37 @@ class LoadedMesh2D:
                     center = geometry_feature[3]
                     rotation = geometry_feature[4]
                     rotation = rotation * 180 / np.pi
-                    ellipse = Ellipse(center, 2*a, 2*b, angle=rotation, fill=False, color='red', linewidth=2)
+                    ellipse = Ellipse(center, 2*a, 2*b, angle=rotation, fill=False, color='red', linewidth=1)
                     plt.gca().add_patch(ellipse)
 
                 elif geometry_type == "polygon":
                     vertices = geometry_feature[1]
                     radiuses = geometry_feature[2]
-                    polygon = Polygon(vertices, fill=False, color='red', linewidth=2)
+                    line_segments = geometry_feature[3]
+                    arc_segments = geometry_feature[4]
+
+                    polygon = Polygon(vertices, fill=False, color='blue', linewidth=0.5)
                     plt.gca().add_patch(polygon)
+
+                    for start, end in line_segments:
+                        plt.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=1)
+
+                    # Plot arc segments
+                    for center, start_angle, end_angle, radius in arc_segments:
+                        # Calculate angles for arc
+                        
+                        # Ensure we draw the shorter arc
+                        if abs(end_angle - start_angle) > np.pi:
+                            if end_angle > start_angle:
+                                start_angle += 2*np.pi
+                            else:
+                                end_angle += 2*np.pi
+                                
+                        # Create points along arc
+                        theta = np.linspace(start_angle, end_angle, 100)
+                        x = center[0] + radius * np.cos(theta)
+                        y = center[1] + radius * np.sin(theta)
+                        plt.plot(x, y, 'r-', linewidth=1)
 
         if filename is not None:
             plt.gca().set_axis_off()

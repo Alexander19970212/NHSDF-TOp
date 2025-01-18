@@ -14,15 +14,16 @@ params:
   cleaning_offset: 5
   merging_markers: [100]
   merging_adaptation: 1
+  refactoring_markers: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
   volfrac: 0.5
   volfrac_increment: 0.2
   volfrac_increment_marker: 20
   volfrac_increment_duration: 30
-  smooth_k: 10
+  smooth_k: 20
   N_g: 20
   N_g_x: 6
   N_g_y: 1
-  max_iter: 80
+  max_iter: 30
   saved_model_name: AE_DeepSDF_minMI
   config_dir: ../configs/NN_sdf_experiments/model_arch_minmi
   merging_marker: 10

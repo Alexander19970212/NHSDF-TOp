@@ -15,6 +15,9 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.tri as mtri
 from IPython.display import HTML
 
+from matplotlib.patches import Ellipse, Polygon
+from dataset_generation.utils_generation import extract_geometry
+
 import os
 from os import listdir
 from os.path import isfile, join
@@ -330,16 +333,15 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     label_to_num = {label: i for i, label in enumerate(unique_labels)}
     numeric_labels = [label_to_num[label] for label in class_labels]
 
-    # print(numeric_labels)
-    # print(unique_labels)
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color'][:len(class_names)]
+
     for i, label in enumerate(class_names):
         class_bids = [x == label for x in class_labels]
         # Get points for this class
         class_points = latent_2d[class_bids]
 
-        plt.scatter(class_points[:, 0], class_points[:, 1], label=label, alpha=0.5)
+        plt.scatter(class_points[:, 0], class_points[:, 1], label=label, c=colors[i], alpha=0.5)
 
-    plt.scatter(latent_2d[:,0], latent_2d[:,1], c=numeric_labels, alpha=0.5)
 
     plt.title('Latent Space Distribution')
     plt.xlabel('First Latent Dimension')
@@ -350,6 +352,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
 
     plt.show()
 
+# from vizualization_utils import plot_latent_space_radius_sum
 def plot_latent_space_radius_sum(model, dataloader, latent_dim=3, num_samples=4000, filename = None):
     """Visualize the latent space"""
     model.eval()
@@ -376,6 +379,11 @@ def plot_latent_space_radius_sum(model, dataloader, latent_dim=3, num_samples=40
 
     latent_vectors_radius_sum = latent_vectors[:, :latent_dim]
 
+    # Use t-SNE for dimensionality reduction to get latent_vectors_radius_sum in 2D
+    from sklearn.manifold import TSNE
+    tsne = TSNE(n_components=2, random_state=42)
+    latent_vectors_radius_sum = tsne.fit_transform(latent_vectors_radius_sum)
+
     radius_sum_real = torch.cat(radius_sum_real, dim=0)[:num_samples]
     radius_sum_real = radius_sum_real.cpu().numpy()
 
@@ -391,3 +399,346 @@ def plot_latent_space_radius_sum(model, dataloader, latent_dim=3, num_samples=40
         plt.savefig(filename)
 
     plt.show()
+
+def plot_predicted_sdf(model, test_loader, num_samples=5):
+    """Plot predicted SDF values for sample inputs"""
+    model.eval()
+    plt.figure(figsize=(15, 5))
+    
+    with torch.no_grad():
+        # Get sample batch
+        batch = next(iter(test_loader))
+        inputs = batch[0][:8]  # Take first 8 samples
+
+        output = model(inputs, reconstruction=True)
+        z = output["z"]
+        x_reconstructed = output["x_reconstructed"]
+        x_original = inputs[:, 2:]
+
+        x = np.linspace(-1.1, 1.1, 100)
+        y = np.linspace(-1.1, 1.1, 100)
+        X, Y = np.meshgrid(x, y)
+        grid_points = torch.tensor(np.stack([X.flatten(), Y.flatten()], axis=1), dtype=torch.float32)
+
+        fig, axs = plt.subplots(2, 4, figsize=(20, 10))
+        fig.suptitle('Predicted SDF Values for 8 Samples')
+
+        for i in range(8):
+            row = i // 4
+            col = i % 4
+
+            sdf_pred = model.sdf(z[i], grid_points)
+            geometry_type, geometry_params = extract_geometry(x_reconstructed[i].detach().cpu().numpy())
+            # extract_geometry(x_original[i].detach().cpu().numpy(), axs[row, col])
+
+            if geometry_type == "ellipse":
+                a = geometry_params[1]
+                b = geometry_params[2]
+                ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='black')
+                axs[row, col].add_patch(ellipse)
+
+            elif geometry_type == "polygon":
+                vertices = geometry_params[0]
+                radiuses = geometry_params[1]
+                line_segments = geometry_params[2]
+                arc_segments = geometry_params[3]
+                # axs[row, col].add_patch(Polygon(vertices, fill=False, color='red', linewidth=4))
+                for start, end in line_segments:
+                    axs[row, col].plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=2)
+                    # ax2.plot([start[0], end[0]], [start[1], end[1]], [z_offset, z_offset], 'g-', linewidth=line_width)
+
+                # Plot arc segments
+                for center, start_angle, end_angle, radius in arc_segments:
+                    # Calculate angles for arc
+                    
+                    # Ensure we draw the shorter arc
+                    if abs(end_angle - start_angle) > np.pi:
+                        if end_angle > start_angle:
+                            start_angle += 2*np.pi
+                        else:
+                            end_angle += 2*np.pi
+                            
+                    # Create points along arc
+                    theta = np.linspace(start_angle, end_angle, 100)
+                    x = center[0] + radius * np.cos(theta)
+                    y = center[1] + radius * np.sin(theta)
+                    axs[row, col].plot(x, y, 'b-', linewidth=2)
+
+            # geometry_type, geometry_params = extract_geometry(x_reconstructed[i].detach().cpu().numpy(), axs[row, col])
+            geometry_type, geometry_params = extract_geometry(x_original[i].detach().cpu().numpy())
+
+            if geometry_type == "ellipse":
+                a = geometry_params[1]
+                b = geometry_params[2]
+                ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='black')
+                axs[row, col].add_patch(ellipse)
+
+            elif geometry_type == "polygon":
+                vertices = geometry_params[0]
+                radiuses = geometry_params[1]
+                line_segments = geometry_params[2]
+                arc_segments = geometry_params[3]
+                # axs[row, col].add_patch(Polygon(vertices, fill=False, color='green', linewidth=4))
+                # Plot line segments
+                for start, end in line_segments:
+                    axs[row, col].plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=4)
+                    # ax2.plot([start[0], end[0]], [start[1], end[1]], [z_offset, z_offset], 'g-', linewidth=line_width)
+
+                # Plot arc segments
+                for center, start_angle, end_angle, radius in arc_segments:
+                    # Calculate angles for arc
+                    
+                    # Ensure we draw the shorter arc
+                    if abs(end_angle - start_angle) > np.pi:
+                        if end_angle > start_angle:
+                            start_angle += 2*np.pi
+                        else:
+                            end_angle += 2*np.pi
+                            
+                    # Create points along arc
+                    theta = np.linspace(start_angle, end_angle, 100)
+                    x = center[0] + radius * np.cos(theta)
+                    y = center[1] + radius * np.sin(theta)
+                    axs[row, col].plot(x, y, 'r-', linewidth=4)
+
+            # Reshape predictions
+            sdf_grid = sdf_pred.reshape(X.shape)
+
+            # Create scatter plot
+            im = axs[row, col].imshow(sdf_grid.numpy(),
+                                     extent=[-1.1, 1.1, -1.1, 1.1],
+                                     cmap='plasma',
+                                     origin='lower')
+            axs[row, col].set_aspect('equal')
+            axs[row, col].set_title(f'Sample {i+1}')
+            axs[row, col].set_xlabel('X')
+            axs[row, col].set_ylabel('Y')
+
+        # Add colorbar
+        # fig.colorbar(scatter, ax=axs.ravel().tolist(), label='Predicted SDF')
+
+    plt.tight_layout()
+    plt.show()
+
+def plot_curve(grid_points, sdf_pred, ax):
+
+    curve_mask = torch.logical_and(sdf_pred[:, 0] > 0.4, sdf_pred[:, 0] < 0.6)
+    curve_mask_reshaped = curve_mask.reshape(100, 100)[15:85, 15:85]
+    ax.imshow(curve_mask_reshaped, cmap='gray_r', origin='lower')
+    return ax
+
+def draw_geometry(geometry_type, geometry_params, ax):
+
+    ax.set_xlim(-0.8, 0.8)
+    ax.set_ylim(-0.8, 0.8)
+    
+    if geometry_type == "ellipse":
+        a = geometry_params[1]
+        b = geometry_params[2]
+        ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='red', linewidth=2)
+        ax.add_patch(ellipse)
+
+    elif geometry_type == "polygon":
+        vertices = geometry_params[0]
+        radiuses = geometry_params[1]
+        line_segments = geometry_params[2]
+        arc_segments = geometry_params[3]
+        # axs[row, col].add_patch(Polygon(vertices, fill=False, color='green', linewidth=4))
+        # Plot line segments
+        for start, end in line_segments:
+            ax.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=2)
+            # ax2.plot([start[0], end[0]], [start[1], end[1]], [z_offset, z_offset], 'g-', linewidth=line_width)
+
+        # Plot arc segments
+        for center, start_angle, end_angle, radius in arc_segments:
+            # Calculate angles for arc
+            
+            # Ensure we draw the shorter arc
+            if abs(end_angle - start_angle) > np.pi:
+                if end_angle > start_angle:
+                    start_angle += 2*np.pi
+                else:
+                    end_angle += 2*np.pi
+                    
+            # Create points along arc
+            theta = np.linspace(start_angle, end_angle, 100)
+            x = center[0] + radius * np.cos(theta)
+            y = center[1] + radius * np.sin(theta)
+            ax.plot(x, y, 'r-', linewidth=2)
+
+def plot_sdf_transition(model, z_start, z_end, num_steps=10):
+    """
+    Plots the transition of SDF maps between two latent vectors.
+    
+    Parameters:
+    - model: The VAE model
+    - z_start: The starting latent vector
+    - z_end: The ending latent vector
+    - num_steps: Number of steps in the transition
+    """
+    z_start = torch.tensor(z_start, dtype=torch.float32)
+    z_end = torch.tensor(z_end, dtype=torch.float32)
+    
+    # Generate intermediate latent vectors
+    z_steps = [z_start + (z_end - z_start) * i / (num_steps - 1) for i in range(num_steps)]
+    
+    x = np.linspace(-1.1, 1.1, 100)
+    y = np.linspace(-1.1, 1.1, 100)
+    X, Y = np.meshgrid(x, y)
+    grid_points = torch.tensor(np.stack([X.flatten(), Y.flatten()], axis=1), dtype=torch.float32)
+    
+    fig, axs = plt.subplots(1, num_steps, figsize=(20, 5))
+    fig.suptitle('SDF Transition Between Shapes')
+    
+    with torch.no_grad():
+        for i, z in enumerate(z_steps):
+            sdf_pred = model.sdf(z, grid_points)
+            sdf_grid = sdf_pred.reshape(X.shape)
+            
+            plot_curve(grid_points, sdf_pred, axs[i])
+            axs[i].set_aspect('equal')
+            axs[i].set_frame_on(False)
+            axs[i].set_xticks([])
+            axs[i].set_yticks([])
+        
+    plt.tight_layout()
+    plt.show()
+
+def plot_sdf_transition_triangle(model, z1, z2, z3, num_steps=10, filename=None, plot_geometry=False):
+    """
+    Plots the transition of SDF maps between three latent vectors in a triangular format.
+    
+    Parameters:
+    - model: The VAE model
+    - z1: The first latent vector
+    - z2: The second latent vector
+    - z3: The third latent vector
+    - num_steps: Number of steps in the transition
+    """
+    z1 = torch.tensor(z1, dtype=torch.float32)
+    z2 = torch.tensor(z2, dtype=torch.float32)
+    z3 = torch.tensor(z3, dtype=torch.float32)
+    
+    # Generate intermediate latent vectors
+    z_steps = []
+    for i in range(num_steps):
+        for j in range(num_steps - i):
+            z = z1 * (i / (num_steps - 1)) + z2 * (j / (num_steps - 1)) + z3 * ((num_steps - 1 - i - j) / (num_steps - 1))
+            z_steps.append(z)
+
+    # z_batch = torch.tensor(z_steps).to(model.device)
+    z_batch = torch.stack(z_steps)
+    print(z_batch.shape)
+    chis = model.decoder_input(z_batch).detach().cpu().numpy()
+    
+    x = np.linspace(-1.1, 1.1, 100)
+    y = np.linspace(-1.1, 1.1, 100)
+    X, Y = np.meshgrid(x, y)
+    grid_points = torch.tensor(np.stack([X.flatten(), Y.flatten()], axis=1), dtype=torch.float32)
+    
+    fig, ax = plt.subplots(figsize=(5, 4.5))
+    fig.suptitle('SDF Transition Between Shapes in Triangle Format')
+
+    scale = 0.85 / (num_steps - 1)
+    
+    with torch.no_grad():
+        idx = 0
+        for i in range(num_steps):
+            for j in range(num_steps - i):
+                z = z_steps[idx]
+                # Calculate the position for each icon
+                x_pos = (i + 0.5 * j) * scale #- 0.55
+                y_pos = (np.sqrt(3) / 2 * j) * scale #- 0.55
+                
+                # Plot each SDF as an icon at the calculated position
+                ax_inset = fig.add_axes([x_pos, y_pos, 0.16, 0.16])
+
+                if plot_geometry:
+                    chi_pred = chis[idx]
+                    geometry_type, geometry_params = extract_geometry(chi_pred)
+                    draw_geometry(geometry_type, geometry_params, ax_inset)
+                    
+                else:   
+                    sdf_pred = model.sdf(z, grid_points)
+                    sdf_grid = sdf_pred.reshape(X.shape)
+                    plot_curve(grid_points, sdf_pred, ax_inset)
+
+                ax_inset.set_aspect('equal')
+                ax_inset.set_frame_on(False)
+                ax_inset.set_xticks([])
+                ax_inset.set_yticks([])
+                idx += 1
+    ax.set_frame_on(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    # plt.tight_layout()
+    if filename is not None:
+        plt.savefig(filename)
+    plt.show()
+
+def plot_sdf_surface(model, z, countur=False, filename=None):
+    z = torch.tensor(z, dtype=torch.float32)
+    x = np.linspace(-1.1, 1.1, 100)
+    y = np.linspace(-1.1, 1.1, 100)
+    X, Y = np.meshgrid(x, y)
+    grid_points = torch.tensor(np.stack([X.flatten(), Y.flatten()], axis=1), dtype=torch.float32)
+    
+    fig, ax = plt.subplots(figsize=(10, 10))
+    # fig.suptitle('SDF Surface')
+    
+    with torch.no_grad():
+        sdf_pred = model.sdf(z, grid_points)
+        sdf_grid = sdf_pred.reshape(X.shape)
+        if countur:
+            plot_curve(grid_points, sdf_pred, ax)
+        else:
+            im = ax.imshow(sdf_grid.numpy(),
+                       extent=[-1.1, 1.1, -1.1, 1.1],
+                       cmap='plasma',
+                       origin='lower')
+        
+        ax.set_aspect('equal')
+        ax.set_frame_on(False)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        
+    plt.tight_layout()
+    if filename is not None:
+        plt.savefig(filename)
+    plt.show()
+
+def get_latent_subspaces(model, dataloader, num_samples=1000):
+    """Visualize the latent space"""
+
+    ellipsoid_label = torch.tensor(0)
+    triangle_label = torch.tensor(0.5)
+    quadrangle_label = torch.tensor(1)
+
+    model.eval()
+    latent_vectors = []
+    X = []
+    sdf = []
+    sdf_target = []
+    class_labels = []
+    with torch.no_grad():
+        for batch in dataloader:
+            updated_input = batch[0].clone()
+            for col in [6, 7, 8, 13, 14, 15, 16]:
+                mask = batch[0][:, col] > 0
+                updated_input[mask, col] = 0.03
+
+            output = model(updated_input)
+            latent_vectors.append(output["z"])
+            X.append(updated_input)
+            sdf.append(output["sdf_pred"])
+            sdf_target.append(batch[1])
+            class_labels.append(batch[0][:, 2])
+
+    class_labels = torch.cat(class_labels)
+    latent_vectors = torch.cat(latent_vectors)
+
+    triangle_latent_vectors = latent_vectors[class_labels == triangle_label]
+    quadrangle_latent_vectors = latent_vectors[class_labels == quadrangle_label]
+    ellipse_latent_vectors = latent_vectors[class_labels == ellipsoid_label]
+
+    return triangle_latent_vectors, quadrangle_latent_vectors, ellipse_latent_vectors

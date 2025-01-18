@@ -30,7 +30,7 @@ from TopOpt import SIMP_basic
 from TopOpt import TopOptimizer2D
 from TopOpt import fit_ellipsoid
 
-from dataset_generation.utils_generation import extract_geometry
+from dataset_generation.utils_generation import extract_geometry, get_rounded_polygon
 
 from models.sdf_models import AE_DeepSDF, AE, VAE, VAE_DeepSDF, MMD_VAE, MMD_VAE_DeepSDF
 models = {'AE_DeepSDF': AE_DeepSDF,
@@ -1103,7 +1103,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.config_dir = args["args"]["config_dir"]
         num_samples = args["args"]["N_g"]
 
-        input_dim = 17
+        self.input_dim = 17
 
         self.coords = coords.to(torch.float32)   
         self.volumes = volumes.to(torch.float32)
@@ -1116,7 +1116,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         latent_maxs = torch.tensor(z_limits['latent_maxs'], dtype=torch.float32) * 1.2
         latent_dim = latent_mins.shape[0]
 
-        saved_model_path = f'../model_weights/uba_{self.saved_model_name}.pt'
+        saved_model_path = f'../model_weights/{self.saved_model_name}_full.pt'
 
         print("saved_model_path: ", saved_model_path)
         print("latent_dim: ", latent_dim)
@@ -1127,7 +1127,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         # Initialize VAE model
         model_params = config['model']['params']
-        model_params['input_dim'] = input_dim
+        model_params['input_dim'] = self.input_dim
         self.model = models[config['model']['type']](**model_params)
 
         # Load pre-trained weights for the model
@@ -1144,7 +1144,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         # create variable constraints #######################################################################
 
-        self.scale_sigma = torch.tensor(0.1)
+        self.scale_sigma = torch.tensor(0.2)
         self.scale_max = torch.tensor(1.5)
         self.scale_min = torch.tensor(0.05)
 
@@ -1187,9 +1187,20 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         dist_means_init = torch.stack([grid_x.flatten(), grid_y.flatten()], dim=1)[:args["args"]["N_g_x"]*args["args"]["N_g_y"]]
         init_num_samples = dist_means_init.shape[0]
 
+        ## Chi min and max           c  b    x_3  y_3  R_1    R_2   R_3   x_4   y_4   x_5   y_5   R_1   R_2   R_3   R_4
+        self.chi_min = torch.tensor([0, 0, -0.8,  0,   0.01, 0.01, 0.01, -0.8, -0.2, -0.8, -0.2, 0.01, 0.01, 0.01, 0.01])
+        self.chi_max = torch.tensor([1, 1,  0.8,  0.9, 0.1,   0.1,  0.1,  0.8,  0.8,  0.8,  0.8,  0.1,  0.1,  0.1,  0.1])
         # Create input vector for encoder
-        encoder_input = torch.zeros(init_num_samples, input_dim)
-        encoder_input[:, 3] = 1/1.5  # Start from circles
+        encoder_input = torch.zeros(init_num_samples, self.input_dim)
+        # encoder_input[:, 3] = 1/1.5  # Start from circles
+
+        ### start from triangles
+        encoder_input[:, 2] = 0.5
+        encoder_input[:, 4] = 0    # x_3
+        encoder_input[:, 5] = 0.25/3 # y_3
+        encoder_input[:, 6] = 0.25/3 # R_1
+        encoder_input[:, 7] = 0.25/3 # R_2
+        encoder_input[:, 8] = 0.25/3 # R_3
 
         # get initial latent vectors
         output = self.model(encoder_input)
@@ -1257,9 +1268,40 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.merging_markers = args["args"]["merging_markers"]
         self.merging_adaptation = args["args"]["merging_adaptation"]
 
+        self.refactoring_markers = args["args"]["refactoring_markers"]
+
         self.points_inside_elements = {}
         self.point_ids_inside_elements = {}
 
+    def refactoring(self):
+        print("refactoring")
+        W_shape_var = self.W_shape_var[self.persistent_mask] 
+        shape_var = (self.shape_var_maxs - self.shape_var_mins)*torch.sigmoid(W_shape_var) + self.shape_var_mins    
+
+        # print("shape_var: ", shape_var.shape)
+        chis = self.model.decoder_input(shape_var)
+
+        chis = torch.clamp(chis, self.chi_min, self.chi_max)
+        encoder_input = torch.zeros(chis.shape[0], self.input_dim)
+        encoder_input[:, 2:] = chis
+
+
+        print("Max chis: ", chis.max(dim=0))
+        print("Min chis: ", chis.min(dim=0))
+
+        # TODO: add radiuses clipping
+
+        # get initial latent vectors
+        output = self.model(encoder_input)
+        z = output['z']
+        z = torch.clamp(z, self.shape_var_mins, self.shape_var_maxs)
+
+        shape_var_values = torch.logit(
+            (z - self.shape_var_mins) / (self.shape_var_maxs - self.shape_var_mins)
+        ).type(torch.float32)
+
+        self.W_shape_var.data[self.persistent_mask] = shape_var_values
+        
     def get_geometry(self):
 
         W_scale = self.W_scale[self.persistent_mask]
@@ -1305,11 +1347,16 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
                 vertices = geometry_params[0] @ R[i]
                 vertices = vertices*base_scale[i] + offsets[i]
                 radiuses = geometry_params[1]*base_scale[i]
+                line_segments, arc_segments, arcs_intersection = get_rounded_polygon(vertices, radiuses)
                 # print(R[i])
                 # vertices = vertices @ R[i]
-                geometry_features.append(["polygon", vertices, radiuses])
+                geometry_features.append(["polygon", vertices, radiuses, line_segments, arc_segments])
 
         return geometry_features
+
+    def if_refactoring(self, global_i):
+        if global_i in self.refactoring_markers:
+            return True
 
     def if_merging_preparation(self, global_i):
         if global_i + 1 in self.merging_markers:
@@ -1525,12 +1572,12 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         # Kreisselmeier-Steinhause
         sm_coeff = 40
         kernel_sum = kernel.sum(dim=1)
-        kernel = torch.sigmoid(self.smooth_k*(kernel - 0.5))
-        exp_kernel_sum = torch.exp(sm_coeff*kernel).sum(dim=1)+1e-8
+        # kernel = torch.sigmoid(self.smooth_k*(kernel - 0.5))
+        # exp_kernel_sum = torch.exp(sm_coeff*kernel).sum(dim=1)+1e-8
         # exp_kernel_sum_shifted = torch.exp(kernel_shifted).sum(dim=1)+1e-8
-        # self.H = (1 - self.Emin)*torch.sigmoid(-self.smooth_k*(kernel_sum - 0.5)) + self.Emin
+        self.H = (1 - self.Emin)*torch.sigmoid(-self.smooth_k*(kernel_sum - 0.5)) + self.Emin
         # print("sm_f_limits: ", torch.log(exp_kernel_sum).min()/sm_coeff, torch.log(exp_kernel_sum).max()/sm_coeff)
-        self.H = (1 - self.Emin)*(1 - torch.log(exp_kernel_sum)/sm_coeff) + self.Emin
+        # self.H = (1 - self.Emin)*(1 - torch.log(exp_kernel_sum)/sm_coeff) + self.Emin
         # self.H_splitted = torch.sigmoid(0.1*self.smooth_k*(kernel_shifted - 0.5))
         self.H_splitted = kernel_shifted
         self.H_splitted_sum = self.H_splitted.sum(dim=1)
@@ -1588,8 +1635,11 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
             return torch.tensor(0.0)
         
     def update_shape_combination(self, global_i):
-        if self.if_merging(global_i):
-            self.merging()
+        # if self.if_merging(global_i):
+        #     self.merging()
+
+        if self.if_refactoring(global_i):
+            self.refactoring()
     
     def forward(self, ce, global_i):
 
