@@ -2051,7 +2051,6 @@ class LitSdfAE_HvDecoder(L.LightningModule):
             self.log('val_mae', avg_mae, prog_bar=True)
             self.log('val_rmse', avg_rmse, prog_bar=True)
             self.log('val_smoothness_diff', avg_smoothness_diff, prog_bar=True)
-
     
     def configure_optimizers(self):
         vae_optimizer = torch.optim.AdamW(self.vae.parameters(), lr=self.learning_rate)

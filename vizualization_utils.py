@@ -327,28 +327,32 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     class_labels = [class_names[int(label*2)] for label in class_labels]
     
     # Plot the reduced dimensions with colors based on class labels
-    plt.figure(figsize=(8,8))
+    plt.figure(figsize=(5, 5))
+    
     # Convert class labels to numeric values for coloring
     unique_labels = list(set(class_labels))
     label_to_num = {label: i for i, label in enumerate(unique_labels)}
     numeric_labels = [label_to_num[label] for label in class_labels]
 
-    colors = plt.rcParams['axes.prop_cycle'].by_key()['color'][:len(class_names)]
+    # Use a distinct colormap for better differentiation
+    colors = plt.cm.get_cmap('tab10', len(class_names))
 
     for i, label in enumerate(class_names):
         class_bids = [x == label for x in class_labels]
         # Get points for this class
         class_points = latent_2d[class_bids]
 
-        plt.scatter(class_points[:, 0], class_points[:, 1], label=label, c=colors[i], alpha=0.5)
+        plt.scatter(class_points[:, 0], class_points[:, 1], label=label, c=[colors(i)], alpha=0.7, edgecolors='w', s=50)
 
-
-    plt.title('Latent Space Distribution')
-    plt.xlabel('First Latent Dimension')
-    plt.ylabel('Second Latent Dimension')
-    plt.legend()
+    # plt.title('t-SNE Visualization of Latent Space Clusters', fontsize=14)
+    plt.xlabel('t-SNE Dimension 1', fontsize=12)
+    plt.ylabel('t-SNE Dimension 2', fontsize=12)
+    plt.legend(title='Shape Class', fontsize=10, title_fontsize='13')
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    
     if filename is not None:
-        plt.savefig(filename)
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
 
     plt.show()
 
