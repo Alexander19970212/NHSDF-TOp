@@ -51,10 +51,13 @@ def create_comparison_table():
     # results_path = "src/metrics_lat_tau_dim2.json"
 
     reconstruction_results_path = "src/reconstruction_metrics.json"
+    recon_suffix = "_recon_dec"
 
     if os.path.exists(reconstruction_results_path):
         with open(reconstruction_results_path, 'r') as file:
             reconstruction_results = json.load(file)
+            # Remove suffix in keys of reconstruction_results
+            reconstruction_results = {key.replace(recon_suffix, ''): value for key, value in reconstruction_results.items()}
     else:
         reconstruction_results = {}
 
