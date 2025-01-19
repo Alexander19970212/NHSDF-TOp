@@ -3,7 +3,7 @@
 # Script to run VAE_training.py for all configuration files in a directory
 
 # CONFIG_DIR="configs/NN_sdf_experiments/model_arch_minmi"
-# CONFIG_DIR="configs/NN_sdf_experiments/model_arch_minmi2"
+# CONFIG_DIR="configs/NN_sdf_experiments/model_arch_minmi"
 CONFIG_DIR="configs/NN_sdf_experiments/model_arch"
 DATASET_PATH="shape_datasets"
 MODEL_DIR="model_weights"
@@ -16,7 +16,7 @@ for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do
 
     echo "Running AE_reconstructor_training.py with config: $CONFIG_NAME"
 
-    python train/AE_reconstructor_training.py \
+    python train/separate_training_reconstructor.py \
         --max_epochs "$MAX_EPOCHS" \
         --dataset_path "$DATASET_PATH" \
         --model_dir "$MODEL_DIR" \
