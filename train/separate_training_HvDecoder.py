@@ -67,7 +67,7 @@ def main(args):
     dataset_path = args.dataset_path
     configs_dir = args.config_dir
     config_name = args.config_name
-    run_name = f'uba_{config_name}'
+    run_name = f'uba_scnd_{config_name}'
 
     dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_5000.csv',
                     f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_5000.csv', 
@@ -182,12 +182,12 @@ def main(args):
     final_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader])
 
     # Save model weights
-    checkpoint_path = f'model_weights/scnd_{run_name}_full.ckpt'
+    checkpoint_path = f'model_weights/{run_name}_full.ckpt'
     trainer.save_checkpoint(checkpoint_path)
     print(f"Model weights saved to {checkpoint_path}")
 
     # Save just the model weights
-    model_weights_path = f'model_weights/scnd_{run_name}_full.pt'
+    model_weights_path = f'model_weights/{run_name}_full.pt'
     torch.save(vae_model.state_dict(), model_weights_path)
     print(f"Model weights saved to {model_weights_path}")
 

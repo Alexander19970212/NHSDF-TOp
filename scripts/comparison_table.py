@@ -45,8 +45,8 @@ def create_comparison_table():
     # results_path = 'src/metrics_model_arch_minMaxMI.json'
     # results_path = "src/metrics_model_arch_with_mi.json"
     # results_path = "src/metrics_minmi_lammi.json"
-    results_path = "src/metrics_model_arch_minMaxMI_2.json"
-    # results_path = "src/metrics_model_arch_without_mi2.json"
+    # results_path = "src/metrics_model_arch_minMaxMI_2.json"
+    results_path = "src/metrics_model_arch_without_mi2.json"
     # results_path = "src/metrics_lat_dim2.json"
     # results_path = "src/metrics_lat_tau_dim2.json"
 

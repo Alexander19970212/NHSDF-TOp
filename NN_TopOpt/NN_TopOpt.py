@@ -124,8 +124,8 @@ class FeatureMappingTopOpt:
         # TODO: check for different vars
         self.optim = torch.optim.Adam([
             {'params': self.gaussian_core.W_scale, 'lr': 5e-2},
-            {'params': self.gaussian_core.W_shape_var, 'lr': 1e-1},
-            {'params': self.gaussian_core.W_rotation, 'lr': 5e-2},
+            {'params': self.gaussian_core.W_shape_var, 'lr': 5e-2},
+            {'params': self.gaussian_core.W_rotation, 'lr': 1e-1},
             {'params': self.gaussian_core.W_offsets, 'lr': 1e-1}
         ], maximize=False, eps=1e-8)
 
@@ -1111,7 +1111,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         # load stats for latent space
         # latent_goal = args["args"]["latent_goal"]
-        z_limits = np.load(f"../z_limits/{self.saved_model_name}_stats.npz")
+        z_limits = np.load(f"../z_limits/{self.saved_model_name}_full_stats.npz")
         latent_mins = torch.tensor(z_limits['latent_mins'], dtype=torch.float32) * 1.2
         latent_maxs = torch.tensor(z_limits['latent_maxs'], dtype=torch.float32) * 1.2
         latent_dim = latent_mins.shape[0]
@@ -1195,12 +1195,24 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         # encoder_input[:, 3] = 1/1.5  # Start from circles
 
         ### start from triangles
-        encoder_input[:, 2] = 0.5
-        encoder_input[:, 4] = 0    # x_3
-        encoder_input[:, 5] = 0.25/3 # y_3
-        encoder_input[:, 6] = 0.25/3 # R_1
-        encoder_input[:, 7] = 0.25/3 # R_2
-        encoder_input[:, 8] = 0.25/3 # R_3
+        # encoder_input[:, 2] = 0.5
+        # encoder_input[:, 4] = 0    # x_3
+        # encoder_input[:, 5] = 0.25/3 # y_3
+        # encoder_input[:, 6] = 0.25/3 # R_1
+        # encoder_input[:, 7] = 0.25/3 # R_2
+        # encoder_input[:, 8] = 0.25/3 # R_3
+
+        ### start from squares
+        R = 0.45/3
+        encoder_input[:, 2] = 1
+        encoder_input[:, 9] = 0.5
+        encoder_input[:, 10] = 0.5
+        encoder_input[:, 11] = -0.5
+        encoder_input[:, 12] = 0.5
+        encoder_input[:, 13] = R
+        encoder_input[:, 14] = R
+        encoder_input[:, 15] = R
+        encoder_input[:, 16] = R
 
         # get initial latent vectors
         output = self.model(encoder_input)
@@ -1268,6 +1280,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.merging_markers = args["args"]["merging_markers"]
         self.merging_adaptation = args["args"]["merging_adaptation"]
 
+        self.shape_optimization_ranges = args["args"]["shape_optimization_ranges"]
         self.refactoring_markers = args["args"]["refactoring_markers"]
 
         self.points_inside_elements = {}
@@ -1593,18 +1606,30 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
     def prepare_grads(self, global_i):
 
-        if self.if_merging_adaptation(global_i) and self.new_gaussians_mask.any():
-            print("merging_adaptation ___")
-            evolving_mask = self.new_gaussians_mask
-        else:
-            evolving_mask = self.persistent_mask
+        # if self.if_merging_adaptation(global_i) and self.new_gaussians_mask.any():
+        #     print("merging_adaptation ___")
+        #     evolving_mask = self.new_gaussians_mask
+        # else:
 
-        print("evolving_mask: ", evolving_mask)
+        evolving_mask = self.persistent_mask
+
+        # print("evolving_mask: ", evolving_mask)
 
         self.W_scale.grad.data[~evolving_mask] = 0.0
-        self.W_shape_var.grad.data[~evolving_mask] = 0.0
         self.W_rotation.grad.data[~evolving_mask] = 0.0
         self.W_offsets.grad.data[~evolving_mask] = 0.0
+        self.W_shape_var.grad.data[~evolving_mask] = 0.0
+
+        in_shape_optimization_range = any(start <= global_i <= end for start, end in self.shape_optimization_ranges)
+   
+        if in_shape_optimization_range:
+            print(f"Global iteration {global_i} is within one of the shape optimization ranges.")
+            # self.W_scale.grad.data[evolving_mask] = 0.0
+            # self.W_rotation.grad.data[evolving_mask] = 0.0
+            self.W_offsets.grad.data[evolving_mask] = 0.0
+
+        else:
+            self.W_shape_var.grad.data[evolving_mask] = 0.0
 
         # if global_i < 100:
         #     torch.nn.utils.clip_grad_norm_(self.W_offsets, max_norm=30)
@@ -1619,7 +1644,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         
     def compute_rc_loss(self, global_i): # form factor loss
         
-        if global_i > 40:
+        if global_i > 100:
             W_shape_var = self.W_shape_var[self.persistent_mask]
             shape_var = (self.shape_var_maxs - self.shape_var_mins)*torch.sigmoid(W_shape_var) + self.shape_var_mins             
             radius_sum = torch.nn.functional.relu(self.model.tau(shape_var)-0.1)

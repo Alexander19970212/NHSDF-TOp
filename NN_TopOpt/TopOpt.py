@@ -248,13 +248,13 @@ class TopOptimizer2D:
         iteration = self.method.global_i
         iteration_meta = self.method.meta
 
-        with open(self.log_file_name, 'r') as fp:
-            meta = json.load(fp)
+        # with open(self.log_file_name, 'r') as fp:
+        #     meta = json.load(fp)
 
-        meta["iter_meta"][iteration] = iteration_meta
+        # meta["iter_meta"][iteration] = iteration_meta
 
-        with open(self.log_file_name, 'w') as fp:
-            json.dump(meta, fp)
+        # with open(self.log_file_name, 'w') as fp:
+        #     json.dump(meta, fp)
 
     def save_data(self, directory):
         np.save(f"{directory}/K_sep.npy", self.K_sep)
