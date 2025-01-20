@@ -1159,8 +1159,8 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         y_min = coords[:, 1].min()
         y_max = coords[:, 1].max()
 
-        self.coord_max = torch.tensor([x_max, y_max]).to(torch.float32)
-        self.coord_min = torch.tensor([x_min, y_min]).to(torch.float32)
+        self.coord_max = torch.tensor([x_max, y_max]).to(torch.float32)*1.2
+        self.coord_min = torch.tensor([x_min, y_min]).to(torch.float32)*1.2
 
         # sigmas ratio for shape variables (while merging)
         self.sigmas_ratio_max = 3.5
@@ -1626,10 +1626,11 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
             print(f"Global iteration {global_i} is within one of the shape optimization ranges.")
             # self.W_scale.grad.data[evolving_mask] = 0.0
             # self.W_rotation.grad.data[evolving_mask] = 0.0
-            self.W_offsets.grad.data[evolving_mask] = self.W_offsets.grad.data[evolving_mask] * 0.7
+            self.W_offsets.grad.data[evolving_mask] = self.W_offsets.grad.data[evolving_mask] * 0.5
 
         else:
             self.W_shape_var.grad.data[evolving_mask] = 0.0
+            self.W_rotation.grad.data[evolving_mask] = self.W_rotation.grad.data[evolving_mask] * 0.6
 
 
 
