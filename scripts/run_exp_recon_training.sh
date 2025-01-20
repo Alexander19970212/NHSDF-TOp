@@ -3,8 +3,8 @@
 # Script to run VAE_training.py for all configuration files in a directory
 
 # CONFIG_DIR="configs/NN_sdf_experiments/model_arch_minmi"
-# CONFIG_DIR="configs/NN_sdf_experiments/model_arch_minmi"
-CONFIG_DIR="configs/NN_sdf_experiments/model_arch"
+CONFIG_DIR="configs/NN_sdf_experiments/model_arch_minmi2"
+# CONFIG_DIR="configs/NN_sdf_experiments/model_arch"
 DATASET_PATH="shape_datasets"
 MODEL_DIR="model_weights"
 METRICS_FILE="src/reconstruction_metrics.json"
