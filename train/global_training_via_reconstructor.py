@@ -16,7 +16,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'datasets'))
 
-from models.sdf_models import LitSdfAE, LitSdfAE_MINE
+from models.sdf_models import LitSdfAE, LitSdfAE_MINE, LitReconDecoderGlobal
 from models.sdf_models import AE
 from models.sdf_models import AE_DeepSDF
 from models.sdf_models import VAE
@@ -154,7 +154,7 @@ def main(args):
     trainer_params = config['trainer']['params']
     trainer_params['vae_model'] = vae_model
     trainer_params['max_steps'] = MAX_STEPS
-    vae_trainer = LitRecon_MINE(**trainer_params)
+    vae_trainer = LitReconDecoderGlobal(**trainer_params)
 
     # Train the model 
     trainer.validate(vae_trainer, dataloaders=test_loader)
@@ -163,12 +163,12 @@ def main(args):
 
 
     # Save model weights
-    checkpoint_path = f'{models_dir}/{config_name}_MI_ReconDec.ckpt'
+    checkpoint_path = f'{models_dir}/{config_name}_ReconDecGlobal.ckpt'
     trainer.save_checkpoint(checkpoint_path)
     print(f"Model weights saved to {checkpoint_path}")
 
     # Save just the model weights
-    model_weights_path = f'{models_dir}/{config_name}_MI_ReconDec.pt'
+    model_weights_path = f'{models_dir}/{config_name}_ReconDecGlobal.pt'
     torch.save(vae_model.state_dict(), model_weights_path)
     print(f"Model weights saved to {model_weights_path}")
 

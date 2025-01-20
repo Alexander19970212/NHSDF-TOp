@@ -1230,7 +1230,7 @@ class MMD_VAE_DeepSDF(MMD_VAE):
         nn.init.zeros_(self.decoder_tau.bias)
 
         
-class LitSdfAE(L.LightningModule):
+class LitHvDecoderGlobal(L.LightningModule):
     def __init__(self, vae_model, learning_rate=1e-4, reg_weight=1e-4, 
                  regularization=None, warmup_steps=1000, max_steps=10000):
         super().__init__()
@@ -1468,6 +1468,49 @@ class LitSdfAE(L.LightningModule):
             "optimizer": optimizer,
             'lr_scheduler': scheduler
         }
+
+class LitReconDecoderGlobal(LitHvDecoderGlobal):
+    def __init__(self, vae_model, learning_rate=1e-4, reg_weight=1e-4,
+                 regularization=None, warmup_steps=1000, max_steps=10000):
+        super().__init__(vae_model, learning_rate, reg_weight, regularization, warmup_steps, max_steps)
+        self.freeze_weights()
+
+    def freezing_weights(self):
+        for param in self.vae.parameters():
+            param.requires_grad = True
+
+        for param in self.vae.decoder_sdf.parameters():
+            param.requires_grad = False
+
+        stat = self.count_parameters()
+
+    def training_step(self, batch, batch_idx):
+        x, sdf, tau = batch
+
+        output = self.vae(x, reconstruction=True, Heaviside=False)
+        loss_args = output
+        loss_args["tau_target"] = tau
+        loss_args["x_original"] = x[:, 2:]
+        total_loss, splitted_loss = self.vae.loss_function(loss_args, Reconstruction=True, Heaviside=False)
+
+        for key, value in splitted_loss.items():
+            self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
+
+        return total_loss
+    
+    def validation_step(self, batch, batch_idx):
+        
+        x, sdf, tau = batch
+
+        output = self.vae(x, reconstruction=True, Heaviside=False)
+        loss_args = output
+        loss_args["tau_target"] = tau
+        loss_args["x_original"] = x[:, 2:]
+        total_loss, splitted_loss = self.vae.loss_function(loss_args, Reconstruction=True, Heaviside=False)
+
+        for key, value in splitted_loss.items():
+            self.log(f'val_{key}', value, prog_bar=True)
+
 
 ################################################################################################
 # code partially from https://github.com/AliLotfi92/InfoMaxVAE.git
