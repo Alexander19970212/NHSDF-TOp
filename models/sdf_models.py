@@ -1044,8 +1044,6 @@ class MMD_VAE(AE):
         """
         tau_pred = loss_args["tau_pred"]
         tau_target = loss_args["tau_target"]
-        sdf_pred = loss_args["sdf_pred"]
-        sdf_target = loss_args["sdf_target"]
         z = loss_args["z"]
 
         # Compute mmd-loss
