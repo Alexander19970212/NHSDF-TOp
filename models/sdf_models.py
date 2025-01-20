@@ -1473,7 +1473,7 @@ class LitReconDecoderGlobal(LitHvDecoderGlobal):
     def __init__(self, vae_model, learning_rate=1e-4, reg_weight=1e-4,
                  regularization=None, warmup_steps=1000, max_steps=10000):
         super().__init__(vae_model, learning_rate, reg_weight, regularization, warmup_steps, max_steps)
-        self.freeze_weights()
+        self.freezing_weights()
 
     def freezing_weights(self):
         for param in self.vae.parameters():
