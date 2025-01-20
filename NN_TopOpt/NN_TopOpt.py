@@ -1114,6 +1114,12 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         z_limits = np.load(f"../z_limits/{self.saved_model_name}_full_stats.npz")
         latent_mins = torch.tensor(z_limits['latent_mins'], dtype=torch.float32) * 1.2
         latent_maxs = torch.tensor(z_limits['latent_maxs'], dtype=torch.float32) * 1.2
+        # latent_mins -= latent_maxs * 0.2/
+        # latent_maxs += latent_maxs * 0.2
+
+        # print("latent_mins: ", latent_mins)
+        # print("latent_maxs: ", latent_maxs)
+
         latent_dim = latent_mins.shape[0]
 
         saved_model_path = f'../model_weights/{self.saved_model_name}_full.pt'
@@ -1143,8 +1149,8 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.model.eval()
 
         # create variable constraints #######################################################################
-
-        self.scale_sigma = torch.tensor(0.2)
+        init_scale = args["args"]["init_scale"]
+        self.scale_sigma = torch.tensor(init_scale)
         self.scale_max = torch.tensor(1.5)
         self.scale_min = torch.tensor(0.05)
 
@@ -1159,8 +1165,11 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         y_min = coords[:, 1].min()
         y_max = coords[:, 1].max()
 
-        self.coord_max = torch.tensor([x_max, y_max]).to(torch.float32)*1.2
-        self.coord_min = torch.tensor([x_min, y_min]).to(torch.float32)*1.2
+        self.coord_max = torch.tensor([x_max, y_max]).to(torch.float32)
+        self.coord_min = torch.tensor([x_min, y_min]).to(torch.float32)
+        
+        self.coord_min -= self.coord_max * args["args"]["axis_offset"]
+        self.coord_max += self.coord_max * args["args"]["axis_offset"]
 
         # sigmas ratio for shape variables (while merging)
         self.sigmas_ratio_max = 3.5
@@ -1173,11 +1182,13 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         # initialize the feature centers according to the grid
         center_x = (x_max - x_min)/2
         center_y = (y_max - y_min)/2
+        # print("center_x: ", center_x)
+        # print("center_y: ", center_y)
         x_grid_offset = (x_max - x_min)*0.05
         y_grid_offset = (y_max - y_min)*0.05
         x = torch.linspace(x_min + x_grid_offset, x_max - x_grid_offset, args["args"]["N_g_x"])
         y = torch.linspace(y_min + y_grid_offset, y_max - y_grid_offset, args["args"]["N_g_y"])
-        x = x + (x.mean() - center_x)
+        x = x - (x.mean() - center_x)
         y = y - (y.mean() - center_y)
         grid_x, grid_y = torch.meshgrid(x, y, indexing='ij')
         print("grid_x: ", grid_x)

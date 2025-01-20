@@ -95,7 +95,7 @@ class LoadedMesh2D:
         x = self.q[:, 0]
         y = self.q[:, 1]
         triangulation = mtri.Triangulation(x.ravel(), y.ravel(), self.me)
-        fig = plt.figure(figsize=(12, 12 * (y.max() / x.max())))
+        fig = plt.figure(figsize=(3, 3 * (y.max() / x.max())))
         
         plt.xlim(0, x.max())
         plt.ylim(0, y.max())
