@@ -3,7 +3,7 @@
 # Script to run VAE_training.py for all configuration files in a directory
 
 # CONFIG_DIR="configs/NN_sdf_experiments/model_arch_15_wMI_wT"
-CONFIG_DIR="configs/NN_sdf_experiments/model_arch_15_wMI_wT_2"
+CONFIG_DIR="configs/NN_sdf_experiments/model_arch_15_wMI_wT"
 DATASET_PATH="shape_datasets"
 METRICS_FILE="src/metrics_model_arch_15_wMI_wT_HvDecSeparate.json"
 MAX_EPOCHS=1  # Adjust as needed

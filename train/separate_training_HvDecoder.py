@@ -59,7 +59,7 @@ models = {'AE_DeepSDF': AE_DeepSDF,
           'MMD_VAE': MMD_VAE,
           'MMD_VAE_DeepSDF': MMD_VAE_DeepSDF}
 
-trainers = {'LitSdfAE': LitSdfAE,
+trainers = {'LitSdfAE': LitHvDecoderGlobal,
             'LitSdfAE_MINE': LitSdfAE_MINE}
 
 
