@@ -124,7 +124,7 @@ class LoadedMesh2D:
                     plt.gca().add_patch(polygon)
 
                     for start, end in line_segments:
-                        plt.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=1)
+                        plt.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=3)
 
                     # Plot arc segments
                     for center, start_angle, end_angle, radius in arc_segments:
@@ -141,7 +141,7 @@ class LoadedMesh2D:
                         theta = np.linspace(start_angle, end_angle, 100)
                         x = center[0] + radius * np.cos(theta)
                         y = center[1] + radius * np.sin(theta)
-                        plt.plot(x, y, 'r-', linewidth=1)
+                        plt.plot(x, y, 'r-', linewidth=3)
 
         if filename is not None:
             plt.gca().set_axis_off()

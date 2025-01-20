@@ -227,7 +227,7 @@ class FeatureMappingTopOpt:
         
         if self.global_i != 0:
             ce = args["ce"]
-            self.plot_H_gradients(ce)
+            # self.plot_H_gradients(ce)
             obj, splitted_loss = self.parameter_opt_step(ce)
 
         # if self.global_i == 160:
@@ -1163,7 +1163,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.coord_min = torch.tensor([x_min, y_min]).to(torch.float32)
 
         # sigmas ratio for shape variables (while merging)
-        self.sigmas_ratio_max = 2.5
+        self.sigmas_ratio_max = 3.5
         self.sigmas_ratio_min = 0.5
 
         # create initial parameters ##############################################################################
@@ -1294,7 +1294,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         # print("shape_var: ", shape_var.shape)
         chis = self.model.decoder_input(shape_var)
 
-        chis = torch.clamp(chis, self.chi_min, self.chi_max)
+        # chis = torch.clamp(chis, self.chi_min, self.chi_max)
         encoder_input = torch.zeros(chis.shape[0], self.input_dim)
         encoder_input[:, 2:] = chis
 
@@ -1535,7 +1535,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         base_scale = (self.scale_max - self.scale_min)*torch.sigmoid(W_scale) + self.scale_min
 
-        shape_var = (self.shape_var_maxs - self.shape_var_mins)*torch.sigmoid(W_shape_var) + self.shape_var_mins    
+        shape_var = (self.shape_var_maxs - self.shape_var_mins)*torch.sigmoid(W_shape_var) + self.shape_var_mins   
         rotation = self.rotation_min + (self.rotation_max - self.rotation_min)*torch.sigmoid(W_rotation).view(batch_size)
         offsets = self.coord_min + (self.coord_max - self.coord_min)*torch.sigmoid(W_offsets)
 
@@ -1585,12 +1585,12 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         # Kreisselmeier-Steinhause
         sm_coeff = 40
         kernel_sum = kernel.sum(dim=1)
-        # kernel = torch.sigmoid(self.smooth_k*(kernel - 0.5))
-        # exp_kernel_sum = torch.exp(sm_coeff*kernel).sum(dim=1)+1e-8
+        kernel = torch.sigmoid(self.smooth_k*(kernel - 0.5))
+        exp_kernel_sum = torch.exp(sm_coeff*kernel).sum(dim=1)+1e-8
         # exp_kernel_sum_shifted = torch.exp(kernel_shifted).sum(dim=1)+1e-8
-        self.H = (1 - self.Emin)*torch.sigmoid(-self.smooth_k*(kernel_sum - 0.5)) + self.Emin
+        # self.H = (1 - self.Emin)*torch.sigmoid(-self.smooth_k*(kernel_sum - 0.5)) + self.Emin
         # print("sm_f_limits: ", torch.log(exp_kernel_sum).min()/sm_coeff, torch.log(exp_kernel_sum).max()/sm_coeff)
-        # self.H = (1 - self.Emin)*(1 - torch.log(exp_kernel_sum)/sm_coeff) + self.Emin
+        self.H = (1 - self.Emin)*(1 - torch.log(exp_kernel_sum)/sm_coeff) + self.Emin
         # self.H_splitted = torch.sigmoid(0.1*self.smooth_k*(kernel_shifted - 0.5))
         self.H_splitted = kernel_shifted
         self.H_splitted_sum = self.H_splitted.sum(dim=1)
@@ -1626,10 +1626,12 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
             print(f"Global iteration {global_i} is within one of the shape optimization ranges.")
             # self.W_scale.grad.data[evolving_mask] = 0.0
             # self.W_rotation.grad.data[evolving_mask] = 0.0
-            self.W_offsets.grad.data[evolving_mask] = 0.0
+            self.W_offsets.grad.data[evolving_mask] = self.W_offsets.grad.data[evolving_mask] * 0.7
 
         else:
             self.W_shape_var.grad.data[evolving_mask] = 0.0
+
+
 
         # if global_i < 100:
         #     torch.nn.utils.clip_grad_norm_(self.W_offsets, max_norm=30)
