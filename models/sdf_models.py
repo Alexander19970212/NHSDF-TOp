@@ -1053,12 +1053,6 @@ class MMD_VAE(AE):
         # Reconstruction loss for input features
         tau_loss = F.mse_loss(tau_pred.flatten(), tau_target.flatten(), reduction='mean')
 
-        # Orthogonality loss
-        if self.orthogonality_loss is not None:
-            orthogonality_loss = self.orthogonality_loss(z, self.tau_latent_dim)
-        else:
-            orthogonality_loss = 0
-
         # Regularization loss
         if self.regularization == 'l1':
             reg_loss = torch.mean(torch.abs(z))
@@ -1068,16 +1062,13 @@ class MMD_VAE(AE):
             reg_loss = 0
 
         total_loss = (
-            sdf_loss
             + self.tau_loss_weight * tau_loss 
-            + self.orthogonality_loss_weight * orthogonality_loss 
             + self.reg_weight * reg_loss
             + self.mmd_weight * mmd_loss
         )
 
         splitted_loss = {
             "tau_loss": tau_loss,
-            "orthogonality_loss": orthogonality_loss,
             "reg_loss": reg_loss,
             "mmd_loss": mmd_loss
         }
