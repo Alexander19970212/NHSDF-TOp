@@ -16,7 +16,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'datasets'))
 
-from models.sdf_models import LitSdfAE, LitSdfAE_MINE
+from models.sdf_models import LitHvDecoderGlobal, LitSdfAE_MINE
 from models.sdf_models import AE
 from models.sdf_models import AE_DeepSDF
 from models.sdf_models import VAE
@@ -59,7 +59,7 @@ models = {'AE_DeepSDF': AE_DeepSDF,
           'MMD_VAE': MMD_VAE,
           'MMD_VAE_DeepSDF': MMD_VAE_DeepSDF}
 
-trainers = {'LitSdfAE': LitSdfAE,
+trainers = {'LitSdfAE': LitHvDecoderGlobal,
             'LitSdfAE_MINE': LitSdfAE_MINE}
 
 
