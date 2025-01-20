@@ -1025,7 +1025,7 @@ class MMD_VAE(AE):
         else:
             self.orthogonality_loss = orth_losses[orthogonality_loss_type]
         
-    def loss_function(self, loss_args):
+    def loss_function(self, loss_args, Heaviside=True, Reconstruction=False):
         """
         Calculate the loss function with optional L1 or L2 regularization.
 
@@ -1055,19 +1055,11 @@ class MMD_VAE(AE):
         # Reconstruction loss for input features
         tau_loss = F.mse_loss(tau_pred.flatten(), tau_target.flatten(), reduction='mean')
 
-        # SDF prediction loss
-        sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
-
         # Orthogonality loss
         if self.orthogonality_loss is not None:
             orthogonality_loss = self.orthogonality_loss(z, self.tau_latent_dim)
         else:
             orthogonality_loss = 0
-
-        # if not self.training:
-        #     orthogonality_metric_value = orthogonality_metric(z, self.tau_latent_dim)
-        # else:
-        #     orthogonality_metric_value = 0
 
         # Regularization loss
         if self.regularization == 'l1':
@@ -1085,15 +1077,28 @@ class MMD_VAE(AE):
             + self.mmd_weight * mmd_loss
         )
 
-        
         splitted_loss = {
-            "total_loss": total_loss,
             "tau_loss": tau_loss,
-            "sdf_loss": sdf_loss,
             "orthogonality_loss": orthogonality_loss,
             "reg_loss": reg_loss,
             "mmd_loss": mmd_loss
         }
+
+        if Heaviside:
+            sdf_pred = loss_args["sdf_pred"]
+            sdf_target = loss_args["sdf_target"]
+            sdf_loss = F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
+            splitted_loss["sdf_loss"] = sdf_loss
+            total_loss += sdf_loss
+
+        if Reconstruction:
+            x_reconstructed = loss_args["x_reconstructed"]
+            x_original = loss_args["x_original"]
+            reconstruction_loss = F.mse_loss(x_reconstructed, x_original, reduction='mean')
+            splitted_loss["reconstruction_loss"] = reconstruction_loss
+            total_loss += reconstruction_loss
+
+        splitted_loss["total_loss"] = total_loss
 
         # if not self.training:
         #     splitted_loss["orthogonality_metric"] = orthogonality_metric_value
