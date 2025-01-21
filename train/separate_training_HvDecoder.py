@@ -69,7 +69,7 @@ def main(args):
     config_name = args.config_name
     models_dir = args.model_dir
 
-    run_name = f'scnd_{config_name}'
+    run_name = f'uba_{config_name}'
 
     saved_model_path = f'{models_dir}/{config_name}_ReconDecGlobal.pt'
 
