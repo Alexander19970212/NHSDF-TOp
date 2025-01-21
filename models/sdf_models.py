@@ -1239,6 +1239,7 @@ class LitHvDecoderGlobal(L.LightningModule):
         self.save_hyperparameters(logger=False)
 
     def freezing_weights(self, rec_decoder_training=False):
+        print(f"Freezing weights: {rec_decoder_training}")
         for param in self.vae.parameters():
             param.requires_grad = not rec_decoder_training
 
