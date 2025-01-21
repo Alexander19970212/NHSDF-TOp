@@ -59,6 +59,10 @@ class TopOptimizer2D:
     def __init__(self, method_dict, args, activate_method = True) -> None:
         
         self.problem_name = args['problem_name']
+        try:
+            self.image_size = args['image_size']
+        except:
+            self.image_size = 12
         # load problems config
         with open('../test_problems/problems.json', 'r') as fp:
             problem_list = json.load(fp)
@@ -236,8 +240,9 @@ class TopOptimizer2D:
             bc_bids = np.logical_and(x_bids, y_bids)
             node_ids = node_range[bc_bids]
 
-            self.f[node_ids*2] = case[1][0]
-            self.f[node_ids*2+1] = case[1][1]
+            # apply loads distributed over nodes
+            self.f[node_ids*2] = case[1][0]/node_ids.shape[0]
+            self.f[node_ids*2+1] = case[1][1]/node_ids.shape[0]
 
         print("Loaded loads: ", self.f[self.f != 0].shape)
 
@@ -265,7 +270,7 @@ class TopOptimizer2D:
         np.save(f"{directory}/jk.npy", self.jk)
 
     def plot_final_result(self, geometry_features = None, filename=None):
-        self.Th.plot_topology(self.x, geometry_features, filename=filename)
+        self.Th.plot_topology(self.x, image_size=self.image_size, geometry_features=geometry_features, filename=filename)
 
     def save_solution(self, directory):
         np.save(f"{directory}/u.npy", self.u)
@@ -306,7 +311,7 @@ class TopOptimizer2D:
             # show displacement
             # self.Th.plot_displacement(self.u)
             # break
-            self.Th.plot_topology(xPhys)
+            # self.Th.plot_topology(xPhys, image_size=self.image_size)
 
             # print("U max", self.u.max())
             # compute compliance vector

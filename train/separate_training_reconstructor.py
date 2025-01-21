@@ -70,8 +70,9 @@ def main(args):
     configs_dir = args.config_dir
     config_name = args.config_name
     models_dir = args.model_dir
-    saved_model_path = f'{models_dir}/uba_{config_name}.pt'
-    run_name = f'uba_{config_name}_recon_dec'
+    saved_model_path = f'{models_dir}/uba_frst_{config_name}_HvDecGlobal.pt'
+
+    run_name = f'uba_frst_{config_name}'
 
     dataset_train_files = [f'{dataset_path}/ellipse_reconstruction_dataset_train.csv',
                        f'{dataset_path}/triangle_reconstruction_dataset_train.csv',
@@ -164,12 +165,12 @@ def main(args):
 
 
     # Save model weights
-    checkpoint_path = f'{models_dir}/{config_name}_full.ckpt'
+    checkpoint_path = f'{models_dir}/{run_name}_full.ckpt'
     trainer.save_checkpoint(checkpoint_path)
     print(f"Model weights saved to {checkpoint_path}")
 
     # Save just the model weights
-    model_weights_path = f'{models_dir}/{config_name}_full.pt'
+    model_weights_path = f'{models_dir}/{run_name}_full.pt'
     torch.save(vae_model.state_dict(), model_weights_path)
     print(f"Model weights saved to {model_weights_path}")
 

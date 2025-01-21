@@ -1179,24 +1179,33 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         num_samples = args["args"]["N_g"]
         
-        # initialize the feature centers according to the grid
-        center_x = (x_max - x_min)/2
-        center_y = (y_max - y_min)/2
-        # print("center_x: ", center_x)
-        # print("center_y: ", center_y)
-        x_grid_offset = (x_max - x_min)*0.05
-        y_grid_offset = (y_max - y_min)*0.05
-        x = torch.linspace(x_min + x_grid_offset, x_max - x_grid_offset, args["args"]["N_g_x"])
-        y = torch.linspace(y_min + y_grid_offset, y_max - y_grid_offset, args["args"]["N_g_y"])
-        x = x - (x.mean() - center_x)
-        y = y - (y.mean() - center_y)
-        grid_x, grid_y = torch.meshgrid(x, y, indexing='ij')
+        try:
+            x_centers = args["args"]["init_centers_x"]
+            y_centers = args["args"]["init_centers_y"]
+            grid_x = torch.tensor(x_centers)[:, None]
+            grid_y = torch.tensor(y_centers)[:, None]
+        except:
+            # initialize the feature centers according to the grid
+            center_x = (x_max - x_min)/2
+            center_y = (y_max - y_min)/2
+            # print("center_x: ", center_x)
+            # print("center_y: ", center_y)
+            x_grid_offset = (x_max - x_min)*0.05
+            y_grid_offset = (y_max - y_min)*0.05
+            x = torch.linspace(x_min + x_grid_offset, x_max - x_grid_offset, args["args"]["N_g_x"])
+            y = torch.linspace(y_min + y_grid_offset, y_max - y_grid_offset, args["args"]["N_g_y"])
+            x = x - (x.mean() - center_x)
+            y = y - (y.mean() - center_y)
+            grid_x, grid_y = torch.meshgrid(x, y, indexing='ij')
+
         print("grid_x: ", grid_x)
         print("grid_y: ", grid_y)
-        print("center_x: ", center_x)
-        print("center_y: ", center_y)
-        dist_means_init = torch.stack([grid_x.flatten(), grid_y.flatten()], dim=1)[:args["args"]["N_g_x"]*args["args"]["N_g_y"]]
-        init_num_samples = dist_means_init.shape[0]
+        # print("center_x: ", center_x)
+        # print("center_y: ", center_y)
+
+        init_num_samples = grid_x.shape[0]
+        dist_means_init = torch.stack([grid_x.flatten(), grid_y.flatten()], dim=1)[:init_num_samples]
+        # init_num_samples = dist_means_init.shape[0]
 
         ## Chi min and max           c  b    x_3  y_3  R_1    R_2   R_3   x_4   y_4   x_5   y_5   R_1   R_2   R_3   R_4
         self.chi_min = torch.tensor([0, 0, -0.8,  0,   0.01, 0.01, 0.01, -0.8, -0.2, -0.8, -0.2, 0.01, 0.01, 0.01, 0.01])

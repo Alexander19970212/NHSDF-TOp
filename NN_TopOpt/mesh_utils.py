@@ -89,13 +89,13 @@ class LoadedMesh2D:
         plt.axis('equal')
         plt.show()
 
-    def plot_topology(self, xPhys, geometry_features = None, filename=None):
+    def plot_topology(self, xPhys, image_size=12, geometry_features = None, filename=None):
         # fig = plt.figure(figsize=(12, 4))
         
         x = self.q[:, 0]
         y = self.q[:, 1]
         triangulation = mtri.Triangulation(x.ravel(), y.ravel(), self.me)
-        fig = plt.figure(figsize=(3, 3 * (y.max() / x.max())))
+        fig = plt.figure(figsize=(image_size, image_size * (y.max() / x.max())))
         
         plt.xlim(0, x.max())
         plt.ylim(0, y.max())
