@@ -181,7 +181,8 @@ def main(args):
     trainer_params = config['trainer']['params']
     trainer_params['vae_model'] = vae_model
     trainer_params['max_steps'] = MAX_STEPS
-    vae_trainer = trainers[config['trainer']['type']](**trainer_params)
+    # vae_trainer = trainers[config['trainer']['type']](**trainer_params)
+    vae_trainer = LitHvDecoderGlobal(**trainer_params)
 
     # Train the model
     trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader, radius_samples_loader])

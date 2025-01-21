@@ -67,7 +67,11 @@ def main(args):
     dataset_path = args.dataset_path
     configs_dir = args.config_dir
     config_name = args.config_name
+    models_dir = args.model_dir
+
     run_name = f'scnd_{config_name}'
+
+    saved_model_path = f'{models_dir}/{config_name}_ReconDecGlobal.pt'
 
     dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_5000.csv',
                     f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_5000.csv', 
@@ -169,6 +173,10 @@ def main(args):
     model_params['input_dim'] = test_dataset.feature_dim
     vae_model = models[config['model']['type']](**model_params)
 
+    # Load pre-trained weights for the model
+    state_dict = torch.load(saved_model_path)
+    vae_model.load_state_dict(state_dict)
+
     # Initialize VAE trainer
     trainer_params = config['trainer']['params']
     trainer_params['vae_model'] = vae_model
@@ -182,12 +190,12 @@ def main(args):
     final_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader])
 
     # Save model weights
-    checkpoint_path = f'model_weights/{run_name}_full.ckpt'
+    checkpoint_path = f'{models_dir}/{run_name}_full.ckpt'
     trainer.save_checkpoint(checkpoint_path)
     print(f"Model weights saved to {checkpoint_path}")
 
     # Save just the model weights
-    model_weights_path = f'model_weights/{run_name}_full.pt'
+    model_weights_path = f'{models_dir}/{run_name}_full.pt'
     torch.save(vae_model.state_dict(), model_weights_path)
     print(f"Model weights saved to {model_weights_path}")
 
@@ -211,6 +219,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VAE model.')
     parser.add_argument('--max_epochs', type=int, default=1, help='Maximum number of epochs for training')
     # parser.add_argument('--run_name', type=str, default='uba_NTM_F_reg5em3', help='Name of the run')
+    parser.add_argument('--model_dir', type=str, default='model_weights', help='Path to the model directory')
     parser.add_argument('--dataset_path', type=str, default='shape_datasets', help='Path to the dataset')
     parser.add_argument('--config_dir', type=str, default='configs/NN_sdf_experiments/architectures', help='Path to the config directory')
     parser.add_argument('--config_name', type=str, default='AE_DeepSDF', help='Name of the config')
