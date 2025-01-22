@@ -311,7 +311,7 @@ class TopOptimizer2D:
             # show displacement
             # self.Th.plot_displacement(self.u)
             # break
-            # self.Th.plot_topology(xPhys, image_size=self.image_size)
+            self.Th.plot_topology(xPhys, image_size=self.image_size)
 
             # print("U max", self.u.max())
             # compute compliance vector
@@ -483,7 +483,6 @@ def filter_matrix(points, rmin):
       H[i, nearest_indeces] = sH_i
 
   return H.tocsc()
-
 
 def fit_ellipsoid(x, target_area):
     # Create variables: positive semi-definite matrix A and vector b

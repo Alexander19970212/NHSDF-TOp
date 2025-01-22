@@ -111,7 +111,7 @@ class LoadedMesh2D:
                     center = geometry_feature[3]
                     rotation = geometry_feature[4]
                     rotation = rotation * 180 / np.pi
-                    ellipse = Ellipse(center, 2*a, 2*b, angle=rotation, fill=False, color='red', linewidth=1)
+                    ellipse = Ellipse(center, 2*a, 2*b, angle=rotation, fill=False, color='red', linewidth=3)
                     plt.gca().add_patch(ellipse)
 
                 elif geometry_type == "polygon":

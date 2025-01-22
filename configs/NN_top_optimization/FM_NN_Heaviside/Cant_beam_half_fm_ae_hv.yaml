@@ -26,13 +26,14 @@ params:
   N_g: 20
   N_g_x: 1
   N_g_y: 3
-  max_iter: 80
+  max_iter: 77
   saved_model_name: AE_DeepSDF
   config_dir: ../configs/NN_sdf_experiments/model_arch
   merging_marker: 10
   merging_adaptation_length: 10
-  compliance_w: 100000
-  volfrac_w: 0.001
+  compliance_w: 15
+  volfrac_w: 1000000
   gaussian_overlap_w: 0
   gaussian_overlap_scale: 1.3
   rc_loss_w: 100000
+  image_size: 3

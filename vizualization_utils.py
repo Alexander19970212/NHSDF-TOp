@@ -327,7 +327,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     class_labels = [class_names[int(label*2)] for label in class_labels]
     
     # Plot the reduced dimensions with colors based on class labels
-    plt.figure(figsize=(5, 5))
+    plt.figure(figsize=(8, 8))
     
     # Convert class labels to numeric values for coloring
     unique_labels = list(set(class_labels))
@@ -342,12 +342,20 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
         # Get points for this class
         class_points = latent_2d[class_bids]
 
-        plt.scatter(class_points[:, 0], class_points[:, 1], label=label, c=[colors(i)], alpha=0.7, edgecolors='w', s=50)
+        plt.scatter(
+            class_points[:, 0], 
+            class_points[:, 1], 
+            label=label, 
+            c=[colors(i)], 
+            alpha=0.7, 
+            edgecolors='w', 
+            s=100
+        )
 
     # plt.title('t-SNE Visualization of Latent Space Clusters', fontsize=14)
-    plt.xlabel('t-SNE Dimension 1', fontsize=12)
-    plt.ylabel('t-SNE Dimension 2', fontsize=12)
-    plt.legend(title='Shape Class', fontsize=10, title_fontsize='13')
+    plt.xlabel('t-SNE Dimension 1', fontsize=25)
+    plt.ylabel('t-SNE Dimension 2', fontsize=25)
+    plt.legend(title='Shape Class', fontsize=20, title_fontsize='20')
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.tight_layout()
     

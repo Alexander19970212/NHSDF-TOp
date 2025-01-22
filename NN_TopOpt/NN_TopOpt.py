@@ -716,49 +716,62 @@ class GaussianSplattingCompliance(torch.nn.Module):
         num_samples = args["args"]["N_g"]
         dist_means = torch.zeros((num_samples, 2))
 
-        # initialize the gaussian centers according to the grid
-        center_x = 0.3
-        center_y = 0.1
-        x = torch.linspace(0.05, 0.55, args["args"]["N_g_x"])
-        y = torch.linspace(0.05, 0.15, args["args"]["N_g_y"])
-        # print("x: ", x)
-        # print("y: ", y)
-
-        x = x + (x.mean() - center_x)
-        y = y - (y.mean() - center_y)
-        # print("x: ", x)
-        # print("y: ", y)
-        grid_x, grid_y = torch.meshgrid(x, y, indexing='ij')
-        dist_means_init = torch.stack([grid_x.flatten(), grid_y.flatten()], dim=1)[:args["args"]["N_g_x"]*args["args"]["N_g_y"]]
-
-        init_num_samples = dist_means_init.shape[0]
-
-        dist_means[:init_num_samples] = dist_means_init
-
-        # scale_x = 1/coords[:, 0].max()
-        # self.width_ratio = coords[:, 1].max()/coords[:, 0].max()
-        # self.scaler = torch.tensor([1, self.width_ratio])
-        self.scale_sigma = torch.tensor(0.03)
-        self.scale_max = self.scale_sigma*2
-        self.scale_min = self.scale_sigma*0.9
-
-        self.rotation_min = -torch.pi/2
-        self.rotation_max = torch.pi/2
-
         x_min = coords[:, 0].min()
         x_max = coords[:, 0].max()
         y_min = coords[:, 1].min()
         y_max = coords[:, 1].max()
 
+        try:
+            x_centers = args["args"]["init_centers_x"]
+            y_centers = args["args"]["init_centers_y"]
+            grid_x = torch.tensor(x_centers)[:, None]
+            grid_y = torch.tensor(y_centers)[:, None]
+        except:
+            # initialize the feature centers according to the grid
+            center_x = (x_max - x_min)/2
+            center_y = (y_max - y_min)/2
+            x_grid_offset = (x_max - x_min)*0.05
+            y_grid_offset = (y_max - y_min)*0.05
+            x = torch.linspace(x_min + x_grid_offset, x_max - x_grid_offset, args["args"]["N_g_x"])
+            y = torch.linspace(y_min + y_grid_offset, y_max - y_grid_offset, args["args"]["N_g_y"])
+            x = x - (x.mean() - center_x)
+            y = y - (y.mean() - center_y)
+            grid_x, grid_y = torch.meshgrid(x, y, indexing='ij')
+            grid_x = grid_x.reshape(-1, 1)
+            grid_y = grid_y.reshape(-1, 1)
+
+        print("grid_x: ", grid_x)
+        print("grid_y: ", grid_y)
+        # print("center_x: ", center_x)
+        # print("center_y: ", center_y)
+
+        init_num_samples = grid_x.shape[0]
+        dist_means_init = torch.stack([grid_x.flatten(), grid_y.flatten()], dim=1)[:init_num_samples]
+        
+        dist_means[:init_num_samples] = dist_means_init
+
+        init_scale = args["args"]["init_scale"]
+        self.scale_sigma = torch.tensor(init_scale)
+        self.scale_max = torch.tensor(1.5)
+        self.scale_min = torch.tensor(0.05)
+
+        self.rotation_min = -torch.pi/2
+        self.rotation_max = torch.pi/2
+
         self.coord_max = torch.tensor([x_max, y_max])
         self.coord_min = torch.tensor([x_min, y_min])
 
+        self.coord_min -= self.coord_max * args["args"]["axis_offset"]
+        self.coord_max += self.coord_max * args["args"]["axis_offset"]
+
         print("Scale_sigma_init: ", self.scale_sigma)
 
-        self.sigmas_ratio_max = 2.5
+        self.sigmas_ratio_max = 3.5
         self.sigmas_ratio_min = 0.5
 
         self.coords = coords
+        self.volumes = volumes
+        self.volumes_sum = self.volumes.sum()
 
         offsets_values = torch.logit(
             (dist_means - self.coord_min) / (self.coord_max - self.coord_min)
@@ -787,13 +800,19 @@ class GaussianSplattingCompliance(torch.nn.Module):
         left_over_size = num_samples - init_num_samples
         self.current_marker = init_num_samples
 
-        self.persistent_mask = torch.cat([torch.ones(init_num_samples, dtype=bool),torch.zeros(left_over_size, dtype=bool)], dim=0)
+        self.persistent_mask = torch.cat(
+            [torch.ones(init_num_samples, dtype=bool), torch.zeros(left_over_size, dtype=bool)], dim=0
+        )
         self.new_gaussians_mask = torch.zeros_like(self.persistent_mask, dtype=bool)
 
         self.Emin = args["Emin"]
         self.Emax = args["Emax"]
         self.penal = args["penal"]
+
         self.volfrac = args["args"]["volfrac"]
+        self.volfrac_increment = args["args"]["volfrac_increment"]
+        self.volfrac_increment_marker = args["args"]["volfrac_increment_marker"]
+        self.volfrac_increment_duration = args["args"]["volfrac_increment_duration"]
 
         self.compliance_w = args["args"]["compliance_w"]
         self.volfrac_w = args["args"]["volfrac_w"]
@@ -891,12 +910,12 @@ class GaussianSplattingCompliance(torch.nn.Module):
         self.W_rotation.grad.data[~evolving_mask] = 0.0
         self.W_offsets.grad.data[~evolving_mask] = 0.0
 
-        if (global_i > self.merging_marker and 
-                global_i < self.merging_marker + self.merging_adaptation_length):
-            torch.nn.utils.clip_grad_norm_(self.W_offsets, max_norm=0.001)
-            torch.nn.utils.clip_grad_norm_(self.W_scale, max_norm=0.01)
-            torch.nn.utils.clip_grad_norm_(self.W_shape_var, max_norm=0.01)
-            torch.nn.utils.clip_grad_norm_(self.W_rotation, max_norm=0.01)
+        # if (global_i > self.merging_marker and 
+        #         global_i < self.merging_marker + self.merging_adaptation_length):
+        torch.nn.utils.clip_grad_norm_(self.W_offsets, max_norm=0.001)
+        torch.nn.utils.clip_grad_norm_(self.W_scale, max_norm=0.01)
+        torch.nn.utils.clip_grad_norm_(self.W_shape_var, max_norm=0.01)
+        torch.nn.utils.clip_grad_norm_(self.W_rotation, max_norm=0.01)
 
     def forward(self, ce, global_i):
 
@@ -904,23 +923,35 @@ class GaussianSplattingCompliance(torch.nn.Module):
         H_vec = torch.clamp(self.H, min=self.Emin, max=self.Emax)**self.penal
         compliance = torch.dot(H_vec, ce)
 
-        volfrac_goal = self.volfrac - 0.1*max(0, min(1, (global_i-20)/20))
-        
+        # volfrac_goal = self.volfrac - 0.1*max(0, min(1, (global_i-20)/20))
+        volfrac_goal = self.volfrac - self.volfrac_increment * max(
+            0, min(1, (global_i - self.volfrac_increment_marker) / self.volfrac_increment_duration)
+        )
+        volume_goal = self.volumes_sum * volfrac_goal
         # Safeguard the loss calculations
+        # TODO: change to vectorproduct with volume vectors
         volfrac_loss_pre = torch.nn.functional.relu(
-            self.H.mean() - volfrac_goal
+            self.H.T @ self.volumes/volume_goal - 1
         )
         
         gaussian_overlap = torch.nn.functional.relu(
             self.H_splitted_sum - 1.5
         ).mean()
 
-        print("volume: ", self.H.mean())
+        print("current volfrac: ", self.H.T @ self.volumes/self.volumes.sum(), "volfrac_goal: ", volfrac_goal, "volfrac_loss_pre: ", volfrac_loss_pre)
         print("compliance: ", compliance)
         print("gaussian_overlap: ", gaussian_overlap)
 
-        obj_ce = -compliance*self.compliance_w + volfrac_loss_pre*self.volfrac_w + gaussian_overlap*self.gaussian_overlap_w
-        obj_real = compliance*self.compliance_w + volfrac_loss_pre*self.volfrac_w + gaussian_overlap*self.gaussian_overlap_w
+        obj_ce = (
+            -compliance * self.compliance_w
+            + volfrac_loss_pre * self.volfrac_w
+            + gaussian_overlap * self.gaussian_overlap_w
+        )
+        obj_real = (
+            compliance * self.compliance_w
+            + volfrac_loss_pre * self.volfrac_w
+            + gaussian_overlap * self.gaussian_overlap_w
+        )
 
         splitted_loss = {
             "gaussian_overlap": gaussian_overlap,
@@ -1094,6 +1125,36 @@ class GaussianSplattingCompliance(torch.nn.Module):
 
         return design_vars
     
+    def get_geometry(self):
+
+        W_scale = self.W_scale[self.persistent_mask]
+        W_shape_var = self.W_shape_var[self.persistent_mask] 
+        W_rotation = self.W_rotation[self.persistent_mask]
+        W_offsets = self.W_offsets[self.persistent_mask]
+        batch_size = W_scale.shape[0]
+
+        base_scale = (self.scale_max - self.scale_min)*torch.sigmoid(W_scale) + self.scale_min
+        base_scale = base_scale.squeeze()
+        sigmas_ratio = (self.sigmas_ratio_max - self.sigmas_ratio_min)*torch.sigmoid(W_shape_var) + self.sigmas_ratio_min    
+        sigmas = torch.cat([torch.ones(batch_size, 1), torch.ones(batch_size, 1) * sigmas_ratio], dim=1)
+        rotation = self.rotation_min + (self.rotation_max - self.rotation_min)*torch.sigmoid(W_rotation).view(batch_size)
+        offsets = self.coord_min + (self.coord_max - self.coord_min)*torch.sigmoid(W_offsets)
+
+        base_scale = base_scale.detach().cpu().numpy()
+        offsets = offsets.detach().cpu().numpy()
+        rotation = rotation.detach().cpu().numpy()
+        sigmas = sigmas.flatten().detach().cpu().numpy()
+        sigmas_ratio = sigmas_ratio.flatten().detach().cpu().numpy()
+
+        geometry_features = []
+
+        for i in range(batch_size):
+
+            a = base_scale[i]
+            b = base_scale[i]*sigmas_ratio[i]
+            geometry_features.append(["ellipse", a, b, offsets[i], -rotation[i]])
+
+        return geometry_features
 
 class CombinedMappingDecoderSDF(torch.nn.Module):
     def __init__(self, coords, volumes, args):
@@ -1197,6 +1258,8 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
             x = x - (x.mean() - center_x)
             y = y - (y.mean() - center_y)
             grid_x, grid_y = torch.meshgrid(x, y, indexing='ij')
+            grid_x = grid_x.reshape(-1, 1)
+            grid_y = grid_y.reshape(-1, 1)
 
         print("grid_x: ", grid_x)
         print("grid_y: ", grid_y)
