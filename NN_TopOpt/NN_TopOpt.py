@@ -1360,6 +1360,13 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         # self.rs_loss = args["args"]["rs_loss"]
         # self.rs_loss_start_iter = args["args"]["rs_loss_start_iter"]
 
+        self.max_iter = args["args"]["max_iter"]
+
+        try:
+            self.offset_grad_deceleration = args["args"]["offset_grad_deceleration"]
+        except:
+            self.offset_grad_deceleration = 0.5
+
         self.merging_markers = args["args"]["merging_markers"]
         self.merging_adaptation = args["args"]["merging_adaptation"]
 
@@ -1703,15 +1710,21 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.W_offsets.grad.data[~evolving_mask] = 0.0
         self.W_shape_var.grad.data[~evolving_mask] = 0.0
 
-        in_shape_optimization_range = any(start <= global_i <= end for start, end in self.shape_optimization_ranges)
-   
-        if in_shape_optimization_range:
-            print(f"Global iteration {global_i} is within one of the shape optimization ranges.")
-            # self.W_scale.grad.data[evolving_mask] = 0.0
-            # self.W_rotation.grad.data[evolving_mask] = 0.0
-            self.W_offsets.grad.data[evolving_mask] = self.W_offsets.grad.data[evolving_mask] * 0.5
+        # in_shape_optimization_range = any(start <= global_i <= end for start, end in self.shape_optimization_ranges)
 
-        else:
+        shape_opt_range = False
+        for start, end in self.shape_optimization_ranges:
+            if start <= global_i <= end:
+                print(f"Global iteration {global_i} is within one of the shape optimization ranges.")
+                # self.W_scale.grad.data[evolving_mask] = 0.0
+                # self.W_rotation.grad.data[evolving_mask] = 0.0
+                # Calculate the proportion of the current iteration within the shape optimization range
+                proportion = (global_i - start) / (end - start)
+                # Decrease self.offset_grad_deceleration from its initial value to 0
+                self.W_offsets.grad.data[evolving_mask] *= (1 - proportion) * self.offset_grad_deceleration
+                shape_opt_range = True
+
+        if not shape_opt_range:
             self.W_shape_var.grad.data[evolving_mask] = 0.0
             self.W_rotation.grad.data[evolving_mask] = self.W_rotation.grad.data[evolving_mask] * 0.6
 
