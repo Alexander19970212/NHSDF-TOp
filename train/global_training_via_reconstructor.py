@@ -87,7 +87,7 @@ def main(args):
     test_dataset = ReconstructionDataset(dataset_test_files)
 
     # Create DataLoaders with shuffling
-    batch_size = 1024
+    batch_size = 64
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=batch_size,
