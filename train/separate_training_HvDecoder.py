@@ -102,7 +102,7 @@ def main(args):
     # radius_samples_dataset = RadiusDataset(radius_samples_files)
 
     # Create DataLoaders with shuffling
-    batch_size = 64
+    batch_size = 1024
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=batch_size,

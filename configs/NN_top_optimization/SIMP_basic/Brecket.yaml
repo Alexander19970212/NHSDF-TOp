@@ -2,6 +2,6 @@ params:
   problem_name: Brecket
   comment: test
   method: simp_basic
-  volfrac: 0.3
+  volfrac: 0.35
   penal: 3
   rmin: 0.015
