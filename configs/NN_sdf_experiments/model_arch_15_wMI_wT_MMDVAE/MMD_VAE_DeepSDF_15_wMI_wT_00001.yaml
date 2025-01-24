@@ -1,0 +1,20 @@
+model:
+  type: MMD_VAE_DeepSDF
+  params:
+    latent_dim: 15
+    hidden_dim: 128
+    tau_latent_dim: 4
+    tau_loss_weight: 0.0
+    orthogonality_loss_weight: 0.1
+    regularization: None
+    orthogonality_loss_type: None
+    reg_weight: 0.0001
+    mmd_weight: 0.0001
+
+trainer:
+  type: LitSdfAE
+  params:
+    learning_rate: 0.0001
+    reg_weight: 0.0001
+    regularization: l2
+    warmup_steps: 1000
