@@ -56,7 +56,8 @@ def create_comparison_table():
     # results_path = "src/metrics_model_arch_15_wMI_wT_HvDecGlobal_AEs_RecDecSeparate.json"
 
     # reconstruction_results_path = "src/reconstruction_metrics.json"
-    reconstruction_results_path = "src/metrics_model_arch_15_wMI_wT_reconDecGlobal.json"
+    # reconstruction_results_path = "src/metrics_model_arch_15_wMI_wT_reconDecGlobal.json"
+    reconstruction_results_path = "src/metrics_model_arch_15_wMI_wT_RecDecSeparate.json"
     # reconstruction_results_path = "src/metrics_model_arch_15_wMI_wT_RecDecSeparate_AEs.json"
     recon_suffix = "_recon_dec"
 
