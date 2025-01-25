@@ -50,8 +50,9 @@ def create_comparison_table():
     # results_path = "src/metrics_lat_dim2.json"
     # results_path = "src/metrics_lat_tau_dim2.json"
     # results_path = "src/metrics_model_arch_15_wMI_wT_HvDecSeparate.json"
-    # results_path = "src/metrics_model_arch_15_wMI_wT_HvDecGlobal.json"
-    results_path = "src/metrics_model_arch_15_wMI_wT_HvDecGlobal_AEs.json"
+    results_path = "src/metrics_model_arch_15_wMI_wT_HvDecGlobal.json"
+
+    # results_path = "src/metrics_model_arch_15_wMI_wT_HvDecGlobal_AEs.json"
     # results_path = "src/metrics_model_arch_15_wMI_wT_HvDecGlobal_AEs_RecDecSeparate.json"
 
     # reconstruction_results_path = "src/reconstruction_metrics.json"
