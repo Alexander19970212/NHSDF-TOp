@@ -1,0 +1,20 @@
+model:
+  type: MMD_VAE
+  params:
+    latent_dim: 9
+    hidden_dim: 128
+    tau_latent_dim: 3
+    tau_loss_weight: 0.1
+    orthogonality_loss_weight: 0.1
+    orthogonality_loss_type: None
+    regularization: None
+    reg_weight: 0.00001
+    mmd_weight: 0.00001
+
+trainer:
+  type: LitSdfAE
+  params:
+    learning_rate: 0.0001
+    reg_weight: 0.00001
+    regularization: l2
+    warmup_steps: 1000
