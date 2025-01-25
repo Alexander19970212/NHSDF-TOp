@@ -140,7 +140,7 @@ def main(args):
         accelerator='auto',
         devices=1,
         logger=TensorBoardLogger(
-            name='HvDecSeparate', 
+            name='final_HvDecSeparate', 
             save_dir='./logs', 
             default_hp_metric=False, 
             version=run_name

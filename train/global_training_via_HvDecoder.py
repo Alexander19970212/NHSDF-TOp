@@ -145,7 +145,7 @@ def main(args):
         accelerator='auto',
         devices=1,
         logger=TensorBoardLogger(
-            name='HvDecGlobal', 
+            name='final_HvDecGlobal', 
             save_dir='./logs', 
             default_hp_metric=False, 
             version=run_name

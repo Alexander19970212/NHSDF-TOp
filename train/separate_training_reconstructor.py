@@ -115,7 +115,7 @@ def main(args):
         accelerator='auto',
         devices=1,
         logger=TensorBoardLogger(
-            name='ReconDecSeparate', 
+            name='final_ReconDecSeparate', 
             save_dir='./logs', 
             default_hp_metric=False, 
             version=run_name

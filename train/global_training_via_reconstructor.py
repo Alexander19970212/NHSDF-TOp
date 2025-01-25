@@ -114,7 +114,7 @@ def main(args):
         accelerator='auto',
         devices=1,
         logger=TensorBoardLogger(
-            name='ReconDecGlobal', 
+            name='final_ReconDecGlobal', 
             save_dir='./logs', 
             default_hp_metric=False, 
             version=run_name
