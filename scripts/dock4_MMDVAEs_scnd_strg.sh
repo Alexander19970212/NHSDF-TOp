@@ -7,8 +7,8 @@ CONFIG_DIR="configs/NN_sdf_experiments/final_experiments/MMD_VAEs"
 DATASET_PATH="shape_datasets"
 MAX_EPOCHS=1  # Adjust as needed
 
-METRICS_FILE="src/final_metrics_round2_scnd_strtg_MMD_VAEs.json"
-METRICS_FILE_RECON="src/final_metrics_round2_scnd_strtg_MMD_VAEs_recon.json"
+METRICS_FILE="src/final_metrics_round3_scnd_strtg_MMD_VAEs.json"
+METRICS_FILE_RECON="src/final_metrics_round3_scnd_strtg_MMD_VAEs_recon.json"
 
 
 for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do
