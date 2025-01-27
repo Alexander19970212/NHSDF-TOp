@@ -3,7 +3,7 @@
 # Script to run VAE_training.py for all configuration files in a directory
 
 # CONFIG_DIR="configs/NN_sdf_experiments/model_arch_15_wMI_wT"
-CONFIG_DIR="configs/NN_sdf_experiments/final_experiments/MMD_VAEs"
+CONFIG_DIR="configs/NN_sdf_experiments/final_experiments_short/MMD_VAEs"
 DATASET_PATH="shape_datasets"
 MAX_EPOCHS=1  # Adjust as needed
 
