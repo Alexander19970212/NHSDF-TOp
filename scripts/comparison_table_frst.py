@@ -52,9 +52,9 @@ def create_comparison_table():
     # results_path = "src/metrics_model_arch_15_wMI_wT_HvDecSeparate.json"
     # results_path = "src/metrics_model_arch_15_wMI_wT_HvDecGlobal.json"
 
-    result_pathes = ["src/final_metrics_round3_frst_strtg_AEs.json",
-                     "src/final_metrics_round3_frst_strtg_MMD_VAEs.json",
-                     "src/final_metrics_round3_frst_strtg_VAEs.json"
+    result_pathes = ["src/final_metrics_round1_frst_strtg_AEs.json",
+                     "src/final_metrics_round1_frst_strtg_MMD_VAEs.json",
+                     "src/final_metrics_round1_frst_strtg_VAEs.json"
                      ]
 
     # results_path = "src/metrics_model_arch_15_wMI_wT_HvDecGlobal_AEs.json"
@@ -65,9 +65,9 @@ def create_comparison_table():
     # reconstruction_results_path = "src/metrics_model_arch_15_wMI_wT_RecDecSeparate.json"
     # reconstruction_results_path = "src/metrics_model_arch_15_wMI_wT_RecDecSeparate_AEs.json"
 
-    reconstruction_results_pathes = ["src/final_metrics_round3_frst_strtg_AEs_recon.json",
-                                      "src/final_metrics_round3_frst_strtg_MMD_VAEs_recon.json",
-                                      "src/final_metrics_round3_frst_strtg_VAEs_recon.json"
+    reconstruction_results_pathes = ["src/final_metrics_round1_frst_strtg_AEs_recon.json",
+                                      "src/final_metrics_round1_frst_strtg_MMD_VAEs_recon.json",
+                                      "src/final_metrics_round1_frst_strtg_VAEs_recon.json"
                                       ]
     recon_suffix = "_recon_dec"
 
