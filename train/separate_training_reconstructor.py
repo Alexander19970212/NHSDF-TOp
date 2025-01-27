@@ -41,14 +41,14 @@ torch.cuda.empty_cache()
 
 
 # Set all random seeds for reproducibility
-seed = 42
-torch.manual_seed(seed)
-torch.cuda.manual_seed(seed)
-torch.cuda.manual_seed_all(seed)  # For multi-GPU
-np.random.seed(seed)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-seed_everything(seed)  # Lightning seed
+# seed = 42
+# torch.manual_seed(seed)
+# torch.cuda.manual_seed(seed)
+# torch.cuda.manual_seed_all(seed)  # For multi-GPU
+# np.random.seed(seed)
+# torch.backends.cudnn.deterministic = True
+# torch.backends.cudnn.benchmark = False
+# seed_everything(seed)  # Lightning seed
 
 
 # Add the parent directory of NN_TopOpt to the system path
