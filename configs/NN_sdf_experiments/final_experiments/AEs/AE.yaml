@@ -1,7 +1,7 @@
 model:
   type: AE
   params:
-    latent_dim: 9
+    latent_dim: 15
     hidden_dim: 128
     tau_latent_dim: 3
     tau_loss_weight: 0.0
