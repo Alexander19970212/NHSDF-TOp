@@ -122,11 +122,15 @@ class FeatureMappingTopOpt:
 
         ## Optimizer
         # TODO: check for different vars
+        w_scale_lr = args["args"].get("w_scale_lr", 5e-2)
+        w_shape_var_lr = args["args"].get("w_shape_var_lr", 5e-2)
+        w_rotation_lr = args["args"].get("w_rotation_lr", 1e-1)
+        w_offsets_lr = args["args"].get("w_offsets_lr", 1e-1)
         self.optim = torch.optim.Adam([
-            {'params': self.gaussian_core.W_scale, 'lr': 5e-2},
-            {'params': self.gaussian_core.W_shape_var, 'lr': 5e-2},
-            {'params': self.gaussian_core.W_rotation, 'lr': 1e-1},
-            {'params': self.gaussian_core.W_offsets, 'lr': 1e-1}
+            {'params': self.gaussian_core.W_scale, 'lr': w_scale_lr},
+            {'params': self.gaussian_core.W_shape_var, 'lr': w_shape_var_lr},
+            {'params': self.gaussian_core.W_rotation, 'lr': w_rotation_lr},
+            {'params': self.gaussian_core.W_offsets, 'lr': w_offsets_lr}
         ], maximize=False, eps=1e-8)
 
     def parameter_opt_step(self, ce):
@@ -1161,6 +1165,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         super().__init__()
 
         self.saved_model_name = args["args"]["saved_model_name"]
+        self.config_name = args["args"]["config_name"]
         self.config_dir = args["args"]["config_dir"]
         num_samples = args["args"]["N_g"]
 
@@ -1172,7 +1177,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         # load stats for latent space
         # latent_goal = args["args"]["latent_goal"]
-        z_limits = np.load(f"../z_limits/{self.saved_model_name}_full_stats.npz")
+        z_limits = np.load(f"../z_limits/{self.config_name}_full_stats.npz")
         latent_mins = torch.tensor(z_limits['latent_mins'], dtype=torch.float32) * 1.2
         latent_maxs = torch.tensor(z_limits['latent_maxs'], dtype=torch.float32) * 1.2
         # latent_mins -= latent_maxs * 0.2/
@@ -1189,7 +1194,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         print("latent_dim: ", latent_dim)
 
         # Load configuration from YAML file
-        with open(f'{self.config_dir}/{self.saved_model_name}.yaml', 'r') as file:
+        with open(f'{self.config_dir}/{self.config_name}.yaml', 'r') as file:
             config = yaml.safe_load(file)
 
         # Initialize VAE model

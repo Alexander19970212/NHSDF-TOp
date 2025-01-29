@@ -276,7 +276,7 @@ class TopOptimizer2D:
         np.save(f"{directory}/u.npy", self.u)
         np.save(f"{directory}/x.npy", self.x)
     
-    def optimize(self):
+    def optimize(self, plot_interval = 10):
         self.log_meta()
         counter = 0
         while not self.method.stop_flag:
@@ -311,7 +311,8 @@ class TopOptimizer2D:
             # show displacement
             # self.Th.plot_displacement(self.u)
             # break
-            self.Th.plot_topology(xPhys, image_size=self.image_size)
+            if counter % plot_interval == 0:
+                self.Th.plot_topology(xPhys, image_size=self.image_size)
 
             # print("U max", self.u.max())
             # compute compliance vector
