@@ -593,8 +593,11 @@ class SIMP_basic:
         self.xold = self.x.copy()
         self.x, self.g=oc(self.nme, self.x, self.volumes, self.vol_goal, self.dc, self.dv, self.g)
         # print(self.x)
+        # H_vec = torch.clamp(self.H, min=self.Emin, max=self.Emax)**self.penal
+        # compliance = torch.dot(H_vec, ce.float())
 
         print("current volume: ", (self.x.T @ self.volumes)/self.volumes_sum)
+        print("current c: ", obj)
         
         change=np.linalg.norm(self.x.reshape(self.nme,1)-self.xold.reshape(self.nme,1),np.inf)
 
@@ -609,7 +612,7 @@ class SIMP_basic:
                      'change': change,
                      'stop_flag': self.stop_flag}
         
-        print(self.global_i, obj, change)
+        # print(self.global_i, obj, change)
 
         return self.x.copy()
     
