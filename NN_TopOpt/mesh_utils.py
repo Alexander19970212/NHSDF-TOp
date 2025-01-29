@@ -89,18 +89,21 @@ class LoadedMesh2D:
         plt.axis('equal')
         plt.show()
 
-    def plot_topology(self, xPhys, image_size=12, geometry_features = None, filename=None):
+    def plot_topology(self, xPhys, image_size=12,
+                      zoom_center = None, zoom_radius = None, zoom_factor = 3,
+                      ellipse_color = 'red',
+                      geometry_features = None, filename=None):
         # fig = plt.figure(figsize=(12, 4))
         
         x = self.q[:, 0]
         y = self.q[:, 1]
         triangulation = mtri.Triangulation(x.ravel(), y.ravel(), self.me)
-        fig = plt.figure(figsize=(image_size, image_size * (y.max() / x.max())))
+        fig, ax = plt.subplots(figsize=(image_size, image_size * (y.max() / x.max())))
         
-        plt.xlim(0, x.max())
-        plt.ylim(0, y.max())
-        plt.tripcolor(triangulation, facecolors=xPhys, cmap='gray_r')
-        plt.axis('equal')
+        ax.set_xlim(0, x.max())
+        ax.set_ylim(0, y.max())
+        ax.tripcolor(triangulation, facecolors=xPhys, cmap='gray_r')
+        ax.set_aspect('equal')
 
         if geometry_features is not None:
             for geometry_feature in geometry_features:
@@ -111,8 +114,8 @@ class LoadedMesh2D:
                     center = geometry_feature[3]
                     rotation = geometry_feature[4]
                     rotation = rotation * 180 / np.pi
-                    ellipse = Ellipse(center, 2*a, 2*b, angle=rotation, fill=False, color='red', linewidth=3)
-                    plt.gca().add_patch(ellipse)
+                    ellipse = Ellipse(center, 2*a, 2*b, angle=rotation, fill=False, color=ellipse_color, linewidth=5)
+                    ax.add_patch(ellipse)
 
                 elif geometry_type == "polygon":
                     vertices = geometry_feature[1]
@@ -121,10 +124,10 @@ class LoadedMesh2D:
                     arc_segments = geometry_feature[4]
 
                     polygon = Polygon(vertices, fill=False, color='blue', linewidth=0.5)
-                    plt.gca().add_patch(polygon)
+                    ax.add_patch(polygon)
 
                     for start, end in line_segments:
-                        plt.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=3)
+                        ax.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=3)
 
                     # Plot arc segments
                     for center, start_angle, end_angle, radius in arc_segments:
@@ -141,13 +144,75 @@ class LoadedMesh2D:
                         theta = np.linspace(start_angle, end_angle, 100)
                         x = center[0] + radius * np.cos(theta)
                         y = center[1] + radius * np.sin(theta)
-                        plt.plot(x, y, 'r-', linewidth=3)
+                        ax.plot(x, y, 'r-', linewidth=3)
+
+        if zoom_center is not None:
+            color = 'green'
+            from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
+            axins = zoomed_inset_axes(ax, zoom_factor, loc='upper right', borderpad=1)  # zoom-factor: 3, location: upper-right
+            axins.spines['top'].set_color(color)
+            axins.spines['top'].set_linewidth(2)
+            axins.spines['bottom'].set_color(color)
+            axins.spines['bottom'].set_linewidth(2)
+            axins.spines['left'].set_color(color)
+            axins.spines['left'].set_linewidth(2)
+            axins.spines['right'].set_color(color)
+            axins.spines['right'].set_linewidth(2)
+            axins.set_xlim(zoom_center[0] - zoom_radius, zoom_center[0] + zoom_radius)
+            axins.set_ylim(zoom_center[1] - zoom_radius, zoom_center[1] + zoom_radius)
+            axins.tripcolor(triangulation, facecolors=xPhys, cmap='gray_r')
+            axins.triplot(triangulation, color='black', linewidth=0.5)
+            for i, triangle in enumerate(triangulation.triangles):
+                centroid_x = np.mean(triangulation.x[triangle])
+                centroid_y = np.mean(triangulation.y[triangle])
+                offset_scale = 0.9
+                scaled_zoom_radius = zoom_radius * offset_scale
+                if (zoom_center[0] - scaled_zoom_radius <= centroid_x <= zoom_center[0] + scaled_zoom_radius) and \
+                   (zoom_center[1] - scaled_zoom_radius <= centroid_y <= zoom_center[1] + scaled_zoom_radius):
+                    rho_e = np.round(xPhys[i], 3)
+                    e = i
+                    rho_symbol = r'$\rho_{' + str(e) + '}$'
+                    rho_value = r'$\bf{' + str(rho_e) + '}$'
+                    text = f'{rho_symbol}\n{rho_value}'
+                    axins.text(
+                        centroid_x, 
+                        centroid_y, 
+                        text, 
+                        color='orangered', 
+                        fontsize=28, 
+                        va='center', 
+                        ha='center', 
+                        bbox=dict(
+                            facecolor='none', 
+                            edgecolor='orangered', 
+                            boxstyle='round,pad=0.1'
+                        )
+                    )
+
+            if geometry_features is not None:
+                for geometry_feature in geometry_features:
+                    geometry_type = geometry_feature[0]
+                    if geometry_type == "ellipse":
+                        a = geometry_feature[1]
+                        b = geometry_feature[2]
+                        center = geometry_feature[3]
+                        rotation = geometry_feature[4]
+                        rotation = rotation * 180 / np.pi
+                        ellipse = Ellipse(center, 2*a, 2*b, angle=rotation,
+                                          fill=False, color=ellipse_color, linewidth=10)
+                        axins.add_patch(ellipse)
+
+            
+            axins.set_aspect('equal')
+            axins.set_xticks([])
+            axins.set_yticks([])
+            mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec=color, lw=2)
 
         if filename is not None:
-            plt.gca().set_axis_off()
+            ax.set_axis_off()
             plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
             plt.margins(0, 0)
-            plt.axis('off')
+            ax.axis('off')
             plt.savefig(filename, bbox_inches='tight', pad_inches=0, transparent=True)
         plt.show()
 

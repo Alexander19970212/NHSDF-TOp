@@ -855,11 +855,12 @@ class VAE(nn.Module):
         """
         # std = torch.exp(0.5 * log_var)
         # eps = torch.randn_like(std)
-
-
-        std = log_var.mul(0.5).exp_()
-        eps = std.data.new(std.size()).normal_()
-        return eps.mul(std).add_(mu)
+        if self.training:
+            std = log_var.mul(0.5).exp_()
+            eps = std.data.new(std.size()).normal_()
+            return eps.mul(std).add_(mu)
+        else:
+            return mu      
 
         # return mu + eps * std
 

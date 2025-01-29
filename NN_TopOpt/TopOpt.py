@@ -269,8 +269,23 @@ class TopOptimizer2D:
         np.save(f"{directory}/ik.npy", self.ik)
         np.save(f"{directory}/jk.npy", self.jk)
 
-    def plot_final_result(self, geometry_features = None, filename=None):
-        self.Th.plot_topology(self.x, image_size=self.image_size, geometry_features=geometry_features, filename=filename)
+    def plot_final_result(self,
+                          geometry_features=None,
+                          filename=None,
+                          zoom_center=None,
+                          zoom_radius=0.01,
+                          zoom_factor=3,
+                          ellipse_color='darkorange'):
+        self.Th.plot_topology(
+            self.x,
+            image_size=self.image_size,
+            geometry_features=geometry_features,
+            filename=filename,
+            zoom_center=zoom_center,
+            zoom_radius=zoom_radius,
+            zoom_factor=zoom_factor,
+            ellipse_color=ellipse_color
+        )
 
     def save_solution(self, directory):
         np.save(f"{directory}/u.npy", self.u)

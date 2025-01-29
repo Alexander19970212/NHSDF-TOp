@@ -143,7 +143,7 @@ class FeatureMappingTopOpt:
         # Check for NaN before backward pass
         if torch.isnan(loss):
             print("Warning: NaN detected in loss")
-        print(f"Loss: {loss.item()}")
+        # print(f"Loss: {loss.item()}")
         loss.backward(retain_graph=True)  # Add retain_graph=True to keep computation graph
 
         # Check for NaN gradients
@@ -1724,7 +1724,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
                 # self.W_scale.grad.data[evolving_mask] = 0.0
                 # self.W_rotation.grad.data[evolving_mask] = 0.0
                 # Calculate the proportion of the current iteration within the shape optimization range
-                proportion = (global_i - start) / (end - start)
+                proportion = max(0, min(1, (global_i - start) / (end - start)))
                 # Decrease self.offset_grad_deceleration from its initial value to 0
                 self.W_offsets.grad.data[evolving_mask] *= (1 - proportion) * self.offset_grad_deceleration
                 shape_opt_range = True
@@ -1793,8 +1793,8 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         print("current volfrac: ", self.H.T @ self.volumes/self.volumes.sum(), "volfrac_goal: ", volfrac_goal, "volfrac_loss_pre: ", volfrac_loss_pre)
         print("compliance: ", compliance)
-        print("gaussian_overlap: ", gaussian_overlap)
-        print("rc_loss: ", rc_loss)
+        # print("gaussian_overlap: ", gaussian_overlap)
+        # print("rc_loss: ", rc_loss)
 
         # check the sign
         # Start of Selection
