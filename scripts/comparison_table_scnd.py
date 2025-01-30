@@ -65,7 +65,7 @@ def create_comparison_table():
                                       ]
 
     recon_suffix = "_recon_dec"
-    experiment_indeces = [2, 3, 4, 5]
+    experiment_indeces = [1, 2, 3, 4, 5]
 
     from collections import defaultdict
     import numpy as np
