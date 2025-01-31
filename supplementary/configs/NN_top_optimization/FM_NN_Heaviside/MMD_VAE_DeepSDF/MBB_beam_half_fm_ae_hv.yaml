@@ -28,9 +28,9 @@ params:
   N_g_x: 4
   N_g_y: 1
   max_iter: 80
-  config_name: AE_DeepSDF
-  saved_model_name: uba_frst_AE_DeepSDF
-  config_dir: ../configs/NN_sdf_experiments/final_experiments/AEs
+  config_name: MMD_VAE_DeepSDF
+  saved_model_name: uba_frst_MMD_VAE_DeepSDF
+  config_dir: ../configs/NN_sdf_experiments/final_experiments
   merging_marker: 10
   merging_adaptation_length: 10
   compliance_w: 1

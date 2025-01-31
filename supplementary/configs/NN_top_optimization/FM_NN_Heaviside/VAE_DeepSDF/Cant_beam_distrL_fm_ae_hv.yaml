@@ -30,7 +30,7 @@ params:
   max_iter: 80
   config_name: VAE_DeepSDF
   saved_model_name: uba_frst_VAE_DeepSDF
-  config_dir: ../configs/NN_sdf_experiments/final_experiments/VAEs
+  config_dir: ../configs/NN_sdf_experiments/final_experiments
   merging_marker: 10
   merging_adaptation_length: 10
   compliance_w: 16

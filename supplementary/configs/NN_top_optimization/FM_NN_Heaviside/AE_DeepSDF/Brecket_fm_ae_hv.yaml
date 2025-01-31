@@ -33,7 +33,7 @@ params:
   max_iter: 80
   config_name: AE_DeepSDF
   saved_model_name: uba_frst_AE_DeepSDF
-  config_dir: ../configs/NN_sdf_experiments/final_experiments/AEs
+  config_dir: ../configs/NN_sdf_experiments/final_experiments
   merging_marker: 10
   merging_adaptation_length: 10
   compliance_w: 0.8
