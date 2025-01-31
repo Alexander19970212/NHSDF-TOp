@@ -1,0 +1,2 @@
+from NN_TopOpt.NN_TopOpt import FeatureMappingTopOpt
+from NN_TopOpt.TopOpt import TopOptimizer2D
