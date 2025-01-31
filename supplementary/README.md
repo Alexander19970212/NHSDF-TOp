@@ -70,3 +70,12 @@ Refer to the notebook examples in the `NN_TopOpt` folder for more examples:
 - **Topology Optimization with Neural Heaviside SDF:** `NHSDF_examples.ipynb`
 
 To generate new tasks, see the notebook `test_problems/create_problem.ipynb`.
+
+### Docker usage
+
+In case of using docker, you can run the following command to install the dependencies inside the docker container:
+
+```bash
+apt-get install libglu1
+apt-get install libxft2
+```
