@@ -280,7 +280,7 @@ def generate_quadrangle_random_radius_dataset(
 #################################################################################################################
 
 def main(args):
-    print(args)
+    # print(args)
     if args.mode == '3d_heaviside_sdf':
         generate_quadrangle_3DHeavisideSDF(num_quadrangle=args.num_quadrangle,
                                           smooth_factor=args.smooth_factor,
@@ -297,3 +297,5 @@ if __name__ == '__main__':
     parser.add_argument('--max_radius_limit', type=float, default=3, help='Maximum radius limit')
     parser.add_argument('--store_dir', type=str, default='quadrangle_3DHeavisideSDF', help='Store directory')
     args = parser.parse_args()
+
+    main(args)
