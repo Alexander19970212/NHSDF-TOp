@@ -284,8 +284,8 @@ class Dataset3DHeavisideSDF(Dataset):
         except:
             print(row_idx)
             print(df.shape)
-            print(df.columns)
-            print(df.index)
+            # print(df.columns)
+            # print(df.index)
             # print(df.head())  
             raise IndexError("Global index out of range of available CSV files.")
         # Separate the 'arc_ratio' target from the remaining features.
