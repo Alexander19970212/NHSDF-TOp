@@ -1,0 +1,633 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+from torch.nn import functional as F
+import pandas as pd
+import numpy as np
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+
+import lightning as L
+from torch.optim.lr_scheduler import LambdaLR, CosineAnnealingLR, SequentialLR
+
+from sklearn.feature_selection import mutual_info_regression
+
+
+def compute_closeness(sdf_pred, sdf_target):
+    # Mean Absolute Error
+    mae = F.l1_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean')
+    # Root Mean Square Error
+    rmse = torch.sqrt(F.mse_loss(sdf_pred, sdf_target.unsqueeze(1), reduction='mean'))
+    return mae, rmse
+
+def finite_difference_smoothness_torch(points):
+    dx = torch.diff(points, dim=0)
+    dy = torch.diff(points, dim=1)
+    dx = dx[:, :-1]  # Adjust dx to match the shape of dy
+    dy = dy[:-1, :]  # Adjust dy to match the shape of dx
+    smoothness = torch.sqrt(dx**2 + dy**2)
+    return smoothness.mean()
+
+def orthogonality_metric(z, tau_latent_dim):
+    z_tau = z[:, :tau_latent_dim]
+    z_original = z[:, tau_latent_dim:]
+    
+    Q_tau, R_tau = torch.linalg.qr(z_tau)
+    Q_original, R_original = torch.linalg.qr(z_original)
+
+    orthogonality_loss = torch.linalg.norm(Q_tau.T @ Q_original, ord=2)
+    return orthogonality_loss
+
+def orthogonality_metrics(z, target, tau_latent_dim):
+    z_tau = z[:, :tau_latent_dim]
+    z_original = z[:, tau_latent_dim:]
+    z_original_std = torch.std(z_original, dim=0)
+    z_tau_std = torch.std(z_tau, dim=0)
+
+    # print("z_original", z_original)
+    # print("z_tau", z_tau)
+
+    # print("Target", target)
+
+    mi_original = mutual_info_regression(z_original.detach().cpu().numpy(), target.detach().cpu().numpy())
+    mi_tau = mutual_info_regression(z_tau.detach().cpu().numpy(), target.detach().cpu().numpy())
+
+    metrics = {
+        'mi_original': mi_original.mean(),
+        'mi_tau': mi_tau.mean(),
+        'z_original_std': z_original_std.mean(),
+        'z_tau_std': z_tau_std.mean(),
+        'z_std_ratio': z_original_std.mean() / z_tau_std.mean(),
+        # 'mi_ratio': mi_original.mean() / mi_tau.mean()
+    }
+
+    if mi_tau.mean() != 0:
+        metrics['mi_ratio'] = mi_original.mean() / mi_tau.mean()
+    else:
+        metrics['mi_ratio'] = 100
+
+    return metrics
+
+def orth_minQQ_Frobenius(z, tau_latent_dim):
+    z_tau = z[:, :tau_latent_dim]
+    z_original = z[:, tau_latent_dim:]
+    Q_tau, R_tau = torch.linalg.qr(z_tau)
+    Q_original, R_original = torch.linalg.qr(z_original)
+    return torch.norm(Q_tau.T @ Q_original)
+
+def orth_minWW_Frobenius(z, tau_latent_dim):
+    # W, R = torch.linalg.qr(z)
+    I = torch.eye(z.shape[1], device=z.device)
+    return torch.norm(z.T @ z - I)
+
+def orth_minZZ_Frobenius(z, latent_dim):
+    """
+    to ensure that the explicit radius dimension remains disentangled from other latent features
+    """
+    z_radius = z[:, :latent_dim]
+    z_original = z[:, latent_dim:]
+    orthogonality_loss = torch.norm(z_radius.T @ z_original)
+    return orthogonality_loss
+
+orth_losses = {
+    'orth_minQQ_Frobenius': orth_minQQ_Frobenius,
+    'orth_minZZ_Frobenius': orth_minZZ_Frobenius,
+    'orth_minWW_Frobenius': orth_minWW_Frobenius,
+    'None': None
+}
+
+
+class Decoder3D(nn.Module):
+    """
+    Decoder from DeepSDF:
+    https://github.com/facebookresearch/DeepSDF/blob/main/deep_sdf/networks.py
+    """
+    def __init__(
+        self,
+        latent_size,
+        dims,
+        dropout=None,
+        dropout_prob=0.0,
+        norm_layers=(),
+        latent_in=(),
+        weight_norm=False,
+        xyz_in_all=None,
+        use_tanh=False,
+        latent_dropout=False,
+    ):
+        super(Decoder3D, self).__init__()
+
+        def make_sequence():
+            return []
+
+        dims = [latent_size + 3] + dims + [1]
+
+        self.num_layers = len(dims)
+        self.norm_layers = norm_layers
+        self.latent_in = latent_in
+        self.latent_dropout = latent_dropout
+        if self.latent_dropout:
+            self.lat_dp = nn.Dropout(0.2)
+
+        self.xyz_in_all = xyz_in_all
+        self.weight_norm = weight_norm
+
+        for layer in range(0, self.num_layers - 1):
+            if layer + 1 in latent_in:
+                out_dim = dims[layer + 1] - dims[0]
+            else:
+                out_dim = dims[layer + 1]
+                if self.xyz_in_all and layer != self.num_layers - 2:
+                    out_dim -= 2
+
+            if weight_norm and layer in self.norm_layers:
+                setattr(
+                    self,
+                    "lin" + str(layer),
+                    nn.utils.weight_norm(nn.Linear(dims[layer], out_dim)),
+                )
+            else:
+                setattr(self, "lin" + str(layer), nn.Linear(dims[layer], out_dim))
+
+            if (
+                (not weight_norm)
+                and self.norm_layers is not None
+                and layer in self.norm_layers
+            ):
+                setattr(self, "bn" + str(layer), nn.LayerNorm(out_dim))
+
+        self.use_tanh = use_tanh
+        if use_tanh:
+            self.tanh = nn.Tanh()
+        self.relu = nn.ReLU()
+
+        self.dropout_prob = dropout_prob
+        self.dropout = dropout
+        self.th = nn.Tanh()
+
+    # input: N x (L+3)
+    def forward(self, input):
+        xyz = input[:, -3:]
+
+        if input.shape[1] > 2 and self.latent_dropout:
+            latent_vecs = input[:, :-3]
+            latent_vecs = F.dropout(latent_vecs, p=0.2, training=self.training)
+            x = torch.cat([latent_vecs, xyz], 1)
+        else:
+            x = input
+
+        for layer in range(0, self.num_layers - 1):
+            lin = getattr(self, "lin" + str(layer))
+            if layer in self.latent_in:
+                x = torch.cat([x, input], 1)
+            elif layer != 0 and self.xyz_in_all:
+                x = torch.cat([x, xyz], 1)
+            x = lin(x)
+            # last layer Tanh
+            if layer == self.num_layers - 2 and self.use_tanh:
+                x = self.tanh(x)
+            if layer < self.num_layers - 2:
+                if (
+                    self.norm_layers is not None
+                    and layer in self.norm_layers
+                    and not self.weight_norm
+                ):
+                    bn = getattr(self, "bn" + str(layer))
+                    x = bn(x)
+                x = self.relu(x)
+                if self.dropout is not None and layer in self.dropout:
+                    x = F.dropout(x, p=self.dropout_prob, training=self.training)
+
+        if hasattr(self, "th"):
+            x = self.th(x)
+
+        return x
+    
+    
+class VAE(nn.Module):
+    """
+    A standard Variational Autoencoder adapted to match the AE_DeepSDF interface for comparison.
+    """
+    def __init__(self, input_dim=4, latent_dim=2, hidden_dim=32, tau_latent_dim=2,
+                 tau_loss_weight=0.1, orthogonality_loss_weight=0.1,
+                 kl_weight=1e-4, orthogonality_loss_type=None,
+                 regularization=None, reg_weight=1e-4):
+        """
+        Initializes the Standard VAE.
+
+        Args:
+            input_dim (int): Dimension of input features.
+            latent_dim (int): Dimension of latent space.
+            hidden_dim (int): Dimension of hidden layers.
+            regularization (str, optional): Type of regularization ('l1', 'l2', or None).
+            reg_weight (float, optional): Weight of the regularization term.
+        """
+        super(VAE, self).__init__()
+
+        self.regularization = regularization
+        self.reg_weight = reg_weight
+        self.orthogonality_loss_weight = orthogonality_loss_weight
+        self.kl_weight = kl_weight
+        self.latent_dim = latent_dim
+
+
+        # Encoder
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim-2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+        )
+
+        # Mean and log variance layers for latent space
+        self.fc_mu = nn.Linear(hidden_dim, latent_dim)
+        self.fc_logvar = nn.Linear(hidden_dim, latent_dim)
+
+        # Decoder for input reconstruction
+        self.decoder_input = nn.Sequential(
+            nn.Linear(latent_dim, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, input_dim-2)
+        )
+
+        # Decoder for SDF prediction
+        self.decoder_hv_sdf = nn.Sequential(
+            nn.Linear(latent_dim+2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim * 4),
+            nn.BatchNorm1d(hidden_dim * 4),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 4, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim * 2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Linear(hidden_dim, 1)
+        )
+
+        self.init_weights()
+
+    def init_weights(self):
+        # Initialize encoder layers
+        for layer in self.encoder:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize mu and logvar layers
+        nn.init.xavier_uniform_(self.fc_mu.weight)
+        nn.init.zeros_(self.fc_mu.bias)
+        nn.init.xavier_uniform_(self.fc_logvar.weight)
+        nn.init.zeros_(self.fc_logvar.bias)
+
+        # Initialize decoder_input layers
+        for layer in self.decoder_input:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize decoder_sdf layers
+        for layer in self.decoder_hv_sdf:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+    def encode(self, x):
+        """
+        Encodes the input into latent space.
+
+        Args:
+            x (Tensor): Input tensor.
+
+        Returns:
+            mu (Tensor): Mean of the latent distribution.
+            log_var (Tensor): Log variance of the latent distribution.
+        """
+
+        h = self.encoder(x)
+        mu = self.fc_mu(h)
+        log_var = self.fc_logvar(h)
+        return mu, log_var
+
+    def reparameterize(self, mu, log_var):
+        """
+        Reparameterization trick to sample from N(mu, var) from N(0,1).
+
+        Args:
+            mu (Tensor): Mean of the latent distribution.
+            log_var (Tensor): Log variance of the latent distribution.
+
+        Returns:
+            z (Tensor): Sampled latent vector.
+        """
+        # std = torch.exp(0.5 * log_var)
+        # eps = torch.randn_like(std)
+        if self.training:
+            std = log_var.mul(0.5).exp_()
+            eps = std.data.new(std.size()).normal_()
+            return eps.mul(std).add_(mu)
+        else:
+            return mu      
+
+        # return mu + eps * std
+
+    def forward(self, x, reconstruction=False, Heaviside=True):
+        """
+        Forward pass through the VAE.
+
+        Args:
+            x (Tensor): Input tensor.
+            reconstruction (bool, optional): Flag to compute reconstruction. Defaults to False.
+
+        Returns:
+            If reconstruction is False:
+                recon_x (Tensor): Reconstructed input.
+                mu (Tensor): Mean of the latent distribution.
+                log_var (Tensor): Log variance of the latent distribution.
+            If reconstruction is True:
+                recon_x (Tensor): Reconstructed input.
+                mu (Tensor): Mean of the latent distribution.
+                log_var (Tensor): Log variance of the latent distribution.
+                z (Tensor): Sampled latent vector.
+        """
+        query_points = x[:, :3]
+        mu, log_var = self.encode(x[:, 3:])
+        z = self.reparameterize(mu, log_var)
+
+        output = {
+            "z": z,
+            "mu": mu,
+            "log_var": log_var
+        }
+
+        if Heaviside:
+            hv_sdf_decoder_input = torch.cat([z, query_points], dim=1)
+            hv_sdf_pred = self.decoder_hv_sdf(hv_sdf_decoder_input)
+            output["hv_sdf_pred"] = hv_sdf_pred
+
+        if reconstruction:
+            x_reconstructed = self.decoder_input(z)
+            output["x_reconstructed"] = x_reconstructed
+
+        return output
+
+    def loss_function(self, loss_args, Heaviside=True, Reconstruction=False):
+        """
+        Calculates the loss function with optional L1 or L2 regularization.
+
+        Args:
+            loss_args (dict): Dictionary containing the following keys:
+                - "tau_pred" (Tensor): Predicted tau.
+                - "mu" (Tensor): Mean of the latent distribution.
+                - "log_var" (Tensor): Log variance of the latent distribution.
+                - "z" (Tensor): Latent representations.
+
+        Returns:
+            total_loss (Tensor): Combined loss.
+            splitted_loss (dict): Dictionary containing individual loss components.
+        """
+        mu = loss_args["mu"]
+        log_var = loss_args["log_var"]
+        z = loss_args["z"]
+
+        # KL Divergence loss
+        kl_divergence = -0.5 * (1 + log_var - mu ** 2 - log_var.exp()).sum(1).mean()
+
+        # Regularization loss
+        if self.regularization == 'l1':
+            reg_loss = torch.mean(torch.abs(z))
+        elif self.regularization == 'l2':
+            reg_loss = torch.mean(z.pow(2))
+        else:
+            reg_loss = 0
+
+        total_loss = (
+            + self.reg_weight * reg_loss
+            + self.kl_weight * kl_divergence
+        )
+
+        splitted_loss = {
+            # "total_loss": total_loss,
+            "kl_divergence": kl_divergence,
+            "reg_loss": reg_loss
+        }
+
+        if Heaviside:
+            hv_sdf_pred = loss_args["hv_sdf_pred"]
+            hv_sdf_target = loss_args["hv_sdf_target"]
+            hv_sdf_loss = F.mse_loss(hv_sdf_pred, hv_sdf_target.unsqueeze(1), reduction='mean')
+            splitted_loss["hv_sdf_loss"] = hv_sdf_loss
+            total_loss += hv_sdf_loss
+
+        if Reconstruction:
+            x_reconstructed = loss_args["x_reconstructed"]
+            x_original = loss_args["x_original"]
+            reconstruction_loss = F.mse_loss(x_reconstructed, x_original, reduction='mean')
+            splitted_loss["reconstruction_loss"] = reconstruction_loss
+            total_loss += reconstruction_loss
+
+        splitted_loss["total_loss"] = total_loss
+
+        return total_loss, splitted_loss
+    
+    def reconstruction_loss(self, x_reconstructed, x):
+        x_original = x[:, 3:]
+        reconstruction_loss = F.mse_loss(x_reconstructed, x_original, reduction='mean')
+        return reconstruction_loss, {"reconstruction_loss": reconstruction_loss}
+
+    def hv_sdf(self, z, query_points):
+        z_repeated = z.repeat(query_points.shape[0], 1)
+
+        # Decode
+        hv_sdf_decoder_input = torch.cat([z_repeated, query_points], dim=1)
+        hv_sdf_pred = self.decoder_hv_sdf(hv_sdf_decoder_input)
+
+        return hv_sdf_pred
+
+
+class VAE_DeepSDF3D(VAE):
+    def __init__(self,
+                 input_dim: int = 4,
+                 latent_dim: int = 2,
+                 hidden_dim: int = 32,
+                 orthogonality_loss_weight: float = 0.1,
+                 kl_weight: float = 1e-4,
+                 orthogonality_loss_type=None,
+                 regularization=None,
+                 reg_weight: float = 1e-4) -> None:
+        super().__init__(input_dim=input_dim,
+                         latent_dim=latent_dim,
+                         hidden_dim=hidden_dim,
+                         orthogonality_loss_weight=orthogonality_loss_weight,
+                         kl_weight=kl_weight,
+                         orthogonality_loss_type=orthogonality_loss_type,
+                         regularization=regularization,
+                         reg_weight=reg_weight)
+        
+        network_specs = {
+            "latent_size": latent_dim,
+            "dims": [512, 512, 512, 512, 512, 512, 512, 512],
+            "dropout": list(range(8)),
+            "dropout_prob": 0.2,
+            "norm_layers": list(range(8)),
+            "latent_in": [4],
+            "xyz_in_all": False,
+            "use_tanh": False,
+            "latent_dropout": False,
+            "weight_norm": False
+        }
+        
+        self.decoder_hv_sdf = Decoder3D(**network_specs)
+
+    def init_weights(self):
+        # Initialize encoder layers
+        # Initialize encoder layers
+        for layer in self.encoder:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize mu and logvar layers
+        nn.init.xavier_uniform_(self.fc_mu.weight)
+        nn.init.zeros_(self.fc_mu.bias)
+        nn.init.xavier_uniform_(self.fc_logvar.weight)
+        nn.init.zeros_(self.fc_logvar.bias)
+
+        # Initialize decoder_input layers
+        for layer in self.decoder_input:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+
+        
+class Lit3DHvDecoderGlobal(L.LightningModule):
+    def __init__(self, vae_model, learning_rate=1e-4, reg_weight=1e-4, 
+                 regularization=None, warmup_steps=1000, max_steps=10000):
+        super().__init__()
+        self.vae = vae_model
+        self.learning_rate = learning_rate
+        self.reg_weight = reg_weight
+        self.regularization = regularization
+        self.warmup_steps = warmup_steps
+        self.max_steps = max_steps
+        self.freezing_weights()
+        self.save_hyperparameters(logger=False)
+
+    def freezing_weights(self):
+        for param in self.vae.parameters():
+            param.requires_grad = True
+
+        for param in self.vae.decoder_input.parameters():
+            param.requires_grad = False
+
+        stat = self.count_parameters()
+
+    def count_parameters(self):
+        """Count trainable and frozen parameters."""
+        total_params = 0
+        trainable_params = 0
+        frozen_params = 0
+
+        for name, param in self.vae.named_parameters():
+            num_params = param.numel()
+            total_params += num_params
+            if param.requires_grad:
+                trainable_params += num_params
+            else:
+                frozen_params += num_params
+
+        print(f"Total parameters: {total_params:,}")
+        print(f"Trainable parameters: {trainable_params:,}")
+        print(f"Frozen parameters: {frozen_params:,}")
+        print(f"Percentage of trainable parameters: {100 * trainable_params / total_params:.2f}%")
+
+        return {
+            "total_params": total_params,
+            "trainable_params": trainable_params,
+            "frozen_params": frozen_params
+        }
+
+    def forward(self, x):
+        return self.vae(x)
+
+    def training_step(self, batch, batch_idx):
+
+        x, sdf, _ = batch
+
+        output = self.vae(x)
+
+        loss_args = output
+        loss_args["hv_sdf_target"] = sdf
+        loss_args["x_original"] = x
+        total_loss, splitted_loss = self.vae.loss_function(loss_args)
+
+        for key, value in splitted_loss.items():
+            self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
+
+        return total_loss
+
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
+        x, sdf, _ = batch
+        output = self.vae(x)
+        loss_args = output
+        loss_args["hv_sdf_target"] = sdf
+        loss_args["x_original"] = x
+        total_loss, splitted_loss = self.vae.loss_function(loss_args)
+
+        for key, value in splitted_loss.items():
+            self.log(f'val_{key}', value, prog_bar=True)
+
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
+
+        warmup_lr_lambda = lambda step: ((step + 1)%self.max_steps) / self.warmup_steps if step < self.warmup_steps else 1
+        warmup_scheduler = LambdaLR(optimizer, lr_lambda=warmup_lr_lambda)
+
+        cosine_scheduler = CosineAnnealingLR(optimizer, T_max=(self.max_steps - self.warmup_steps), eta_min=0)
+
+        # Start of Selection
+        scheduler = {
+            'scheduler': SequentialLR(
+                optimizer,
+                schedulers=[
+                    warmup_scheduler,
+                    cosine_scheduler,
+                    # warmup_scheduler,
+                    # cosine_scheduler
+                ],
+                milestones=[
+                    self.warmup_steps,
+                    # self.max_steps,
+                    # self.max_steps + self.warmup_steps
+                ]
+            ),
+            'interval': 'step',
+            'frequency': 1
+        }
+
+        return {
+            "optimizer": optimizer,
+            'lr_scheduler': scheduler
+        }
+
+    

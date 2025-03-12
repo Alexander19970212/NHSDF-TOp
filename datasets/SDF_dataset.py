@@ -216,6 +216,77 @@ class ReconstructionDataset(Dataset):
         arc_ratio = torch.tensor(row['arc_ratio'].item(), dtype=torch.float32)
         
         return X, torch.tensor(0, dtype=torch.float32), arc_ratio
+    
+class Dataset3DHeavisideSDF(Dataset):
+    """Custom Dataset for SDF data of multiple shapes"""
+    def __init__(self, csv_dir, index_list_csv):
+        import os
+        from collections import OrderedDict
+
+        self.csv_dir = csv_dir
+        # List all CSV files in the directory, sorted in natural order.
+        self.csv_files = sorted([os.path.join(csv_dir, f) for f in os.listdir(csv_dir) if f.endswith('.csv')])
+        self.rows_per_file = 2000  # Each CSV file contains 2000 rows
+
+        # Load the index list containing global row indices (ranging from 0 to 10000*2000 - 1)
+        dataset_index_list = pd.read_csv(index_list_csv, header=None)
+        self.indices = dataset_index_list.iloc[:, 0].values.astype(np.int64)
+
+        print(self.indices)
+
+        # Precompute mapping from each global index to (file index, row index within file)
+        self.file_indices = self.indices // self.rows_per_file
+        self.row_indices = self.indices % self.rows_per_file
+
+        self.feature_names = [
+            'point_x', 'point_y', 'point_z',
+            'v3_x', 'v3_y',
+            'v4_x', 'v4_y',
+            'r_q1', 'r_q2', 'r_q3', 'r_q4',  # q means quadrangle
+            'z_level',
+            'heaviside_sdf',
+            'arc_ratio'
+        ]
+        
+        # Initialize an LRU cache to hold a limited number of loaded CSV files.
+        self._cache = OrderedDict()
+        self._cache_max_size = 100
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, idx):
+        # Retrieve precomputed file and row indices for the given dataset index.
+        file_idx = int(self.file_indices[idx])
+        row_idx = int(self.row_indices[idx])
+        if file_idx >= len(self.csv_files):
+            raise IndexError("Global index out of range of available CSV files.")
+        file_path = self.csv_files[file_idx]
+
+        # Use cached CSV if available; otherwise, load from disk.
+        if file_path not in self._cache:
+            df = pd.read_csv(file_path)
+            # Ensure the dataframe has the expected columns; fill missing ones with 0.
+            df = df.reindex(columns=self.feature_names, fill_value=0)
+            if len(self._cache) >= self._cache_max_size:
+                self._cache.popitem(last=False)  # Remove the least recently used file.
+            self._cache[file_path] = df
+        else:
+            # Move this file to the end to mark it as recently used.
+            df = self._cache.pop(file_path)
+            self._cache[file_path] = df
+
+        row = df.iloc[row_idx]
+        # Separate the 'arc_ratio' target from the remaining features.
+        arc_ratio = torch.tensor(row['arc_ratio'], dtype=torch.float32)
+        X = torch.tensor(row.drop(labels=['arc_ratio', 'heaviside_sdf']).values, dtype=torch.float32)
+
+        # X = torch.tensor(, dtype=torch.float32)
+        # arc_ratio = torch.tensor(row['arc_ratio'], dtype=torch.float32)
+        y = torch.tensor(row['heaviside_sdf'], dtype=torch.float32)
+
+        return X, y, arc_ratio
+
 
 def collate_fn_surface(batch):
     """Custom collate function for the SdfDatasetSurface"""
@@ -224,4 +295,6 @@ def collate_fn_surface(batch):
     targets = [item['y'] for item in batch]
     X = [item['X'] for item in batch]
     return X, targets, points
+
+
     
