@@ -248,8 +248,8 @@ class Dataset3DHeavisideSDF(Dataset):
             'arc_ratio'
         ]
 
-        self.feature_dim = len(self.feature_names) - 5
-        print(self.feature_dim)
+        self.feature_dim = len(self.feature_names) - 2
+        # print(self.feature_dim)
         
         # Initialize an LRU cache to hold a limited number of loaded CSV files.
         self._cache = OrderedDict()

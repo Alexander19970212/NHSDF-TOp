@@ -234,7 +234,7 @@ class VAE(nn.Module):
 
         # Encoder
         self.encoder = nn.Sequential(
-            nn.Linear(input_dim-2, hidden_dim),
+            nn.Linear(input_dim-3, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
             nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, hidden_dim * 2),
@@ -260,7 +260,7 @@ class VAE(nn.Module):
             nn.Linear(hidden_dim * 2, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
             nn.LeakyReLU(0.2),
-            nn.Linear(hidden_dim, input_dim-2)
+            nn.Linear(hidden_dim, input_dim-3)
         )
 
         # Decoder for SDF prediction
