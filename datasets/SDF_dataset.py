@@ -249,6 +249,7 @@ class Dataset3DHeavisideSDF(Dataset):
         ]
 
         self.feature_dim = len(self.feature_names) - 5
+        print(self.feature_dim)
         
         # Initialize an LRU cache to hold a limited number of loaded CSV files.
         self._cache = OrderedDict()
