@@ -280,6 +280,7 @@ def generate_quadrangle_random_radius_dataset(
 #################################################################################################################
 
 def main(args):
+    print(args)
     if args.mode == '3d_heaviside_sdf':
         generate_quadrangle_3DHeavisideSDF(num_quadrangle=args.num_quadrangle,
                                           smooth_factor=args.smooth_factor,
