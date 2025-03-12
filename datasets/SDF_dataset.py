@@ -232,7 +232,7 @@ class Dataset3DHeavisideSDF(Dataset):
         dataset_index_list = pd.read_csv(index_list_csv)
         self.indices = dataset_index_list['index'].values.astype(np.int64)
 
-        print(self.indices)
+        # print(self.indices)
 
         # Precompute mapping from each global index to (file index, row index within file)
         self.file_indices = self.indices // self.rows_per_file
@@ -247,6 +247,8 @@ class Dataset3DHeavisideSDF(Dataset):
             'heaviside_sdf',
             'arc_ratio'
         ]
+
+        self.feature_dim = len(self.feature_names) - 5
         
         # Initialize an LRU cache to hold a limited number of loaded CSV files.
         self._cache = OrderedDict()
