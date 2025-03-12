@@ -321,7 +321,7 @@ class VAE(nn.Module):
             mu (Tensor): Mean of the latent distribution.
             log_var (Tensor): Log variance of the latent distribution.
         """
-
+        print(x.shape)
         h = self.encoder(x)
         mu = self.fc_mu(h)
         log_var = self.fc_logvar(h)
