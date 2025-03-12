@@ -16,7 +16,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'datasets'))
 
-from models.Hv_sdf_3d_models import VAE_DeepSDF3D, LitHvDecoderGlobal
+from models.Hv_sdf_3d_models import VAE_DeepSDF3D, Lit3DHvDecoderGlobal
 
 try:
     from SDF_dataset import Dataset3DHeavisideSDF
@@ -128,7 +128,7 @@ def main(args):
     trainer_params['vae_model'] = vae_model
     trainer_params['max_steps'] = MAX_STEPS
     # vae_trainer = trainers[config['trainer']['type']](**trainer_params)
-    vae_trainer = LitHvDecoderGlobal(**trainer_params)
+    vae_trainer = Lit3DHvDecoderGlobal(**trainer_params)
 
     # Train the model
     trainer.validate(vae_trainer, dataloaders=[test_loader])
