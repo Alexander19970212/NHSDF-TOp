@@ -229,7 +229,7 @@ class Dataset3DHeavisideSDF(Dataset):
         self.rows_per_file = 2000  # Each CSV file contains 2000 rows
 
         # Load the index list containing global row indices (ranging from 0 to 10000*2000 - 1)
-        dataset_index_list = pd.read_csv(index_list_csv, header=None)
+        dataset_index_list = pd.read_csv(index_list_csv)
         self.indices = dataset_index_list['index'].values.astype(np.int64)
 
         print(self.indices)
