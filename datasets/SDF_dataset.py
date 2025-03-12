@@ -279,7 +279,15 @@ class Dataset3DHeavisideSDF(Dataset):
             df = self._cache.pop(file_path)
             self._cache[file_path] = df
 
-        row = df.iloc[row_idx]
+        try:
+            row = df.iloc[row_idx]
+        except:
+            print(row_idx)
+            print(df.shape)
+            print(df.columns)
+            print(df.index)
+            # print(df.head())  
+            raise IndexError("Global index out of range of available CSV files.")
         # Separate the 'arc_ratio' target from the remaining features.
         arc_ratio = torch.tensor(row['arc_ratio'], dtype=torch.float32)
         X = torch.tensor(row.drop(labels=['arc_ratio', 'heaviside_sdf']).values, dtype=torch.float32)
