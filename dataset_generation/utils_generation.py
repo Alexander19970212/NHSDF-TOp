@@ -471,6 +471,44 @@ def signed_distance_polygon(points, line_segments, arc_segments, vertices, smoot
         return 1/(1 + np.exp(-smooth_factor*min_distances))
     else:
         return min_distances
+    
+
+def SDF_polygon_3D(points, bottom_level, line_segments, arc_segments, vertices, smooth_factor=40):
+    """
+    Calculate signed distance from points to a 3D polygon
+    
+    Parameters:
+    points: np.array([[x1, y1, z1], [x2, y2, z2], ...]) - points to calculate distance from
+    bottom_level: float - bottom level of the polygon (z-axis)
+    line_segments: list of tuples - line segments of the polygon
+    arc_segments: list of tuples - arc segments of the polygon
+    vertices: np.array([[x1, y1, z1], [x2, y2, z2], ...]) - vertices of the polygon
+    smooth_factor: float - smooth factor for the signed distance
+    """
+    
+    points_xy = points[:, :2]
+    points_z = points[:, 2]
+
+    sdf_xy = signed_distance_polygon(points_xy,
+                                     line_segments,
+                                     arc_segments,
+                                     vertices,
+                                     smooth_factor=smooth_factor,
+                                     heaviside=False)
+    sdf_z = points_z - bottom_level
+
+    in_contour_over_bottom_level = np.logical_and(sdf_xy > 0, sdf_z > 0)
+    in_contour_under_bottom_level = np.logical_and(sdf_xy > 0, sdf_z < 0)
+    out_contour_over_bottom_level = np.logical_and(sdf_xy < 0, sdf_z > 0)
+    out_contour_under_bottom_level = np.logical_and(sdf_xy < 0, sdf_z < 0)
+
+    sdf_3d = np.zeros_like(sdf_xy)
+    sdf_3d[in_contour_over_bottom_level] = np.min([sdf_xy[in_contour_over_bottom_level], sdf_z[in_contour_over_bottom_level]], axis=0)
+    sdf_3d[in_contour_under_bottom_level] = sdf_z[in_contour_under_bottom_level]
+    sdf_3d[out_contour_over_bottom_level] = sdf_xy[out_contour_over_bottom_level]
+    sdf_3d[out_contour_under_bottom_level] = -np.sqrt(sdf_xy[out_contour_under_bottom_level]**2 + sdf_z[out_contour_under_bottom_level]**2)
+
+    return sdf_3d
 
 # Plot a sample from the generated DataFrame
 def plot_sample_from_df(df, points_df, sample_index=0):

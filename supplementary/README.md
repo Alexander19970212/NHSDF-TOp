@@ -62,6 +62,7 @@ bash scripts/investigate_z_limits.sh
 ```
 
 ## Notebook Examples
+The trained models are included in the supplementary materials, so you can use the examples from the notebooks without training.
 
 Refer to the notebook examples in the `NN_TopOpt` folder for more examples:
 
