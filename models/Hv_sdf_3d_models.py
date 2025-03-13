@@ -560,6 +560,29 @@ class Lit3DHvDecoderGlobal(L.LightningModule):
             for key, value in splitted_loss.items():
                 self.log(f'val_{key}', value, prog_bar=True, batch_size=x.shape[0])
 
+        if dataloader_idx == 1:
+            x_, sdf_, _ = batch
+            x = x[0] # batch size 1
+            sdf = sdf[0]
+            print(x.shape, sdf.shape)
+            output = self.vae(x)
+            hv_sdf_pred = output["hv_sdf_pred"]
+            hv_sdf_pred = hv_sdf_pred.squeeze()
+            hv_sdf_target = sdf.squeeze()
+
+            hv_sdf_diff = hv_sdf_pred - hv_sdf_target
+
+            # Reshape hv_sdf_diff into a 3D tensor corresponding to the spatial coordinates.
+            num_points = hv_sdf_diff.numel()
+            grid_size = int(round(num_points ** (1/3)))
+            if grid_size ** 3 != num_points:
+                raise ValueError(f"hv_sdf_diff with {num_points} elements cannot be reshaped into a 3D cube. Check grid density.")
+            
+            hv_sdf_diff_3d = hv_sdf_diff.reshape(grid_size, grid_size, grid_size)
+            # Optionally log a summary statistic (e.g., mean value) of the reshaped tensor for monitoring
+            smoothness = finite_difference_smoothness_3d(hv_sdf_diff_3d)
+            self.log("val_smoothness", smoothness, prog_bar=True, batch_size=x.shape[0])
+
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)

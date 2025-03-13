@@ -19,9 +19,9 @@ sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 from models.Hv_sdf_3d_models import VAE_DeepSDF3D, Lit3DHvDecoderGlobal
 
 try:
-    from SDF_dataset import Dataset3DHeavisideSDF
+    from SDF_dataset import Dataset3DHeavisideSDF, Dataset3DHeavisideSDFGrid
 except ImportError:
-    from datasets.SDF_dataset import Dataset3DHeavisideSDF
+    from datasets.SDF_dataset import Dataset3DHeavisideSDF, Dataset3DHeavisideSDFGrid
 
 import argparse
 import yaml
@@ -62,6 +62,8 @@ def main(args):
 
     train_dataset = Dataset3DHeavisideSDF(dataset_dir, train_index_list_csv)
     test_dataset = Dataset3DHeavisideSDF(dataset_dir, test_index_list_csv)
+    test_dataset_grid = Dataset3DHeavisideSDFGrid(f"{dataset_dir}_grid")
+
 
     # Create DataLoaders with shuffling
     batch_size = 64
@@ -79,6 +81,12 @@ def main(args):
         num_workers=15
     )
 
+    test_loader_grid = torch.utils.data.DataLoader(
+        test_dataset_grid, 
+        batch_size=1,
+        shuffle=False,  # No need to shuffle test data
+        num_workers=1
+    )
     #################################################
 
     MAX_EPOCHS = args.max_epochs
@@ -131,9 +139,9 @@ def main(args):
     vae_trainer = Lit3DHvDecoderGlobal(**trainer_params)
 
     # Train the model
-    trainer.validate(vae_trainer, dataloaders=[test_loader])
-    trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader])
-    final_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader])
+    # trainer.validate(vae_trainer, dataloaders=[test_loader, test_loader_grid])
+    # trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader])
+    final_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, test_loader_grid])
 
     # Save model weights
     checkpoint_path = f'{models_dir}/{run_name}_HvDecGlobal.ckpt'

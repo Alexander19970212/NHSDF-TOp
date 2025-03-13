@@ -297,7 +297,33 @@ class Dataset3DHeavisideSDF(Dataset):
         y = torch.tensor(row['heaviside_sdf'], dtype=torch.float32)
 
         return X, y, arc_ratio
+    
+class Dataset3DHeavisideSDFGrid(Dataset):
+    """Custom Dataset for SDF data of multiple shapes"""
+    def __init__(self, csv_dir):
+        import os
+        from collections import OrderedDict
 
+        self.csv_dir = csv_dir
+        # List all CSV files in the directory, sorted in natural order.
+        self.csv_files = sorted([os.path.join(csv_dir, f) for f in os.listdir(csv_dir) if f.endswith('.csv')])
+        self.rows_per_file = 2000  # Each CSV file contains 2000 rows
+
+    def __len__(self):
+        return len(self.csv_files)
+    
+    def __getitem__(self, idx):
+        file_path = self.csv_files[idx]
+        df = pd.read_csv(file_path)
+
+        arc_ratio = torch.tensor([0.0], dtype=torch.float32)
+        X = torch.tensor(df.drop(labels=['arc_ratio', 'heaviside_sdf']).values, dtype=torch.float32)
+
+        # X = torch.tensor(, dtype=torch.float32)
+        # arc_ratio = torch.tensor(row['arc_ratio'], dtype=torch.float32)
+        y = torch.tensor(df['heaviside_sdf'], dtype=torch.float32)
+
+        return X, y, arc_ratio
 
 def collate_fn_surface(batch):
     """Custom collate function for the SdfDatasetSurface"""
