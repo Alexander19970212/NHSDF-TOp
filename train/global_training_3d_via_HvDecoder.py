@@ -139,9 +139,9 @@ def main(args):
     vae_trainer = Lit3DHvDecoderGlobal(**trainer_params)
 
     # Train the model
-    # trainer.validate(vae_trainer, dataloaders=[test_loader, test_loader_grid])
-    # trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader])
-    final_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader_grid])
+    trainer.validate(vae_trainer, dataloaders=[test_loader, test_loader_grid])
+    trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader])
+    final_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, test_loader_grid])
 
     # Save model weights
     checkpoint_path = f'{models_dir}/{run_name}_HvDecGlobal.ckpt'
