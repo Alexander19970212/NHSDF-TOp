@@ -29,73 +29,36 @@ def finite_difference_smoothness_torch(points):
     smoothness = torch.sqrt(dx**2 + dy**2)
     return smoothness.mean()
 
-def orthogonality_metric(z, tau_latent_dim):
-    z_tau = z[:, :tau_latent_dim]
-    z_original = z[:, tau_latent_dim:]
+def finite_difference_smoothness_3d(points: torch.Tensor) -> torch.Tensor:
+    """
+    Compute the finite difference smoothness metric for a 3D tensor.
+    This calculates the finite differences along each of the three spatial dimensions (depth, height, width)
+    and returns the average gradient magnitude computed over the overlapping interior region.
     
-    Q_tau, R_tau = torch.linalg.qr(z_tau)
-    Q_original, R_original = torch.linalg.qr(z_original)
-
-    orthogonality_loss = torch.linalg.norm(Q_tau.T @ Q_original, ord=2)
-    return orthogonality_loss
-
-def orthogonality_metrics(z, target, tau_latent_dim):
-    z_tau = z[:, :tau_latent_dim]
-    z_original = z[:, tau_latent_dim:]
-    z_original_std = torch.std(z_original, dim=0)
-    z_tau_std = torch.std(z_tau, dim=0)
-
-    # print("z_original", z_original)
-    # print("z_tau", z_tau)
-
-    # print("Target", target)
-
-    mi_original = mutual_info_regression(z_original.detach().cpu().numpy(), target.detach().cpu().numpy())
-    mi_tau = mutual_info_regression(z_tau.detach().cpu().numpy(), target.detach().cpu().numpy())
-
-    metrics = {
-        'mi_original': mi_original.mean(),
-        'mi_tau': mi_tau.mean(),
-        'z_original_std': z_original_std.mean(),
-        'z_tau_std': z_tau_std.mean(),
-        'z_std_ratio': z_original_std.mean() / z_tau_std.mean(),
-        # 'mi_ratio': mi_original.mean() / mi_tau.mean()
-    }
-
-    if mi_tau.mean() != 0:
-        metrics['mi_ratio'] = mi_original.mean() / mi_tau.mean()
-    else:
-        metrics['mi_ratio'] = 100
-
-    return metrics
-
-def orth_minQQ_Frobenius(z, tau_latent_dim):
-    z_tau = z[:, :tau_latent_dim]
-    z_original = z[:, tau_latent_dim:]
-    Q_tau, R_tau = torch.linalg.qr(z_tau)
-    Q_original, R_original = torch.linalg.qr(z_original)
-    return torch.norm(Q_tau.T @ Q_original)
-
-def orth_minWW_Frobenius(z, tau_latent_dim):
-    # W, R = torch.linalg.qr(z)
-    I = torch.eye(z.shape[1], device=z.device)
-    return torch.norm(z.T @ z - I)
-
-def orth_minZZ_Frobenius(z, latent_dim):
+    Args:
+        points (torch.Tensor): A 3D tensor with shape (D, H, W) representing a spatial grid.
+    
+    Returns:
+        torch.Tensor: The mean finite difference smoothness metric.
     """
-    to ensure that the explicit radius dimension remains disentangled from other latent features
-    """
-    z_radius = z[:, :latent_dim]
-    z_original = z[:, latent_dim:]
-    orthogonality_loss = torch.norm(z_radius.T @ z_original)
-    return orthogonality_loss
+    # Compute finite differences along each dimension
+    dx = torch.diff(points, dim=0)  # shape: (D-1, H, W)
+    dy = torch.diff(points, dim=1)  # shape: (D, H-1, W)
+    dz = torch.diff(points, dim=2)  # shape: (D, H, W-1)
 
-orth_losses = {
-    'orth_minQQ_Frobenius': orth_minQQ_Frobenius,
-    'orth_minZZ_Frobenius': orth_minZZ_Frobenius,
-    'orth_minWW_Frobenius': orth_minWW_Frobenius,
-    'None': None
-}
+    # Align the differences to a common interior region:
+    # For dx: remove the last row and column to match the region where dy and dz are defined.
+    dx_common = dx[:, :-1, :-1]   # shape: (D-1, H-1, W-1)
+    # For dy: drop the last element along the depth and width dimensions.
+    dy_common = dy[:-1, :, :-1]   # shape: (D-1, H-1, W-1)
+    # For dz: drop the last element along the depth and height dimensions.
+    dz_common = dz[:-1, :-1, :]   # shape: (D-1, H-1, W-1)
+
+    # Compute the gradient magnitude at each interior point
+    gradient_magnitude = torch.sqrt(dx_common**2 + dy_common**2 + dz_common**2)
+    
+    # Return the mean smoothness metric
+    return gradient_magnitude.mean()
 
 
 class Decoder3D(nn.Module):
@@ -585,15 +548,17 @@ class Lit3DHvDecoderGlobal(L.LightningModule):
         return total_loss
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        x, sdf, _ = batch
-        output = self.vae(x)
-        loss_args = output
-        loss_args["hv_sdf_target"] = sdf
-        loss_args["x_original"] = x
-        total_loss, splitted_loss = self.vae.loss_function(loss_args)
 
-        for key, value in splitted_loss.items():
-            self.log(f'val_{key}', value, prog_bar=True)
+        if dataloader_idx == 0:
+            x, sdf, _ = batch
+            output = self.vae(x)
+            loss_args = output
+            loss_args["hv_sdf_target"] = sdf
+            loss_args["x_original"] = x
+            total_loss, splitted_loss = self.vae.loss_function(loss_args)
+
+            for key, value in splitted_loss.items():
+                self.log(f'val_{key}', value, prog_bar=True, batch_size=x.shape[0])
 
 
     def configure_optimizers(self):

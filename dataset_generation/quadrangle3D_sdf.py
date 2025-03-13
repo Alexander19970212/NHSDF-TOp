@@ -130,6 +130,101 @@ def generate_quadrangle_3DHeavisideSDF(
     
     return df
 
+def generate_quadrangle_3DHeavisideSDF_grid(
+        num_quadrangle=100,
+        smooth_factor=40,
+        min_radius=0.01,
+        max_radius_limit=3,
+        store_dir='quadrangle_3DHeavisideSDF_grid'
+):
+    """
+    Generate dataset of signed distances for random quadrangle
+    
+    Parameters:
+    - num_quadrangle: number of random quadrangle to generate
+    - points_per_quadrangle: number of random points to sample per quadrangle
+    - filename: output CSV file name
+    """
+    if not os.path.exists(store_dir):
+        os.makedirs(store_dir)
+    
+    # Generate multiple triangles
+    for quadrangle_index in tqdm(range(num_quadrangle)):
+        # Generate random quadrangle vertices
+        while True:
+            vertices = generate_quadrangle()
+            # vertices = generate_triangle()
+            line_segments, arc_segments, arcs_intersection = (
+                get_rounded_polygon_segments_rand_radius(vertices, min_radius, max_radius_limit=max_radius_limit))
+            if arcs_intersection == False:
+                break
+
+        v1, v2, v3, v4 = vertices
+        arc_radii = np.array([radius for _, _, _, radius in arc_segments])
+        perimeter, line_perimeter, arc_perimeter = compute_perimeter(line_segments, arc_segments)
+        arc_ratio = arc_perimeter / perimeter
+        arc_centers = np.array([center for _, _, center, _ in arc_segments])
+
+        z_level = np.random.uniform(-1, 1)
+
+        # Generate random points
+        # Sample more points near the triangle
+        quadrangle_center = (v1 + v2 + v3 + v4) / 4
+
+        # points on border
+        point_per_side = 20  # Adjust this for desired grid density
+        x = np.linspace(-1, 1, point_per_side)
+        y = np.linspace(-1, 1, point_per_side) 
+        z = np.linspace(-1, 1, point_per_side)
+
+        # Create meshgrid
+        X, Y, Z = np.meshgrid(x, y, z)
+
+        # Reshape to get array of 3D points
+        points = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
+
+        sdf_3d = SDF_polygon_3D(points, z_level, line_segments, arc_segments, vertices)
+
+        heaviside_sdf = 1/(1 + np.exp(-smooth_factor*sdf_3d))
+
+        # Lists to store our data
+        data = []
+        
+        # Calculate signed distance for each point
+        for i, point in enumerate(points):
+            
+            row = [
+                point[0], point[1], point[2],  # point coordinates
+                v3[0], v3[1],        # third vertex
+                v4[0], v4[1],        # fourth vertex
+                arc_radii[0]/max_radius_limit, # normalized radius
+                arc_radii[1]/max_radius_limit, # normalized radius
+                arc_radii[2]/max_radius_limit, # normalized radius
+                arc_radii[3]/max_radius_limit, # normalized radius
+                z_level,
+                heaviside_sdf[i],
+                arc_ratio
+            ]
+            data.append(row)
+    
+        # Convert to DataFrame
+        columns = [
+            'point_x', 'point_y', 'point_z',
+            'v3_x', 'v3_y',
+            'v4_x', 'v4_y',
+            'r_q1', 'r_q2', 'r_q3', 'r_q4', # q means quadrangle
+            'z_level',
+            'heaviside_sdf',
+            'arc_ratio'
+        ]
+        df = pd.DataFrame(data, columns=columns)
+        
+        # Save to CSV
+        df.to_csv(f'{store_dir}/{quadrangle_index}.csv', index=False)
+        # print(f"Dataset saved to {store_dir}/{quadrangle_index}.csv")
+    
+    return df
+
 def generate_quadrangle_reconstruction_dataset(
         num_quadrangle=1000,
         smooth_factor=40,
@@ -283,6 +378,12 @@ def main(args):
     # print(args)
     if args.mode == '3d_heaviside_sdf':
         generate_quadrangle_3DHeavisideSDF(num_quadrangle=args.num_quadrangle,
+                                          smooth_factor=args.smooth_factor,
+                                          min_radius=args.min_radius,
+                                          max_radius_limit=args.max_radius_limit,
+                                          store_dir=args.store_dir)
+    elif args.mode == '3d_heaviside_sdf_grid':
+        generate_quadrangle_3DHeavisideSDF_grid(num_quadrangle=args.num_quadrangle,
                                           smooth_factor=args.smooth_factor,
                                           min_radius=args.min_radius,
                                           max_radius_limit=args.max_radius_limit,
