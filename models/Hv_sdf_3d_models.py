@@ -562,8 +562,8 @@ class Lit3DHvDecoderGlobal(L.LightningModule):
 
         # if dataloader_idx == 1:
         x_, sdf_, _ = batch
-        x = x[0] # batch size 1
-        sdf = sdf[0]
+        x = x_[0] # batch size 1
+        sdf = sdf_[0]
         print(x.shape, sdf.shape)
         output = self.vae(x)
         hv_sdf_pred = output["hv_sdf_pred"]
