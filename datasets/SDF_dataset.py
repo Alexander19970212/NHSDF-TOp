@@ -315,10 +315,10 @@ class Dataset3DHeavisideSDFGrid(Dataset):
     def __getitem__(self, idx):
         file_path = self.csv_files[idx]
         df = pd.read_csv(file_path)
-        print(df.columns)
+        # print(df.columns)
 
         arc_ratio = torch.tensor([0.0], dtype=torch.float32)
-        X = torch.tensor(df.drop(labels=['arc_ratio', 'heaviside_sdf']).values, dtype=torch.float32)
+        X = torch.tensor(df.drop(labels=['arc_ratio', 'heaviside_sdf'], axis=1).values, dtype=torch.float32)
 
         # X = torch.tensor(, dtype=torch.float32)
         # arc_ratio = torch.tensor(row['arc_ratio'], dtype=torch.float32)
