@@ -167,7 +167,30 @@ class Decoder3D(nn.Module):
 
         return x
     
+# Define a simple residual block for non-linear deep feature extraction.
+class ResidualBlock(nn.Module):
+    def __init__(self, in_features, hidden_features, out_features):
+        super(ResidualBlock, self).__init__()
+        self.fc1 = nn.Linear(in_features, hidden_features)
+        self.bn1 = nn.BatchNorm1d(hidden_features)
+        self.act = nn.LeakyReLU(0.2)
+        self.fc2 = nn.Linear(hidden_features, out_features)
+        self.bn2 = nn.BatchNorm1d(out_features)
+        # Use a linear projection in the shortcut if dimensions differ.
+        if in_features != out_features:
+            self.shortcut = nn.Sequential(
+                nn.Linear(in_features, out_features),
+                nn.BatchNorm1d(out_features)
+            )
+        else:
+            self.shortcut = nn.Identity()
     
+    def forward(self, x):
+        residual = self.shortcut(x)
+        out = self.act(self.bn1(self.fc1(x)))
+        out = self.bn2(self.fc2(out))
+        return self.act(out + residual) 
+
 class VAE(nn.Module):
     """
     A standard Variational Autoencoder adapted to match the AE_DeepSDF interface for comparison.
@@ -194,18 +217,15 @@ class VAE(nn.Module):
         self.kl_weight = kl_weight
         self.latent_dim = latent_dim
 
-
-        # Encoder
+        # Advanced Encoder: Process only shape parameters (exclude coordinate features) using a residual MLP for enhanced 3D feature extraction.
+        shape_param_dim = input_dim - 3  # Exclude coordinate features
+        
         self.encoder = nn.Sequential(
-            nn.Linear(input_dim-3, hidden_dim),
+            nn.Linear(shape_param_dim, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
             nn.LeakyReLU(0.2),
-            nn.Linear(hidden_dim, hidden_dim * 2),
-            nn.BatchNorm1d(hidden_dim * 2),
-            nn.LeakyReLU(0.2),
-            nn.Linear(hidden_dim * 2, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-            nn.LeakyReLU(0.2),
+            ResidualBlock(hidden_dim, hidden_dim * 2, hidden_dim * 2),
+            ResidualBlock(hidden_dim * 2, hidden_dim, hidden_dim)
         )
 
         # Mean and log variance layers for latent space
