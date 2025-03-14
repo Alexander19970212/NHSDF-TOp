@@ -221,6 +221,44 @@ def get_rounded_polygon_segments(vertices, radius): # + -> |
     
     return line_segments, arc_segments, arcs_intersection
 
+def get_rounded_polygon_segments_with_given_radiuses(vertices, radiuses): # + -> |
+    """Get arc segments and line segments for a polygon with rounded corners."""
+    num_vertices = len(vertices)
+    line_segments = []
+    arc_ends = []
+    arc_segments = []
+    v_p_distances = []
+    
+    for i in range(num_vertices):
+        v1 = vertices[i - 1]
+        v2 = vertices[i]
+        v3 = vertices[(i + 1) % num_vertices]
+        
+        p1_new, p2_new, center, start_angle, end_angle = get_corner_points(v1, v2, v3, radiuses[(i - 1) % num_vertices])
+        
+        arc_ends.append((p2_new, p1_new))
+        arc_segments.append((center, start_angle, end_angle, radiuses[(i - 1) % num_vertices]))
+        v_p_distances.append(np.linalg.norm(v2 - p2_new))
+
+    arcs_intersection = False
+    for i in range(num_vertices):
+        v_1 = vertices[i - 1]
+        v_2 = vertices[i]
+        v_1_p_distance = v_p_distances[i - 1]
+        v_2_p_distance = v_p_distances[i]
+
+        segment_length = np.linalg.norm(v_2 - v_1)
+        if v_1_p_distance + v_2_p_distance > segment_length:
+            arcs_intersection = True
+            break
+
+
+    for i in range(num_vertices):
+        line_segments.append((arc_ends[i][0], arc_ends[(i + 1) % num_vertices][1]))
+
+    
+    return line_segments, arc_segments, arcs_intersection
+
 
 def get_rounded_polygon_segments_rand_radius(vertices, min_radius = 0.01, max_radius_limit = 3): # + ->
     """Get arc segments and line segments for a polygon with rounded corners."""
@@ -497,10 +535,10 @@ def SDF_polygon_3D(points, bottom_level, line_segments, arc_segments, vertices, 
                                      heaviside=False)
     sdf_z = points_z - bottom_level
 
-    in_contour_over_bottom_level = np.logical_and(sdf_xy > 0, sdf_z > 0)
+    in_contour_over_bottom_level = np.logical_and(sdf_xy > 0, sdf_z >= 0)
     in_contour_under_bottom_level = np.logical_and(sdf_xy > 0, sdf_z < 0)
-    out_contour_over_bottom_level = np.logical_and(sdf_xy < 0, sdf_z > 0)
-    out_contour_under_bottom_level = np.logical_and(sdf_xy < 0, sdf_z < 0)
+    out_contour_over_bottom_level = np.logical_and(sdf_xy <= 0, sdf_z >= 0)
+    out_contour_under_bottom_level = np.logical_and(sdf_xy <= 0, sdf_z < 0)
 
     sdf_3d = np.zeros_like(sdf_xy)
     sdf_3d[in_contour_over_bottom_level] = np.min([sdf_xy[in_contour_over_bottom_level], sdf_z[in_contour_over_bottom_level]], axis=0)
@@ -887,6 +925,92 @@ def plot_feature_sdf_item(
     if filename:
         plt.savefig(filename, bbox_inches='tight', pad_inches=0.05)
     plt.show()
+
+
+#################################################
+
+import matplotlib.tri as tri
+from matplotlib.colors import TwoSlopeNorm
+
+def plot_sdf_heav_item_by_tensor(
+        vertices,
+        radiuses,
+        heaviside, # N x WH
+        points, # N x W x H x 2
+        filename=None,
+        # line_segments,
+        # arc_segments        
+):
+    
+    # # Create figure and axis
+    # plt.figure(figsize=(8, 8))
+    # ax = plt.gca()
+    num_samples = points.shape[0]
+
+    # TODO: add line segments and arc segments
+    line_segments, arc_segments, arcs_intersection = (
+        get_rounded_polygon_segments_with_given_radiuses(vertices, radiuses))
+
+    vertces_list = []
+
+    v1, v2, v3, v4 = vertices
+    vertces_list.append(v1)
+    vertces_list.append(v2)
+    vertces_list.append(v3)
+    vertces_list.append(v4)
+
+    fig = plt.figure(figsize=(4*num_samples, 4))
+
+    for i in range(num_samples):
+        # First subplot: 2D Feature Contour
+        ax1 = fig.add_subplot(1, num_samples, i+1)
+        # Second subplot: 3D Surface of SDF
+
+        triang1 = tri.Triangulation(points[i, :, 0], points[i, :, 1])
+        norm = TwoSlopeNorm(vcenter=0.5, vmin=heaviside.min(), vmax=heaviside.max())
+        mesh1 = ax1.tripcolor(triang1, heaviside[i], cmap='seismic', shading='gouraud', norm=norm)
+
+        num_points = points.shape[1]
+        point_per_side = int(np.sqrt(num_points))
+
+        # Plot line segments
+        for start, end in line_segments:
+            ax1.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=3)
+            
+        # Plot arc segments
+        for center, start_angle, end_angle, radius in arc_segments:
+            # Calculate angles for arc
+            
+            # Ensure we draw the shorter arc
+            if abs(end_angle - start_angle) > np.pi:
+                if end_angle > start_angle:
+                    start_angle += 2*np.pi
+                else:
+                    end_angle += 2*np.pi
+                    
+            # Create points along arc
+            theta = np.linspace(start_angle, end_angle, 100)
+            x = center[0] + radius * np.cos(theta)
+            y = center[1] + radius * np.sin(theta)
+            ax1.plot(x, y, 'r-', linewidth=3)
+            # ax2.plot(x, y, np.zeros_like(x)+z_offset, 'r-', linewidth=line_width)
+
+        # Set equal aspect ratio and limits for 2D contour
+        ax1.set_aspect('equal')
+        ax1.set_xlim(-1, 1)
+        ax1.set_ylim(-1, 1)
+
+        ax1.set_xticks([])
+        ax1.set_yticks([])
+
+        for spine in ax1.spines.values():
+            spine.set_visible(False)
+
+    plt.tight_layout()
+    if filename:
+        plt.savefig(filename, bbox_inches='tight', pad_inches=0.05)
+    plt.show()
+
 
 def plot_sdf_heav_item(
         smooth_factor=40,
