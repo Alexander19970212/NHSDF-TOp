@@ -976,7 +976,7 @@ def plot_sdf_heav_item_by_tensor(
             # Second subplot: 3D Surface of SDF
 
             triang1 = tri.Triangulation(points[i, :, 0], points[i, :, 1])
-            v_center = 0.5 if heaviside.min() < 0.5 and heaviside.max() > 0.5 else (heaviside.max() - heaviside.min())/2
+            v_center = 0.5 if heaviside.min() < 0.5 and heaviside.max() > 0.5 else (heaviside.max() + heaviside.min())/2
             print(heaviside.min(), heaviside.max())
             print(v_center)
             norm = TwoSlopeNorm(vcenter=v_center, vmin=heaviside.min(), vmax=heaviside.max())
