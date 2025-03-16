@@ -57,6 +57,7 @@ def main(args):
     config_name = args.config_name
     configs_dir = args.config_dir
     models_dir = args.model_dir
+    plot_reconstracted = args.plot_reconstracted
     
     run_name = args.run_name
 
@@ -135,12 +136,28 @@ def main(args):
     trainer_params = config['trainer']['params']
     trainer_params['vae_model'] = vae_model
     trainer_params['max_steps'] = MAX_STEPS
+    if plot_reconstracted:
+        trainer_params['slice_chicking'] = True
+        trainer_params['reconstract_dir'] = f'src/{run_name}_reconstracted'
     # vae_trainer = trainers[config['trainer']['type']](**trainer_params)
     vae_trainer = Lit3DHvDecoderGlobal(**trainer_params)
 
+    if plot_reconstracted:
+        vae_trainer.reconstract_dir = f'src/{run_name}_reconstracted'
+        os.makedirs(vae_trainer.reconstract_dir, exist_ok=True)
+
+        n_samples = args.n_samples
+
+        x_init_list = []
+        for i in range(n_samples):
+            x_init, _, _ = test_dataset[i]
+            x_init_list.append(x_init)
+
+        vae_trainer.prepare_slice_x(x_init_list)
+
     # Train the model
-    trainer.validate(vae_trainer, dataloaders=[test_loader, test_loader_grid])
-    trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader])
+    # trainer.validate(vae_trainer, dataloaders=[test_loader, test_loader_grid])
+    # trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader])
     final_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, test_loader_grid])
 
     # Save model weights
@@ -180,5 +197,7 @@ if __name__ == "__main__":
     parser.add_argument('--config_dir', type=str, default='configs/NN_sdf_experiments/architectures', help='Path to the config directory')
     parser.add_argument('--config_name', type=str, default='AE_DeepSDF', help='Name of the config')
     parser.add_argument('--metrics_file', type=str, default='src/metrics.json', help='Path to the metrics file')
+    parser.add_argument('--plot_reconstracted', type=bool, default=False, help='Plot the reconstracted slices')
+    parser.add_argument('--n_samples', type=int, default=6, help='Number of samples to plot')
     args = parser.parse_args()
     main(args)

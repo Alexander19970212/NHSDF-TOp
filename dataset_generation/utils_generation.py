@@ -933,6 +933,95 @@ import matplotlib.tri as tri
 from matplotlib.colors import TwoSlopeNorm
 
 def plot_sdf_heav_item_by_tensor(
+        vertices_list,
+        radiuses_list,
+        heaviside_list, # N x WH
+        points, # N x W x H x 2
+        filename=None,
+        # line_segments,
+        # arc_segments        
+):
+    
+    # # Create figure and axis
+    # plt.figure(figsize=(8, 8))
+    # ax = plt.gca()
+    num_of_rows = len(vertices_list)
+    num_samples = points.shape[0]
+
+    print(num_of_rows, num_samples)
+
+    fig = plt.figure(figsize=(4*num_samples, 4*num_of_rows))
+    
+    for j in range(len(vertices_list)):
+        vertices = vertices_list[j]
+        radiuses = radiuses_list[j]
+        heaviside = heaviside_list[j]
+
+        # TODO: add line segments and arc segments
+        line_segments, arc_segments, arcs_intersection = (
+            get_rounded_polygon_segments_with_given_radiuses(vertices, radiuses))
+
+        # vertces_list_local = []
+
+        # v1, v2, v3, v4 = vertices
+        # vertces_list_local.append(v1)
+        # vertces_list_local.append(v2)
+        # vertces_list_local.append(v3)
+        # vertces_list_local.append(v4)
+        
+
+        for i in range(num_samples):
+            # First subplot: 2D Feature Contour
+            ax1 = fig.add_subplot(num_of_rows, num_samples, j*num_samples+i+1)
+            # Second subplot: 3D Surface of SDF
+
+            triang1 = tri.Triangulation(points[i, :, 0], points[i, :, 1])
+            norm = TwoSlopeNorm(vcenter=0.5, vmin=heaviside.min(), vmax=heaviside.max())
+            mesh1 = ax1.tripcolor(triang1, heaviside[i], cmap='seismic', shading='gouraud', norm=norm)
+
+            num_points = points.shape[1]
+            point_per_side = int(np.sqrt(num_points))
+
+            # Plot line segments
+            for start, end in line_segments:
+                ax1.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=3)
+                
+            # Plot arc segments
+            for center, start_angle, end_angle, radius in arc_segments:
+                # Calculate angles for arc
+                
+                # Ensure we draw the shorter arc
+                if abs(end_angle - start_angle) > np.pi:
+                    if end_angle > start_angle:
+                        start_angle += 2*np.pi
+                    else:
+                        end_angle += 2*np.pi
+                        
+                # Create points along arc
+                theta = np.linspace(start_angle, end_angle, 100)
+                x = center[0] + radius * np.cos(theta)
+                y = center[1] + radius * np.sin(theta)
+                ax1.plot(x, y, 'r-', linewidth=3)
+                # ax2.plot(x, y, np.zeros_like(x)+z_offset, 'r-', linewidth=line_width)
+
+            # Set equal aspect ratio and limits for 2D contour
+            ax1.set_aspect('equal')
+            ax1.set_xlim(-1, 1)
+            ax1.set_ylim(-1, 1)
+
+            ax1.set_xticks([])
+            ax1.set_yticks([])
+
+            for spine in ax1.spines.values():
+                spine.set_visible(False)
+
+    plt.tight_layout()
+    if filename:
+        plt.savefig(filename, bbox_inches='tight', pad_inches=0.05)
+    plt.show()
+
+
+def plot_sdf_heav_item_by_tensor_one_row(
         vertices,
         radiuses,
         heaviside, # N x WH
@@ -945,25 +1034,28 @@ def plot_sdf_heav_item_by_tensor(
     # # Create figure and axis
     # plt.figure(figsize=(8, 8))
     # ax = plt.gca()
+    num_of_rows = 1
+
+    num_of_rows = len(vertices)
+    fig = plt.figure(figsize=(4*num_of_rows, 4*num_of_rows))
     num_samples = points.shape[0]
 
     # TODO: add line segments and arc segments
     line_segments, arc_segments, arcs_intersection = (
         get_rounded_polygon_segments_with_given_radiuses(vertices, radiuses))
 
-    vertces_list = []
+    # vertces_list_local = []
 
-    v1, v2, v3, v4 = vertices
-    vertces_list.append(v1)
-    vertces_list.append(v2)
-    vertces_list.append(v3)
-    vertces_list.append(v4)
-
-    fig = plt.figure(figsize=(4*num_samples, 4))
+    # v1, v2, v3, v4 = vertices
+    # vertces_list_local.append(v1)
+    # vertces_list_local.append(v2)
+    # vertces_list_local.append(v3)
+    # vertces_list_local.append(v4)
+    
 
     for i in range(num_samples):
         # First subplot: 2D Feature Contour
-        ax1 = fig.add_subplot(1, num_samples, i+1)
+        ax1 = fig.add_subplot(num_of_rows, num_samples, i+1)
         # Second subplot: 3D Surface of SDF
 
         triang1 = tri.Triangulation(points[i, :, 0], points[i, :, 1])
@@ -1009,8 +1101,8 @@ def plot_sdf_heav_item_by_tensor(
     plt.tight_layout()
     if filename:
         plt.savefig(filename, bbox_inches='tight', pad_inches=0.05)
-    plt.show()
-
+    else:
+        plt.show()
 
 def plot_sdf_heav_item(
         smooth_factor=40,

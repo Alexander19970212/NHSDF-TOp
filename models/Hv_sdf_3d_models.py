@@ -12,7 +12,9 @@ import lightning as L
 from torch.optim.lr_scheduler import LambdaLR, CosineAnnealingLR, SequentialLR
 
 from sklearn.feature_selection import mutual_info_regression
+from dataset_generation.utils_generation import plot_sdf_heav_item_by_tensor
 
+import os
 
 def compute_closeness(sdf_pred, sdf_target):
     # Mean Absolute Error
@@ -499,11 +501,34 @@ class VAE_DeepSDF3D(VAE):
                 nn.init.xavier_uniform_(layer.weight)
                 nn.init.zeros_(layer.bias)
 
+def extract_slices(heaviside_sdf, point_per_side, z_levels):
+    z_slice_heaviside_sdf = heaviside_sdf[:-(point_per_side**2)*2]
+    xz_slice_heaviside_sdf = heaviside_sdf[-(point_per_side**2)*2:-(point_per_side**2)]
+    yz_slice_heaviside_sdf = heaviside_sdf[-(point_per_side**2):]
 
+    ###
+    # heaviside_sdf_tensor = torch.from_numpy(z_slice_heaviside_sdf)
+    heaviside_sdf_tensor = z_slice_heaviside_sdf.reshape(point_per_side, point_per_side, z_levels)
+    heaviside_sdf_tensor = heaviside_sdf_tensor.permute(2, 0, 1)
+
+    heaviside_sdf_tensor = heaviside_sdf_tensor.reshape(heaviside_sdf_tensor.shape[0], -1)
+    ###
+
+    # heaviside_sdf_tensor_xz = torch.from_numpy(xz_slice_heaviside_sdf)
+    heaviside_sdf_tensor_xz = xz_slice_heaviside_sdf[None, :]
+    ###
+
+    # heaviside_sdf_tensor_yz = torch.from_numpy(yz_slice_heaviside_sdf)
+    heaviside_sdf_tensor_yz = yz_slice_heaviside_sdf[None, :]
+
+    heaviside_sdf_tensor = torch.cat([heaviside_sdf_tensor, heaviside_sdf_tensor_xz, heaviside_sdf_tensor_yz], dim=0)
+
+    return heaviside_sdf_tensor
         
 class Lit3DHvDecoderGlobal(L.LightningModule):
     def __init__(self, vae_model, learning_rate=1e-4, reg_weight=1e-4, 
-                 regularization=None, warmup_steps=1000, max_steps=10000):
+                 regularization=None, warmup_steps=1000, max_steps=10000,
+                 slice_chicking=False, reconstract_dir=None):
         super().__init__()
         self.vae = vae_model
         self.learning_rate = learning_rate
@@ -513,6 +538,14 @@ class Lit3DHvDecoderGlobal(L.LightningModule):
         self.max_steps = max_steps
         self.freezing_weights()
         self.save_hyperparameters(logger=False)
+        self.slice_chicking = slice_chicking
+        
+
+        if self.slice_chicking:
+            self.reconstract_dir = reconstract_dir
+            self.point_per_side = 25
+            self.z_levels = 6
+            self.slice_points()
 
     def freezing_weights(self):
         for param in self.vae.parameters():
@@ -550,6 +583,75 @@ class Lit3DHvDecoderGlobal(L.LightningModule):
 
     def forward(self, x):
         return self.vae(x)
+   
+    def slice_points(self):
+        x = np.linspace(-1, 1, self.point_per_side)
+        y = np.linspace(-1, 1, self.point_per_side) 
+        z = np.linspace(-1, 1, self.z_levels)
+
+        # Create meshgrid
+        X, Y, Z = np.meshgrid(x, y, z)
+
+        # Reshape to get array of 3D points
+        points = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
+
+
+        # Generate points for a slice along the x-z plane (setting y = 0) with a grid of size (point_per_side x point_per_side)
+        z_xz = np.linspace(-1, 1, self.point_per_side)  # Create an array for the z-axis with point_per_side samples
+        X_xz, Z_xz = np.meshgrid(x, z_xz)            # Use the same x array as before and new z_xz for the grid
+        Y_xz = np.zeros_like(X_xz)                    # Fix the y-coordinate at 0 for the x-z plane slice
+        points_xz = np.vstack([X_xz.ravel(), Y_xz.ravel(), Z_xz.ravel()]).T
+        points_yz = np.vstack([Y_xz.ravel(), Z_xz.ravel(), X_xz.ravel()]).T
+
+        # print(points_xz.shape)
+        self.points_to_compute_heaviside = np.vstack([points, points_xz, points_yz])
+
+        z_slice_points = self.points_to_compute_heaviside[:-(self.point_per_side**2)*2]
+        xz_slice_points = self.points_to_compute_heaviside[-(self.point_per_side**2)*2:-(self.point_per_side**2)]
+        yz_slice_points = self.points_to_compute_heaviside[-(self.point_per_side**2):]
+
+        ###
+        points_tensor = torch.from_numpy(z_slice_points).reshape(self.point_per_side, self.point_per_side, self.z_levels, -1)
+        points_tensor = points_tensor.permute(2, 0, 1, 3)
+        points_tensor = points_tensor.reshape(points_tensor.shape[0], -1, points_tensor.shape[-1])
+        # Retain only the first two coordinates (x, y)
+        points_tensor = points_tensor[:, :, :2]
+
+        ###
+        points_tensor_xz = torch.from_numpy(xz_slice_points).reshape(self.point_per_side, self.point_per_side, -1)
+        points_tensor_xz = points_tensor_xz.reshape(1, -1, points_tensor_xz.shape[-1])[:, :, [0, 2]]
+
+        ###
+        points_tensor_yz = torch.from_numpy(yz_slice_points).reshape(self.point_per_side, self.point_per_side, -1)
+        points_tensor_yz = points_tensor_yz.reshape(1, -1, points_tensor_yz.shape[-1])[:, :, [2, 1]]
+        ###
+
+        self.points_tensor = torch.cat([points_tensor, points_tensor_xz, points_tensor_yz], dim=0)
+
+    def prepare_slice_x(self, x_init_list, max_radius_limit=3):
+
+        self.x_slice_list = []
+
+        self.vertices_list = []
+        self.arc_radii_list = []
+
+        v1 = np.array([-0.5, -0.5])
+        v2 = np.array([0.5, -0.5])
+
+        for i in range(x_init_list):
+            item = x_init_list[i]
+            x_slice_item = item.repeat(self.points_tensor.shape[0], 1)
+            x_slice_item[:, :3] = self.points_tensor
+            self.x_slice_list.append(x_slice_item)
+
+            v3 = np.array([item[3], item[4]])
+            v4 = np.array([item[5], item[6]])
+
+            arc_radii = np.array([item[7], item[8], item[9], item[10]])*max_radius_limit
+
+            self.vertices_list.append(np.array([v1, v2, v3, v4]))
+            self.arc_radii_list.append(arc_radii)
+
 
     def training_step(self, batch, batch_idx):
 
@@ -581,7 +683,26 @@ class Lit3DHvDecoderGlobal(L.LightningModule):
                 self.log(f'val_{key}', value, prog_bar=True, batch_size=x.shape[0])
 
         if dataloader_idx == 1:
-            x_, sdf_, _ = batch
+
+            if self.slice_chicking and batch_idx == 0:
+                print(f'Slice chicking at step {self.global_step}')
+                heaviside_sdf_tensor_list = []
+                for x_init in self.x_slice_list:
+                    hv_sdf_pred = self.vae(x_init)["hv_sdf_pred"].squeeze()
+                    hv_sdf_pred_tensor = extract_slices(hv_sdf_pred, self.point_per_side, self.z_levels)
+                    heaviside_sdf_tensor_list.append(hv_sdf_pred_tensor)
+
+                filename = os.path.join(self.reconstract_dir, f'{self.global_step}.png')
+
+                plot_sdf_heav_item_by_tensor(
+                    self.vertices_list,
+                    self.arc_radii_list,
+                    heaviside_sdf_tensor_list, #S x N x WH
+                    self.points_tensor, # N x WH x 2
+                    filename=filename
+                )
+
+            x_, sdf_, _ = batch            
             x = x_[0] # batch size 1
             sdf = sdf_[0]
             # print(x.shape, sdf.shape)
