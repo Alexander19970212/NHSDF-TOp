@@ -676,58 +676,58 @@ class Lit3DHvDecoderGlobal(L.LightningModule):
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
 
-        # if dataloader_idx == 0:
-        #     x, sdf, _ = batch
-        #     output = self.vae(x)
-        #     loss_args = output
-        #     loss_args["hv_sdf_target"] = sdf
-        #     loss_args["x_original"] = x
-        #     total_loss, splitted_loss = self.vae.loss_function(loss_args)
+        if dataloader_idx == 0:
+            x, sdf, _ = batch
+            output = self.vae(x)
+            loss_args = output
+            loss_args["hv_sdf_target"] = sdf
+            loss_args["x_original"] = x
+            total_loss, splitted_loss = self.vae.loss_function(loss_args)
 
-        #     for key, value in splitted_loss.items():
-        #         self.log(f'val_{key}', value, prog_bar=True, batch_size=x.shape[0])
+            for key, value in splitted_loss.items():
+                self.log(f'val_{key}', value, prog_bar=True, batch_size=x.shape[0])
 
-        # if dataloader_idx == 1:
+        if dataloader_idx == 1:
 
-        if self.slice_chicking and batch_idx == 0:
-            print(f'Slice chicking at step {self.global_step}')
-            heaviside_sdf_tensor_list = []
-            for x_init in self.x_slice_list:
-                hv_sdf_pred = self.vae(x_init.to(self.device))["hv_sdf_pred"].squeeze()
-                hv_sdf_pred_tensor = extract_slices(hv_sdf_pred, self.point_per_side, self.z_levels)
-                heaviside_sdf_tensor_list.append(hv_sdf_pred_tensor.detach().cpu())
+            if self.slice_chicking and batch_idx == 0:
+                print(f'Slice chicking at step {self.global_step}')
+                heaviside_sdf_tensor_list = []
+                for x_init in self.x_slice_list:
+                    hv_sdf_pred = self.vae(x_init.to(self.device))["hv_sdf_pred"].squeeze()
+                    hv_sdf_pred_tensor = extract_slices(hv_sdf_pred, self.point_per_side, self.z_levels)
+                    heaviside_sdf_tensor_list.append(hv_sdf_pred_tensor.detach().cpu())
 
-            filename = os.path.join(self.reconstract_dir, f'{self.global_step}.png')
+                filename = os.path.join(self.reconstract_dir, f'{self.global_step}.png')
 
-            plot_sdf_heav_item_by_tensor(
-                self.vertices_list,
-                self.arc_radii_list,
-                heaviside_sdf_tensor_list, #S x N x WH
-                self.points_tensor, # N x WH x 2
-                filename=filename
-            )
+                plot_sdf_heav_item_by_tensor(
+                    self.vertices_list,
+                    self.arc_radii_list,
+                    heaviside_sdf_tensor_list, #S x N x WH
+                    self.points_tensor, # N x WH x 2
+                    filename=filename
+                )
 
-        x_, sdf_, _ = batch            
-        x = x_[0] # batch size 1
-        sdf = sdf_[0]
-        # print(x.shape, sdf.shape)
-        output = self.vae(x)
-        hv_sdf_pred = output["hv_sdf_pred"]
-        hv_sdf_pred = hv_sdf_pred.squeeze()
-        hv_sdf_target = sdf.squeeze()
+            x_, sdf_, _ = batch            
+            x = x_[0] # batch size 1
+            sdf = sdf_[0]
+            # print(x.shape, sdf.shape)
+            output = self.vae(x)
+            hv_sdf_pred = output["hv_sdf_pred"]
+            hv_sdf_pred = hv_sdf_pred.squeeze()
+            hv_sdf_target = sdf.squeeze()
 
-        hv_sdf_diff = hv_sdf_pred - hv_sdf_target
+            hv_sdf_diff = hv_sdf_pred - hv_sdf_target
 
-        # Reshape hv_sdf_diff into a 3D tensor corresponding to the spatial coordinates.
-        num_points = hv_sdf_diff.numel()
-        grid_size = int(round(num_points ** (1/3)))
-        if grid_size ** 3 != num_points:
-            raise ValueError(f"hv_sdf_diff with {num_points} elements cannot be reshaped into a 3D cube. Check grid density.")
-        
-        hv_sdf_diff_3d = hv_sdf_diff.reshape(grid_size, grid_size, grid_size)
-        # Optionally log a summary statistic (e.g., mean value) of the reshaped tensor for monitoring
-        smoothness = finite_difference_smoothness_3d(hv_sdf_diff_3d)
-        self.log("val_smoothness", smoothness, prog_bar=True, batch_size=x.shape[0])
+            # Reshape hv_sdf_diff into a 3D tensor corresponding to the spatial coordinates.
+            num_points = hv_sdf_diff.numel()
+            grid_size = int(round(num_points ** (1/3)))
+            if grid_size ** 3 != num_points:
+                raise ValueError(f"hv_sdf_diff with {num_points} elements cannot be reshaped into a 3D cube. Check grid density.")
+            
+            hv_sdf_diff_3d = hv_sdf_diff.reshape(grid_size, grid_size, grid_size)
+            # Optionally log a summary statistic (e.g., mean value) of the reshaped tensor for monitoring
+            smoothness = finite_difference_smoothness_3d(hv_sdf_diff_3d)
+            self.log("val_smoothness", smoothness, prog_bar=True, batch_size=x.shape[0])
 
 
     def configure_optimizers(self):
