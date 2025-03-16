@@ -157,7 +157,7 @@ def main(args):
 
     # Train the model
     trainer.validate(vae_trainer, dataloaders=[test_loader, test_loader_grid])
-    trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader])
+    trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader, test_loader_grid])
     final_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, test_loader_grid])
 
     # Save model weights
