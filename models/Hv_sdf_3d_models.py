@@ -627,6 +627,7 @@ class Lit3DHvDecoderGlobal(L.LightningModule):
         ###
 
         self.points_tensor = torch.cat([points_tensor, points_tensor_xz, points_tensor_yz], dim=0)
+        self.points_to_compute_heaviside = torch.from_numpy(self.points_to_compute_heaviside)
 
     def prepare_slice_x(self, x_init_list, max_radius_limit=3):
 
