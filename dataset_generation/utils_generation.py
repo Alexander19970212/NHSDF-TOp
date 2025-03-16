@@ -976,7 +976,10 @@ def plot_sdf_heav_item_by_tensor(
             # Second subplot: 3D Surface of SDF
 
             triang1 = tri.Triangulation(points[i, :, 0], points[i, :, 1])
-            norm = TwoSlopeNorm(vcenter=0.5, vmin=heaviside.min(), vmax=heaviside.max())
+            v_center = 0.5 if heaviside.min() < 0.5 and heaviside.max() > 0.5 else (heaviside.max() - heaviside.min())/2
+            print(heaviside.min(), heaviside.max())
+            print(v_center)
+            norm = TwoSlopeNorm(vcenter=v_center, vmin=heaviside.min(), vmax=heaviside.max())
             mesh1 = ax1.tripcolor(triang1, heaviside[i], cmap='seismic', shading='gouraud', norm=norm)
 
             num_points = points.shape[1]
