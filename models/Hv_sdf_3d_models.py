@@ -642,8 +642,8 @@ class Lit3DHvDecoderGlobal(L.LightningModule):
         for i in range(len(x_init_list)):
             item = x_init_list[i]
 
-            print(item.shape)
-            print(self.points_to_compute_heaviside.shape)
+            # print(item.shape)
+            # print(self.points_to_compute_heaviside.shape)
 
             x_slice_item = item.repeat(self.points_to_compute_heaviside.shape[0], 1)
             x_slice_item[:, :3] = self.points_to_compute_heaviside

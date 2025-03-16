@@ -150,7 +150,7 @@ def main(args):
 
         x_init_list = []
         for i in range(n_samples):
-            x_init, _, _ = test_dataset[i]
+            x_init, _, _ = test_dataset[i*2000]
             x_init_list.append(x_init)
 
         vae_trainer.prepare_slice_x(x_init_list)
