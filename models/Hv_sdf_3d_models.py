@@ -640,8 +640,12 @@ class Lit3DHvDecoderGlobal(L.LightningModule):
 
         for i in range(len(x_init_list)):
             item = x_init_list[i]
-            x_slice_item = item.repeat(self.points_tensor.shape[0], 1)
-            x_slice_item[:, :3] = self.points_tensor
+
+            print(item.shape)
+            print(self.points_to_compute_heaviside.shape)
+
+            x_slice_item = item.repeat(self.points_to_compute_heaviside.shape[0], 1)
+            x_slice_item[:, :3] = self.points_to_compute_heaviside
             self.x_slice_list.append(x_slice_item)
 
             v3 = np.array([item[3], item[4]])
