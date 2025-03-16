@@ -21,8 +21,8 @@ python train/global_training_3d_via_HvDecoder.py \
     --test_index_list_csv "$TEST_INDEX_LIST_CSV" \
     --config_dir "$CONFIG_DIR" \
     --config_name "$CONFIG_NAME" \
-    --metrics_file "$METRICS_FILE_RECON" \  
-    --plot_reconstracted "True"\
+    --metrics_file "$METRICS_FILE_RECON" \
+    --plot_reconstracted \
     --n_samples 6 \
     --run_name "$RUN_NAME"
 
