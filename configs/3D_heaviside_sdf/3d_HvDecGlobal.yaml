@@ -1,12 +1,12 @@
 model:
   type: VAE_DeepSDF
   params:
-    latent_dim: 15
+    latent_dim: 9
     hidden_dim: 128
     orthogonality_loss_weight: 0.1
     orthogonality_loss_type: None
     regularization: None
-    kl_weight: 0.01
+    kl_weight: 0.0000005
     reg_weight: 0.1
 
 trainer:
