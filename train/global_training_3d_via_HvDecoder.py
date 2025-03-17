@@ -106,13 +106,13 @@ def main(args):
         ),
         callbacks=[
             callbacks.ModelCheckpoint(
-                monitor='val_total_loss',
+                monitor='val_total_loss/dataloader_idx_0',
                 mode='min',
                 save_top_k=1,
-                filename='best-model-{epoch:02d}-{val_total_loss:.2f}'
+                filename='best-model-{epoch:02d}-{val_total_loss/dataloader_idx_0:.2f}'
             ),
             callbacks.EarlyStopping(
-                monitor='val_total_loss',
+                monitor='val_total_loss/dataloader_idx_0',
                 patience=10,
                 mode='min'
             ) #,
