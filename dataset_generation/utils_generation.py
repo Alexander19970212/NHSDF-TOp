@@ -260,7 +260,10 @@ def get_rounded_polygon_segments_with_given_radiuses(vertices, radiuses): # + ->
     return line_segments, arc_segments, arcs_intersection
 
 
-def get_rounded_polygon_segments_rand_radius(vertices, min_radius = 0.01, max_radius_limit = 3): # + ->
+def get_rounded_polygon_segments_rand_radius(vertices,
+                                             min_radius = 0.01,
+                                             max_radius_limit = 3,
+                                             golden_quadrangle = False): # + ->
     """Get arc segments and line segments for a polygon with rounded corners."""
     
     line_segments_cut, _,  arcs_intersection = get_rounded_polygon_segments(vertices, min_radius)
@@ -279,6 +282,10 @@ def get_rounded_polygon_segments_rand_radius(vertices, min_radius = 0.01, max_ra
         second_middle_segments = [] 
 
         random_variables = np.random.uniform(0.2, 0.8, num_vertices)
+        
+        previous_radius = max_radius_limit
+
+        all_equal_radius = np.random.uniform(0, 1) < 0.15
 
         for i in range(num_vertices):
             v1 = vertices[i]
@@ -306,7 +313,17 @@ def get_rounded_polygon_segments_rand_radius(vertices, min_radius = 0.01, max_ra
 
             max_radius, center = maximal_rounding_radius(A1, A2, B1, B2)
             max_radius = min(max_radius, max_radius_limit)
-            if np.random.uniform(0, 1) < 0.5:
+
+            p = np.random.uniform(0, 1)
+            
+            if p > 0.85 or golden_quadrangle or all_equal_radius:
+                if golden_quadrangle:
+                    valid_radius = 0.5
+                elif all_equal_radius or p > 0.5:
+                    valid_radius = min(max_radius, previous_radius)
+                else:
+                    valid_radius = max_radius
+            elif p < 0.5:
                 valid_radius = np.random.uniform(min_radius, max_radius)
             else:
                 valid_radius = np.random.uniform(min_radius, min_radius + (max_radius - min_radius)*0.2)
@@ -316,6 +333,8 @@ def get_rounded_polygon_segments_rand_radius(vertices, min_radius = 0.01, max_ra
             v_p_distances.append(np.linalg.norm(v2 - p2_new))
             arc_ends.append((p2_new, p1_new))
             arc_segments.append((center, start_angle, end_angle, valid_radius))
+
+            previous_radius = valid_radius
 
         # arcs_intersection = False
         for i in range(num_vertices):
@@ -491,7 +510,8 @@ def points_to_line_distance(points, line_start, line_end): # +|
 def signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=40, heaviside=True): # + |
     distances = []
     for line_segment in line_segments:
-        distances.append(points_to_line_distance(points, line_segment[0], line_segment[1]))
+        if np.linalg.norm(line_segment[0] - line_segment[1]) != 0:
+            distances.append(points_to_line_distance(points, line_segment[0], line_segment[1]))
     for arc_segment in arc_segments:
         distances.append(points_to_arc_distances(points,
                                                 arc_segment[0],
@@ -1120,12 +1140,18 @@ def plot_sdf_heav_item(
         feature_type='triangle',
         text_size=45,
         azimuth=75,
-        elev=21
+        elev=21,
+        golden_quadrangle=False
 ):
     
     # # Create figure and axis
     # plt.figure(figsize=(8, 8))
     # ax = plt.gca()
+    from triangle_sdf import generate_triangle
+    from quadrangle_sdf import generate_quadrangle
+    from ellipse_sdf import ellipse_sdf
+    import matplotlib.tri as tri
+    from matplotlib.colors import TwoSlopeNorm
 
 
     if feature_type == 'triangle':
@@ -1138,9 +1164,9 @@ def plot_sdf_heav_item(
 
     elif feature_type == 'quadrangle':
         while True:
-            vertices = generate_quadrangle()
+            vertices = generate_quadrangle(golden_quadrangle=golden_quadrangle)
             line_segments, arc_segments, arcs_intersection = (
-                get_rounded_polygon_segments_rand_radius(vertices, 0.1))
+                get_rounded_polygon_segments_rand_radius(vertices, 0.1, golden_quadrangle=golden_quadrangle))
             if arcs_intersection == False:
                 break
 
@@ -1183,11 +1209,17 @@ def plot_sdf_heav_item(
         heaviside = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor, heaviside=True)
     else:   
         a = 0.5
-        b_w = np.random.uniform(0.5, 1.5)  # Semi-minor axis (smaller than a)
+        if golden_quadrangle:
+            b_w = 1
+        else:
+            b_w = np.random.uniform(0.5, 1.5)  # Semi-minor axis (smaller than a)
         b = a * b_w
         
         sdf = ellipse_sdf(points, a, b)
-        heaviside = 1/(1 + np.exp(smooth_factor*sdf))
+        heaviside = 1/(1 + np.exp(-smooth_factor*sdf))
+
+    print("SDF min: ", sdf.min(), "SDF max: ", sdf.max())
+    print("Heaviside min: ", heaviside.min(), "Heaviside max: ", heaviside.max())
 
     fig = plt.figure(figsize=(12, 4))
 
@@ -1210,6 +1242,9 @@ def plot_sdf_heav_item(
     Z = sdf.reshape((point_per_side, point_per_side))
     # Adjust the colormap to center around 0
     z_offset = 0.05
+
+    # Plot the surface after plotting the segments to ensure they are not obscured
+    surf1 = ax2.plot_surface(X, Y, Z, cmap=scatter_cmap, edgecolor='none', alpha=1, norm=norm)
 
     if feature_type == 'triangle' or feature_type == 'quadrangle':
 
@@ -1236,8 +1271,7 @@ def plot_sdf_heav_item(
             ax1.plot(x, y, 'r-', linewidth=line_width)
             # ax2.plot(x, y, np.zeros_like(x)+z_offset, 'r-', linewidth=line_width)
 
-        # Plot the surface after plotting the segments to ensure they are not obscured
-        surf1 = ax2.plot_surface(X, Y, Z, cmap=scatter_cmap, edgecolor='none', alpha=1, norm=norm)
+        
 
             
     if feature_type == 'ellipse':

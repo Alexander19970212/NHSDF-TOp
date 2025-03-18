@@ -29,8 +29,8 @@ def ellipse_sdf(points, a, b):
     scaled_dist[scaled_dist == 0] = min_axis
     
     # Approximate the actual distance
-    # Inside: negative, Outside: positive
-    return scaled_dist * min_axis - min_axis
+    # Inside: positive, Outside: negative
+    return min_axis - scaled_dist * min_axis
 
 def generate_ellipse_sdf_dataset(num_ellipse=1000,
                                  points_per_ellipse=500,
@@ -55,7 +55,7 @@ def generate_ellipse_sdf_dataset(num_ellipse=1000,
         points = np.random.uniform(-1, 1, (points_per_ellipse, 2))
 
         sdf = ellipse_sdf(points, a, b)
-        sdf = 1/(1 + np.exp(smooth_factor*sdf))
+        sdf = 1/(1 + np.exp(-smooth_factor*sdf))
         
         for i, point in enumerate(points):
             data.append([
@@ -110,7 +110,7 @@ def generate_ellipse_sdf_surface_dataset(
         b = a * b_w
         
         sdf = ellipse_sdf(points, a, b)
-        sdf = 1/(1 + np.exp(smooth_factor*sdf))
+        sdf = 1/(1 + np.exp(-smooth_factor*sdf))
 
         sdf_str = ','.join(map(str, sdf.tolist()))
         

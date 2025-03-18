@@ -1,0 +1,1 @@
+python generate_datasets.py --root_path ../shape_datasets

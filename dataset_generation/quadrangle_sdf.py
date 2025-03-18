@@ -6,7 +6,7 @@ from tqdm import tqdm
 from matplotlib import pyplot as plt
 from utils_generation import point_to_line_distance
 
-def generate_quadrangle():
+def generate_quadrangle(mirrored_quadrangle=True, golden_quadrangle=False):
     """
     Generate a random quadrangle without self-intersections in [0, 1] domain.
     Returns vertices as a numpy array of shape (4, 2).
@@ -20,10 +20,21 @@ def generate_quadrangle():
         x3 = np.random.uniform(-0.8, 0.8)
         y3 = np.random.uniform(-0.2, 0.8)
         v3 = np.array([x3, y3])
+        
+        if golden_quadrangle:
+            v3 = np.array([0.5, 0.5])
+            v4 = np.array([-0.5, 0.5])
 
-        x4 = np.random.uniform(-0.8, 0.8)
-        y4 = np.random.uniform(0.2, 0.8)
-        v4 = np.array([x4, y4])
+        else:
+            p = np.random.uniform(0, 1)
+            if mirrored_quadrangle and p < 0.15:
+                x4 = -x3
+                y4 = y3
+                v4 = np.array([x4, y4])
+            else:
+                x4 = np.random.uniform(-0.8, 0.8)
+                y4 = np.random.uniform(-0.8, 0.2)
+                v4 = np.array([x4, y4])
 
         vertices = np.array([v1, v2, v3, v4])
         
@@ -200,7 +211,8 @@ def generate_rounded_quadrangle_sdf_dataset(
         smooth_factor=40,
         min_radius=0.01,
         max_radius_limit=3,
-        filename='quadrangle_sdf_dataset.csv'
+        filename='quadrangle_sdf_dataset.csv',
+        num_golden_quadrangle=1
 ):
     """
     Generate dataset of signed distances for random quadrangle
@@ -214,13 +226,18 @@ def generate_rounded_quadrangle_sdf_dataset(
     data = []
     
     # Generate multiple triangles
-    for _ in tqdm(range(num_quadrangle)):
+    for q_idx in tqdm(range(num_quadrangle)):
         # Generate random quadrangle vertices
+        golden_quadrangle = q_idx < num_golden_quadrangle
+        if golden_quadrangle:
+            print(f"Golden quadrangle {q_idx}")
         while True:
-            vertices = generate_quadrangle()
+            vertices = generate_quadrangle(golden_quadrangle=golden_quadrangle)
             # vertices = generate_triangle()
             line_segments, arc_segments, arcs_intersection = (
-                get_rounded_polygon_segments_rand_radius(vertices, min_radius, max_radius_limit=max_radius_limit))
+                get_rounded_polygon_segments_rand_radius(vertices, min_radius,
+                                                         max_radius_limit=max_radius_limit,
+                                                         golden_quadrangle=golden_quadrangle))
             if arcs_intersection == False:
                 break
 
@@ -382,7 +399,8 @@ def generate_quadrangle_reconstruction_dataset(
         smooth_factor=40,
         filename='quadrangle_reconstruction_dataset',
         axes_length=1,
-        max_radius_limit=3):
+        max_radius_limit=3,
+        num_golden_quadrangle=1):
     """
     Generate dataset of signed distances for random quadrangle
     
@@ -395,13 +413,17 @@ def generate_quadrangle_reconstruction_dataset(
     # Create a grid of points
 
     # Generate multiple triangles
-    for _ in tqdm(range(num_quadrangle)):
+    for q_idx in tqdm(range(num_quadrangle)):
         # Generate random quadrangle vertices
+        golden_quadrangle = q_idx < num_golden_quadrangle
+        if golden_quadrangle:
+            print(f"Golden quadrangle {q_idx}")
         while True:
-            vertices = generate_quadrangle()
+            vertices = generate_quadrangle(golden_quadrangle=golden_quadrangle)
             # vertices = generate_triangle()
             line_segments, arc_segments, arcs_intersection = (
-                get_rounded_polygon_segments_rand_radius(vertices, 0.1, max_radius_limit=max_radius_limit))
+                get_rounded_polygon_segments_rand_radius(vertices, 0.1, max_radius_limit=max_radius_limit,
+                                                         golden_quadrangle=golden_quadrangle))
             if arcs_intersection == False:
                 break
 
