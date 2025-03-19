@@ -532,12 +532,58 @@ def plot_predicted_sdf(model, test_loader, num_samples=5):
     plt.tight_layout()
     plt.show()
 
+# def plot_curve(grid_points, sdf_pred, ax):
+
+#     curve_mask = torch.logical_and(sdf_pred[:, 0] > 0.4, sdf_pred[:, 0] < 0.6)
+#     curve_mask_reshaped = curve_mask.reshape(100, 100)[15:85, 15:85]
+#     ax.imshow(curve_mask_reshaped, cmap='gray_r', origin='lower')
+#     return ax
+
 def plot_curve(grid_points, sdf_pred, ax):
 
     curve_mask = torch.logical_and(sdf_pred[:, 0] > 0.4, sdf_pred[:, 0] < 0.6)
-    curve_mask_reshaped = curve_mask.reshape(100, 100)[15:85, 15:85]
+    curve_mask_reshaped = curve_mask.reshape(100, 100)[13:87, 13:87]
     ax.imshow(curve_mask_reshaped, cmap='gray_r', origin='lower')
     return ax
+
+# def draw_geometry(geometry_type, geometry_params, ax):
+
+#     ax.set_xlim(-0.8, 0.8)
+#     ax.set_ylim(-0.8, 0.8)
+    
+#     if geometry_type == "ellipse":
+#         a = geometry_params[1]
+#         b = geometry_params[2]
+#         ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='red', linewidth=2)
+#         ax.add_patch(ellipse)
+
+#     elif geometry_type == "polygon":
+#         vertices = geometry_params[0]
+#         radiuses = geometry_params[1]
+#         line_segments = geometry_params[2]
+#         arc_segments = geometry_params[3]
+#         # axs[row, col].add_patch(Polygon(vertices, fill=False, color='green', linewidth=4))
+#         # Plot line segments
+#         for start, end in line_segments:
+#             ax.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=2)
+#             # ax2.plot([start[0], end[0]], [start[1], end[1]], [z_offset, z_offset], 'g-', linewidth=line_width)
+
+#         # Plot arc segments
+#         for center, start_angle, end_angle, radius in arc_segments:
+#             # Calculate angles for arc
+            
+#             # Ensure we draw the shorter arc
+#             if abs(end_angle - start_angle) > np.pi:
+#                 if end_angle > start_angle:
+#                     start_angle += 2*np.pi
+#                 else:
+#                     end_angle += 2*np.pi
+                    
+#             # Create points along arc
+#             theta = np.linspace(start_angle, end_angle, 100)
+#             x = center[0] + radius * np.cos(theta)
+#             y = center[1] + radius * np.sin(theta)
+#             ax.plot(x, y, 'r-', linewidth=2)
 
 def draw_geometry(geometry_type, geometry_params, ax):
 
@@ -547,7 +593,7 @@ def draw_geometry(geometry_type, geometry_params, ax):
     if geometry_type == "ellipse":
         a = geometry_params[1]
         b = geometry_params[2]
-        ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='red', linewidth=2)
+        ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='red', linewidth=4)
         ax.add_patch(ellipse)
 
     elif geometry_type == "polygon":
@@ -558,7 +604,7 @@ def draw_geometry(geometry_type, geometry_params, ax):
         # axs[row, col].add_patch(Polygon(vertices, fill=False, color='green', linewidth=4))
         # Plot line segments
         for start, end in line_segments:
-            ax.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=2)
+            ax.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=4)
             # ax2.plot([start[0], end[0]], [start[1], end[1]], [z_offset, z_offset], 'g-', linewidth=line_width)
 
         # Plot arc segments
@@ -576,7 +622,7 @@ def draw_geometry(geometry_type, geometry_params, ax):
             theta = np.linspace(start_angle, end_angle, 100)
             x = center[0] + radius * np.cos(theta)
             y = center[1] + radius * np.sin(theta)
-            ax.plot(x, y, 'r-', linewidth=2)
+            ax.plot(x, y, 'r-', linewidth=4)
 
 def plot_sdf_transition(model, z_start, z_end, num_steps=10):
     """
@@ -616,6 +662,78 @@ def plot_sdf_transition(model, z_start, z_end, num_steps=10):
     plt.tight_layout()
     plt.show()
 
+# def plot_sdf_transition_triangle(model, z1, z2, z3, num_steps=10, filename=None, plot_geometry=False):
+#     """
+#     Plots the transition of SDF maps between three latent vectors in a triangular format.
+    
+#     Parameters:
+#     - model: The VAE model
+#     - z1: The first latent vector
+#     - z2: The second latent vector
+#     - z3: The third latent vector
+#     - num_steps: Number of steps in the transition
+#     """
+#     z1 = torch.tensor(z1, dtype=torch.float32)
+#     z2 = torch.tensor(z2, dtype=torch.float32)
+#     z3 = torch.tensor(z3, dtype=torch.float32)
+    
+#     # Generate intermediate latent vectors
+#     z_steps = []
+#     for i in range(num_steps):
+#         for j in range(num_steps - i):
+#             z = z1 * (i / (num_steps - 1)) + z2 * (j / (num_steps - 1)) + z3 * ((num_steps - 1 - i - j) / (num_steps - 1))
+#             z_steps.append(z)
+
+#     # z_batch = torch.tensor(z_steps).to(model.device)
+#     z_batch = torch.stack(z_steps)
+#     print(z_batch.shape)
+#     chis = model.decoder_input(z_batch).detach().cpu().numpy()
+    
+#     x = np.linspace(-1.1, 1.1, 100)
+#     y = np.linspace(-1.1, 1.1, 100)
+#     X, Y = np.meshgrid(x, y)
+#     grid_points = torch.tensor(np.stack([X.flatten(), Y.flatten()], axis=1), dtype=torch.float32)
+    
+#     fig, ax = plt.subplots(figsize=(5, 4.5))
+#     fig.suptitle('SDF Transition Between Shapes in Triangle Format')
+
+#     scale = 0.85 / (num_steps - 1)
+    
+#     with torch.no_grad():
+#         idx = 0
+#         for i in range(num_steps):
+#             for j in range(num_steps - i):
+#                 z = z_steps[idx]
+#                 # Calculate the position for each icon
+#                 x_pos = (i + 0.5 * j) * scale #- 0.55
+#                 y_pos = (np.sqrt(3) / 2 * j) * scale #- 0.55
+                
+#                 # Plot each SDF as an icon at the calculated position
+#                 ax_inset = fig.add_axes([x_pos, y_pos, 0.16, 0.16])
+
+#                 if plot_geometry:
+#                     chi_pred = chis[idx]
+#                     geometry_type, geometry_params = extract_geometry(chi_pred)
+#                     draw_geometry(geometry_type, geometry_params, ax_inset)
+                    
+#                 else:   
+#                     sdf_pred = model.sdf(z, grid_points)
+#                     sdf_grid = sdf_pred.reshape(X.shape)
+#                     plot_curve(grid_points, sdf_pred, ax_inset)
+
+#                 ax_inset.set_aspect('equal')
+#                 ax_inset.set_frame_on(False)
+#                 ax_inset.set_xticks([])
+#                 ax_inset.set_yticks([])
+#                 idx += 1
+#     ax.set_frame_on(False)
+#     ax.set_xticks([])
+#     ax.set_yticks([])
+#     # plt.tight_layout()
+#     if filename is not None:
+#         plt.savefig(filename)
+#     plt.show()
+
 def plot_sdf_transition_triangle(model, z1, z2, z3, num_steps=10, filename=None, plot_geometry=False):
     """
     Plots the transition of SDF maps between three latent vectors in a triangular format.
@@ -643,13 +761,13 @@ def plot_sdf_transition_triangle(model, z1, z2, z3, num_steps=10, filename=None,
     print(z_batch.shape)
     chis = model.decoder_input(z_batch).detach().cpu().numpy()
     
-    x = np.linspace(-1.1, 1.1, 100)
-    y = np.linspace(-1.1, 1.1, 100)
+    x = np.linspace(-1.0, 1.0, 100)
+    y = np.linspace(-1.0, 1.0, 100)
     X, Y = np.meshgrid(x, y)
     grid_points = torch.tensor(np.stack([X.flatten(), Y.flatten()], axis=1), dtype=torch.float32)
     
-    fig, ax = plt.subplots(figsize=(5, 4.5))
-    fig.suptitle('SDF Transition Between Shapes in Triangle Format')
+    fig, ax = plt.subplots(figsize=(10, 9))
+    # fig.suptitle('SDF Transition Between Shapes in Triangle Format', fontsize=16, fontweight='bold')
 
     scale = 0.85 / (num_steps - 1)
     
@@ -659,18 +777,17 @@ def plot_sdf_transition_triangle(model, z1, z2, z3, num_steps=10, filename=None,
             for j in range(num_steps - i):
                 z = z_steps[idx]
                 # Calculate the position for each icon
-                x_pos = (i + 0.5 * j) * scale #- 0.55
-                y_pos = (np.sqrt(3) / 2 * j) * scale #- 0.55
+                x_pos = (i + 0.5 * j) * scale
+                y_pos = (np.sqrt(3) / 2 * j) * scale
                 
                 # Plot each SDF as an icon at the calculated position
-                ax_inset = fig.add_axes([x_pos, y_pos, 0.16, 0.16])
-
                 if plot_geometry:
+                    ax_inset = fig.add_axes([x_pos, y_pos, 0.18, 0.18])
                     chi_pred = chis[idx]
                     geometry_type, geometry_params = extract_geometry(chi_pred)
                     draw_geometry(geometry_type, geometry_params, ax_inset)
-                    
-                else:   
+                else:
+                    ax_inset = fig.add_axes([x_pos, y_pos, 0.16, 0.16])   
                     sdf_pred = model.sdf(z, grid_points)
                     sdf_grid = sdf_pred.reshape(X.shape)
                     plot_curve(grid_points, sdf_pred, ax_inset)
@@ -679,14 +796,18 @@ def plot_sdf_transition_triangle(model, z1, z2, z3, num_steps=10, filename=None,
                 ax_inset.set_frame_on(False)
                 ax_inset.set_xticks([])
                 ax_inset.set_yticks([])
+                # ax_inset.set_title(f'Step {idx+1}', fontsize=10)
                 idx += 1
+
     ax.set_frame_on(False)
     ax.set_xticks([])
     ax.set_yticks([])
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.85, bottom=0.05)
     # plt.tight_layout()
     if filename is not None:
-        plt.savefig(filename)
+        plt.savefig(filename, bbox_inches='tight')
     plt.show()
+
 
 def plot_sdf_surface(model, z, countur=False, filename=None):
     z = torch.tensor(z, dtype=torch.float32)
