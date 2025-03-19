@@ -310,10 +310,10 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
             sdf.append(output["sdf_pred"])
             sdf_target.append(batch[1])
             class_labels.append(batch[0][:, 2])
-            if len(latent_vectors) * batch[0].shape[0] >= num_samples:
-                break
+            # if len(latent_vectors) * batch[0].shape[0] >= num_samples:
+            #     break
                 
-    latent_vectors = torch.cat(latent_vectors, dim=0)[:num_samples]
+    latent_vectors = torch.cat(latent_vectors, dim=0) #[:num_samples]
     latent_vectors = latent_vectors.cpu().numpy()
 
     # Use t-SNE for dimensionality reduction
@@ -323,7 +323,8 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
 
     
     # Concatenate and convert class labels
-    class_labels = torch.cat(class_labels, dim=0)[:num_samples].cpu().numpy()
+    # class_labels = torch.cat(class_labels, dim=0)[:num_samples].cpu().numpy()
+    class_labels = np.array(class_labels).cpu().numpy()
     class_labels = [class_names[int(label*2)] for label in class_labels]
     
     # Plot the reduced dimensions with colors based on class labels
