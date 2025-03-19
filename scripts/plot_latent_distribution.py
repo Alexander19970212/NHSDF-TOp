@@ -98,14 +98,19 @@ def main(args):
     # Initialize VAE model
     model_params = config['model']['params']
     model_params['input_dim'] = 17 # train_dataset.feature_dim
+
+    print(f"Loading model {strategy}_{config_name}")
     vae_model = models[config['model']['type']](**model_params)
 
     # Load pre-trained weights for the model
+    print(f"Loading model weights from {saved_model_path}")
     state_dict = torch.load(saved_model_path)
-
     vae_model.load_state_dict(state_dict)
 
+    print(f"Plotting latent space ...")
+    plot_latent_space(vae_model, test_loader, filename=filename_latents)
 
+    print(f"Getting latent subspaces ...")
     triangle_latent_vectors, quadrangle_latent_vectors, ellipse_latent_vectors = get_latent_subspaces(
         vae_model, test_loader
     )
@@ -114,6 +119,7 @@ def main(args):
     z_quadrangle = quadrangle_latent_vectors[quadrangle_index]
     z_ellipse = ellipse_latent_vectors[ellipse_index]
 
+    print(f"Plotting SDF surfaces ...")
     plot_sdf_surface(vae_model, z_quadrangle,
                      countur=False, filename=filename_sdf_quadrangle)
     plot_sdf_surface(vae_model, z_triangle,
@@ -121,7 +127,7 @@ def main(args):
     plot_sdf_surface(vae_model, z_ellipse,
                      countur=False, filename=filename_sdf_ellipse)
 
-    plot_latent_space(vae_model, test_loader, filename=filename_latents)
+    print(f"Plotting SDF transition ...")
     plot_sdf_transition_triangle(vae_model,
                                 z_triangle,
                                 z_quadrangle,
