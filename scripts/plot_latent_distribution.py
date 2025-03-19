@@ -85,7 +85,7 @@ def main(args):
     test_loader = torch.utils.data.DataLoader(
         test_dataset, 
         batch_size=1024,
-        shuffle=True,  # No need to shuffle test data
+        shuffle=False,  # No need to shuffle test data
         num_workers=15
     )
 
