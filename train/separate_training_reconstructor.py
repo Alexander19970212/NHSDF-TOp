@@ -70,9 +70,9 @@ def main(args):
     configs_dir = args.config_dir
     config_name = args.config_name
     models_dir = args.model_dir
-    saved_model_path = f'{models_dir}/uba_frst_{config_name}_HvDecGlobal.pt'
+    saved_model_path = f'{models_dir}/frst_{config_name}_HvDecGlobal.pt'
 
-    run_name = f'uba_frst_{config_name}'
+    run_name = f'frst_{config_name}'
 
     dataset_train_files = [f'{dataset_path}/ellipse_reconstruction_dataset_train.csv',
                        f'{dataset_path}/triangle_reconstruction_dataset_train.csv',

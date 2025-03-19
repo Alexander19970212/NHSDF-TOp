@@ -70,8 +70,8 @@ def main(args):
     configs_dir = args.config_dir
     config_name = args.config_name
     models_dir = args.model_dir
-    saved_model_path = f'{models_dir}/uba_{config_name}.pt'
-    run_name = f'uba_{config_name}_recon_dec'
+    saved_model_path = f'{models_dir}/{config_name}.pt'
+    run_name = f'scnd_{config_name}'
 
     dataset_train_files = [f'{dataset_path}/ellipse_reconstruction_dataset_train.csv',
                        f'{dataset_path}/triangle_reconstruction_dataset_train.csv',
