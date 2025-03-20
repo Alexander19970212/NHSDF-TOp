@@ -134,7 +134,7 @@ def main(args):
             "n"
         ],
         "specified_ids": [
-            [10000]
+            10000
         ],
         "specified_axes_positions": [
             [-140, -93]

@@ -371,13 +371,13 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
                     closests_indices.append(type_ids[index])
                     existing_points.append(latent_2d[type_ids[index]])
 
-            print(closests_indices)
+            # print(closests_indices)
             for specified_id, specified_axes_position in zip(specified_ids, specified_axes_positions):
                 closests_indices.append(specified_id)
                 existing_points.append(latent_2d[specified_id])
                 axes_positions.append(specified_axes_position)
 
-            print(closests_indices)
+            # print(closests_indices)
             scatter_sizes[closests_indices] = 500
             latents_inner_axes = latent_vectors[closests_indices]
 
