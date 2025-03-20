@@ -361,7 +361,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
                     closests_indices.append(index)
                     existing_points.append(latent_2d[index])
                 else:
-                    class_indices = all_indices[class_labels == type2ids[gf_type]]
+                    class_indices = all_indices[class_indices == type2ids[gf_type]]
                     print(gf_type)
                     print(class_indices)
                     kdtree = cKDTree(latent_2d[class_indices])
