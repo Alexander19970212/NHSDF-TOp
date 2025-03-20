@@ -393,7 +393,13 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
             edgecolors='w', 
             s=sc_sizes
         )
-
+    # plt.title('t-SNE Visualization of Latent Space Clusters', fontsize=14)
+    plt.xlabel('t-SNE Dimension 1', fontsize=25)
+    plt.ylabel('t-SNE Dimension 2', fontsize=25)
+    plt.legend(title='Shape Class', fontsize=20, title_fontsize='20')
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    
     if plot_inner_axes:
         z_batch = torch.from_numpy(latents_inner_axes)
         chis = model.decoder_input(z_batch).detach().cpu().numpy()
@@ -410,17 +416,10 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
             chi_pred = chis[tsne_idx]
             geometry_type, geometry_params = extract_geometry(chi_pred)
             draw_geometry(geometry_type, geometry_params, ax_inset)
-        
 
-    # plt.title('t-SNE Visualization of Latent Space Clusters', fontsize=14)
-    plt.xlabel('t-SNE Dimension 1', fontsize=25)
-    plt.ylabel('t-SNE Dimension 2', fontsize=25)
-    plt.legend(title='Shape Class', fontsize=20, title_fontsize='20')
-    plt.grid(True, linestyle='--', alpha=0.6)
-    plt.tight_layout()
-    
     if filename is not None:
         plt.savefig(filename, dpi=300, bbox_inches='tight')
+
 
     plt.show()
 
