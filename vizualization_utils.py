@@ -396,9 +396,9 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
             s=sc_sizes
         )
     # plt.title('t-SNE Visualization of Latent Space Clusters', fontsize=14)
-    plt.xlabel('t-SNE Dimension 1', fontsize=25)
-    plt.ylabel('t-SNE Dimension 2', fontsize=25)
-    plt.legend(title='Shape Class', fontsize=20, title_fontsize='20')
+    plt.xlabel('t-SNE Dimension 1', fontsize=20)
+    plt.ylabel('t-SNE Dimension 2', fontsize=20)
+    plt.legend(title='Shape Class', fontsize=12, title_fontsize='20')
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.tight_layout()
     
