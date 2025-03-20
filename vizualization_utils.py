@@ -430,9 +430,14 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
                           [inset_pos[0] + ax_w, inset_pos[1] + ax_w],
                           [inset_pos[0] + ax_w, inset_pos[1]]]
             ax_corners = np.array(ax_corners)
+            pointer_vectors = ax_corners - scatter_pos
+            vector_lengths = np.linalg.norm(pointer_vectors, axis=1)
+
+            # Find the indexes of the two shortest vectors from pointer_vectors
+            shortest_idxs = np.argsort(vector_lengths)[:2]
 
             # Draw an arrow connecting the scatter point (tsne_coord) to the center of the inset axis
-            for ax_corner in ax_corners:
+            for ax_corner in ax_corners[shortest_idxs]:
                 arrow_start = scatter_pos  # scatter point coordinates in figure fraction
                 arrow_end = ax_corner
                 line = Line2D([arrow_start[0], arrow_end[0]], [arrow_start[1], arrow_end[1]],
