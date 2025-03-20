@@ -122,8 +122,8 @@ def main(args):
         "axes_positions": [
             [-140, 50],
             [-120, -120],
-            [85, -130],
-            [85, -90],
+            [85, -127],
+            [85, -93],
             [80, 100]
         ],
         "gf_types":[ # n: doesn't matter, c: circle, t: triangle, q: quadrangle
