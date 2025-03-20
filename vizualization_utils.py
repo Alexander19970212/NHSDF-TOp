@@ -727,11 +727,13 @@ def draw_geometry(geometry_type, geometry_params, ax):
 
     ax.set_xlim(-0.8, 0.8)
     ax.set_ylim(-0.8, 0.8)
+
+    lw = 2
     
     if geometry_type == "ellipse":
         a = geometry_params[1]
         b = geometry_params[2]
-        ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='red', linewidth=4)
+        ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='red', linewidth=lw)
         ax.add_patch(ellipse)
 
     elif geometry_type == "polygon":
@@ -742,7 +744,7 @@ def draw_geometry(geometry_type, geometry_params, ax):
         # axs[row, col].add_patch(Polygon(vertices, fill=False, color='green', linewidth=4))
         # Plot line segments
         for start, end in line_segments:
-            ax.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=4)
+            ax.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=lw)
             # ax2.plot([start[0], end[0]], [start[1], end[1]], [z_offset, z_offset], 'g-', linewidth=line_width)
 
         # Plot arc segments
@@ -760,7 +762,7 @@ def draw_geometry(geometry_type, geometry_params, ax):
             theta = np.linspace(start_angle, end_angle, 100)
             x = center[0] + radius * np.cos(theta)
             y = center[1] + radius * np.sin(theta)
-            ax.plot(x, y, 'r-', linewidth=4)
+            ax.plot(x, y, 'r-', linewidth=lw)
 
 def plot_sdf_transition(model, z_start, z_end, num_steps=10):
     """
