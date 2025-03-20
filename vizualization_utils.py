@@ -297,18 +297,18 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     """Visualize the latent space"""
     model.eval()
     latent_vectors = []
-    X = []
-    sdf = []
-    sdf_target = []
+    # X = []
+    # sdf = []
+    # sdf_target = []
     class_labels = []
     with torch.no_grad():
         for batch in dataloader:
             output = model(batch[0])
             # print(output)
             latent_vectors.append(output["z"])
-            X.append(batch[0])
-            sdf.append(output["sdf_pred"])
-            sdf_target.append(batch[1])
+            # X.append(batch[0])
+            # sdf.append(output["sdf_pred"])
+            # sdf_target.append(batch[1])
             class_labels.append(batch[0][:, 2])
             # if len(latent_vectors) * batch[0].shape[0] >= num_samples:
             #     break
@@ -316,10 +316,18 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     latent_vectors = torch.cat(latent_vectors, dim=0) #[:num_samples]
     latent_vectors = latent_vectors.cpu().numpy()
 
-    # Use t-SNE for dimensionality reduction
-    from sklearn.manifold import TSNE
-    tsne = TSNE(n_components=2, random_state=42)
-    latent_2d = tsne.fit_transform(latent_vectors)
+    parent_dir = os.path.dirname(os.path.abspath(filename))
+    latents_2d_path = parent_dir + "/latent_2d.npy"
+
+    if os.path.exists(latents_2d_path):
+        latent_2d = np.load(latents_2d_path)
+    else:
+        # Use t-SNE for dimensionality reduction
+        from sklearn.manifold import TSNE
+        tsne = TSNE(n_components=2, random_state=42)
+        latent_2d = tsne.fit_transform(latent_vectors)
+
+        np.save(latents_2d_path, latent_2d)
 
     
     # Concatenate and convert class labels
