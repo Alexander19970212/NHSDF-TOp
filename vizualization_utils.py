@@ -292,6 +292,11 @@ def plot_objective_history(file_names):
     plt.show()
 
 class_names = ['Ellipse', 'Triangle', 'Quadrangle']
+type2ids = {
+    "e": 0,
+    "t": 1,
+    "q": 2
+}
 
 def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     """Visualize the latent space"""
@@ -316,6 +321,14 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     latent_vectors = torch.cat(latent_vectors, dim=0) #[:num_samples]
     latent_vectors = latent_vectors.cpu().numpy()
 
+    # Concatenate and convert class labels
+    # class_labels = torch.cat(class_labels, dim=0)[:num_samples].cpu().numpy()
+    class_labels = torch.cat(class_labels, dim=0).cpu().numpy()
+    class_indices = np.array([int(label*2) for label in class_labels])
+    class_labels = [class_names[int(label*2)] for label in class_labels]
+
+    all_indices = np.arange(latent_vectors.shape[0])
+
     parent_dir = os.path.dirname(os.path.abspath(filename))
     latents_2d_path = parent_dir + "/latent_2d.npy"
 
@@ -329,21 +342,31 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
             searching_points = json.load(open(searching_points_path))
             tsne_coords = searching_points["tsne_coords"]
             axes_positions = searching_points["axes_positions"]
+            gf_types = searching_points["gf_types"]
             tsne_coords = np.array(tsne_coords) # P x 2
             axes_positions = np.array(axes_positions) # P x 2
 
             from scipy.spatial import cKDTree
 
             # Create a KDTree for efficient nearest neighbor search
-            kdtree = cKDTree(latent_2d)
 
             # Find the closest points in latent_2d for each point in tsne_coords
             closests_indices = []
             existing_points = []
-            for point in tsne_coords:
-                distance, index = kdtree.query(point)
-                closests_indices.append(index)
-                existing_points.append(latent_2d[index])
+            for point, gf_type in zip(tsne_coords, gf_types):
+                if gf_type == "n":
+                    kdtree = cKDTree(latent_2d)
+
+                    distance, index = kdtree.query(point)
+                    closests_indices.append(index)
+                    existing_points.append(latent_2d[index])
+                else:
+                    class_indices = all_indices[class_labels == type2ids[gf_type]]
+                    kdtree = cKDTree(latent_2d[class_indices])
+
+                    distance, index = kdtree.query(point)
+                    closests_indices.append(class_indices[index])
+                    existing_points.append(latent_2d[class_indices[index]])
 
             scatter_sizes[closests_indices] = 500
 
@@ -364,13 +387,6 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
         np.save(latents_2d_path, latent_2d)
 
         plot_inner_axes = False
-
-    
-    # Concatenate and convert class labels
-    # class_labels = torch.cat(class_labels, dim=0)[:num_samples].cpu().numpy()
-    class_labels = torch.cat(class_labels, dim=0).cpu().numpy()
-    class_indices = np.array([int(label*2) for label in class_labels])
-    class_labels = [class_names[int(label*2)] for label in class_labels]
     
     # Plot the reduced dimensions with colors based on class labels
     fig, ax = plt.subplots(figsize=(8, 8))

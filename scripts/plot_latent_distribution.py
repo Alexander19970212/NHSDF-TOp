@@ -116,18 +116,21 @@ def main(args):
             [-52, 45],
             [5, -120],
             [30, -70],
+            [30, -70],
             [70, 60]
         ],
         "axes_positions": [
             [-140, 50],
             [-120, -120],
             [80, -100],
+            [80, -100],
             [80, 100]
         ],
         "gf_types":[ # n: doesn't matter, c: circle, t: triangle, q: quadrangle
             "n",
             "n",
-            "n",
+            "t",
+            "q",
             "n"
         ]
     }
