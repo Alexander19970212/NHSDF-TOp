@@ -370,6 +370,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     # class_labels = torch.cat(class_labels, dim=0)[:num_samples].cpu().numpy()
     class_labels = torch.cat(class_labels, dim=0).cpu().numpy()
     class_labels = [class_names[int(label*2)] for label in class_labels]
+    class_indices = np.array([int(label*2) for label in class_labels])
     
     # Plot the reduced dimensions with colors based on class labels
     fig, ax = plt.subplots(figsize=(8, 8))
@@ -411,6 +412,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
 
         z_batch = torch.from_numpy(latents_inner_axes)
         chis = model.decoder_input(z_batch).detach().cpu().numpy()
+        inner_class_indices = class_indices[closests_indices]
     
         # x = np.linspace(-1.0, 1.0, 100)
         # y = np.linspace(-1.0, 1.0, 100)
@@ -418,6 +420,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
         # grid_points = torch.tensor(np.stack([X.flatten(), Y.flatten()], axis=1), dtype=torch.float32)
 
         for tsne_idx, tsne_coord in enumerate(tsne_coords):
+            case_color = colors(inner_class_indices[tsne_idx])
             # print(tsne_coord)
             # ax_inset = fig.add_axes([tsne_coord[0], tsne_coord[1], 0.18, 0.18])
             # Transform tsne_coord (data coordinates of the tsne plot) into figure coordinates
@@ -441,7 +444,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
                 arrow_start = scatter_pos  # scatter point coordinates in figure fraction
                 arrow_end = ax_corner
                 line = Line2D([arrow_start[0], arrow_end[0]], [arrow_start[1], arrow_end[1]],
-                            transform=fig.transFigure, color="black", lw=1)
+                            transform=fig.transFigure, color=case_color, lw=1)
                 fig.add_artist(line)
 
             ax_inset = fig.add_axes([inset_pos[0], inset_pos[1], ax_w, ax_w])
@@ -453,6 +456,12 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
             ax_inset.set_yticks([])
             ax_inset.set_xlabel('')
             ax_inset.set_ylabel('')
+            
+            # Set each spine's edge color to frame_color and increase the line width for visibility
+            for spine in ax_inset.spines.values():
+                spine.set_edgecolor(case_color)
+                spine.set_linewidth(2)
+
 
     if filename is not None:
         plt.savefig(filename, dpi=300, bbox_inches='tight')

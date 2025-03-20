@@ -123,6 +123,12 @@ def main(args):
             [-120, -120],
             [80, -100],
             [80, 100]
+        ],
+        "gf_types":[ # n: doesn't matter, c: circle, t: triangle, q: quadrangle
+            "n",
+            "n",
+            "n",
+            "n"
         ]
     }
     json.dump(searching_points, open(searching_points_path, 'w'))
