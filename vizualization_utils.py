@@ -369,8 +369,8 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     # Concatenate and convert class labels
     # class_labels = torch.cat(class_labels, dim=0)[:num_samples].cpu().numpy()
     class_labels = torch.cat(class_labels, dim=0).cpu().numpy()
-    class_labels = [class_names[int(label*2)] for label in class_labels]
     class_indices = np.array([int(label*2) for label in class_labels])
+    class_labels = [class_names[int(label*2)] for label in class_labels]
     
     # Plot the reduced dimensions with colors based on class labels
     fig, ax = plt.subplots(figsize=(8, 8))
