@@ -28,6 +28,8 @@ from models.sdf_models import LitSdfAE_Reconstruction
 from vizualization_utils import plot_latent_space, plot_latent_space_radius_sum, plot_sdf_surface, plot_sdf_transition_triangle
 from vizualization_utils import get_latent_subspaces
 
+import json
+
 import argparse
 # Enable anomaly detection to help find where NaN/Inf values originate
 torch.autograd.set_detect_anomaly(True)
@@ -107,6 +109,18 @@ def main(args):
     state_dict = torch.load(saved_model_path)
     vae_model.load_state_dict(state_dict)
 
+    ########## temporary ##########
+    searching_points_path = f'{save_plot_dir}/searching_points.json'
+    searching_points = {
+        "tsne_coords": [
+            [-52, 45],
+            [5, -120],
+            [30, -70],
+            [70, 60]
+        ]
+    }
+    json.dump(searching_points, open(searching_points_path, 'w'))
+    ########## temporary ##########
     print(f"Plotting latent space ...")
     plot_latent_space(vae_model, test_loader, filename=filename_latents)
 

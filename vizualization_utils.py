@@ -319,8 +319,33 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     parent_dir = os.path.dirname(os.path.abspath(filename))
     latents_2d_path = parent_dir + "/latent_2d.npy"
 
+    scatter_sizes = np.ones(latent_vectors.shape[0])*50
+
     if os.path.exists(latents_2d_path):
+        print(f"Loading latent_2d from {latents_2d_path}")
         latent_2d = np.load(latents_2d_path)
+        searching_points_path = parent_dir + "/searching_points.json"
+        if os.path.exists(searching_points_path):
+            searching_points = json.load(open(searching_points_path))
+            tsne_coords = searching_points["tsne_coords"]
+            tsne_coords = np.array(tsne_coords) # P x 2
+
+            from scipy.spatial import cKDTree
+
+            # Create a KDTree for efficient nearest neighbor search
+            kdtree = cKDTree(latent_2d)
+
+            # Find the closest points in latent_2d for each point in tsne_coords
+            closests_indices = []
+            for point in tsne_coords:
+                distance, index = kdtree.query(point)
+                closests_indices.append(index)
+
+            scatter_sizes[closests_indices] = 100
+
+        else:
+            searching_points = None
+            closests_indices = None
     else:
         # Use t-SNE for dimensionality reduction
         from sklearn.manifold import TSNE
@@ -349,7 +374,8 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     for i, label in enumerate(class_names):
         class_bids = [x == label for x in class_labels]
         # Get points for this class
-        class_points = latent_2d[class_bids]
+        class_points = latent_2d[class_bids]    
+        sc_sizes = scatter_sizes[class_bids]
 
         plt.scatter(
             class_points[:, 0], 
@@ -358,7 +384,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
             c=[colors(i)], 
             alpha=0.7, 
             edgecolors='w', 
-            s=100
+            s=sc_sizes
         )
 
     # plt.title('t-SNE Visualization of Latent Space Clusters', fontsize=14)
