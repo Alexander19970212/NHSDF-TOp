@@ -408,7 +408,8 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     numeric_labels = [label_to_num[label] for label in class_labels]
 
     # Use a distinct colormap for better differentiation
-    colors = plt.cm.get_cmap('tab10', len(class_names))
+    # colors = plt.cm.get_cmap('tab10', len(class_names))
+    colors = plt.cm.get_cmap('brg', len(class_names))
 
     for i, label in enumerate(class_names):
         class_bids = [x == label for x in class_labels]
