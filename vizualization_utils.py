@@ -24,6 +24,8 @@ from os.path import isfile, join
 import numpy as np
 import time
 
+import matplotlib.colors as mcolors
+    
 
 
 def extract_scalars_from_event_file(event_file):
@@ -409,7 +411,10 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
 
     # Use a distinct colormap for better differentiation
     # colors = plt.cm.get_cmap('tab10', len(class_names))
-    colors = plt.cm.get_cmap('brg', len(class_names))
+    base_cmap = plt.cm.get_cmap('brg', len(class_names))
+    # Darken the color map by reducing the brightness of each RGB channel to 70%
+    darkened_colors = [(r * 0.7, g * 0.7, b * 0.7, a) for r, g, b, a in (base_cmap(i) for i in range(len(class_names)))]
+    colors = mcolors.ListedColormap(darkened_colors)
 
     for i, label in enumerate(class_names):
         class_bids = [x == label for x in class_labels]
