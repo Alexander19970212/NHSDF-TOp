@@ -404,7 +404,9 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
         # grid_points = torch.tensor(np.stack([X.flatten(), Y.flatten()], axis=1), dtype=torch.float32)
 
         for tsne_idx, tsne_coord in enumerate(tsne_coords):
-            ax_inset = fig.add_axes([tsne_coord[0], tsne_coord[1], 0.18, 0.18])
+            # ax_inset = fig.add_axes([tsne_coord[0], tsne_coord[1], 0.18, 0.18])
+            print(tsne_coord)
+            ax_inset = fig.add_axes(0, 0, 0.18, 0.18)
             chi_pred = chis[tsne_idx]
             geometry_type, geometry_params = extract_geometry(chi_pred)
             draw_geometry(geometry_type, geometry_params, ax_inset)
