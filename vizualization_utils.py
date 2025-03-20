@@ -341,7 +341,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
                 distance, index = kdtree.query(point)
                 closests_indices.append(index)
 
-            scatter_sizes[closests_indices] = 100
+            scatter_sizes[closests_indices] = 500
 
         else:
             searching_points = None
