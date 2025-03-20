@@ -132,6 +132,12 @@ def main(args):
             "t",
             "q",
             "n"
+        ],
+        "specified_ids": [
+            [10000]
+        ],
+        "specified_axes_positions": [
+            [-140, -93]
         ]
     }
     json.dump(searching_points, open(searching_points_path, 'w'))

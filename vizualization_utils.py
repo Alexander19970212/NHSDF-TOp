@@ -343,8 +343,11 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
             tsne_coords = searching_points["tsne_coords"]
             axes_positions = searching_points["axes_positions"]
             gf_types = searching_points["gf_types"]
+
+            specified_ids = searching_points["specified_ids"]
+            specified_axes_positions = searching_points["specified_axes_positions"]
+
             tsne_coords = np.array(tsne_coords) # P x 2
-            axes_positions = np.array(axes_positions) # P x 2
 
             from scipy.spatial import cKDTree
 
@@ -368,9 +371,15 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
                     closests_indices.append(type_ids[index])
                     existing_points.append(latent_2d[type_ids[index]])
 
-            scatter_sizes[closests_indices] = 500
+            for specified_id, specified_axes_position in zip(specified_ids, specified_axes_positions):
+                closests_indices.append(specified_id)
+                existing_points.append(latent_2d[specified_id])
+                axes_positions.append(specified_axes_position)
 
+            scatter_sizes[closests_indices] = 500
             latents_inner_axes = latent_vectors[closests_indices]
+
+            axes_positions = np.array(axes_positions) # P x 2
 
             plot_inner_axes = True
 
