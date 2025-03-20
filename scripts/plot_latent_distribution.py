@@ -119,10 +119,10 @@ def main(args):
             [70, 60]
         ],
         "axes_positions": [
-            [-110, 50]
+            [-110, 50],
             [-120, -100],
             [80, -100],
-            [80, 100],
+            [80, 100]
         ]
     }
     json.dump(searching_points, open(searching_points_path, 'w'))
