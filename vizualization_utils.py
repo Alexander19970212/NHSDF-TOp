@@ -424,15 +424,11 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
             scatter_pos = fig.transFigure.inverted().transform(ax.transData.transform(existing_points[tsne_idx]))
             inset_pos = fig.transFigure.inverted().transform(ax.transData.transform(axes_positions[tsne_idx]))
             # print(inset_pos)
-            ax_inset = fig.add_axes([inset_pos[0], inset_pos[1], ax_w, ax_w])
-            chi_pred = chis[tsne_idx]
-            geometry_type, geometry_params = extract_geometry(chi_pred)
-            draw_geometry(geometry_type, geometry_params, ax_inset)
 
-            ax_corners = [[inset_pos[0] - ax_w/2, inset_pos[1] - ax_w/2],
-                          [inset_pos[0] - ax_w/2, inset_pos[1] + ax_w/2],
-                          [inset_pos[0] + ax_w/2, inset_pos[1] + ax_w/2],
-                          [inset_pos[0] + ax_w/2, inset_pos[1] - ax_w/2]]
+            ax_corners = [[inset_pos[0], inset_pos[1]],
+                          [inset_pos[0], inset_pos[1] + ax_w],
+                          [inset_pos[0] + ax_w, inset_pos[1] + ax_w],
+                          [inset_pos[0] + ax_w, inset_pos[1]]]
             ax_corners = np.array(ax_corners)
 
             # Draw an arrow connecting the scatter point (tsne_coord) to the center of the inset axis
@@ -440,8 +436,13 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
                 arrow_start = scatter_pos  # scatter point coordinates in figure fraction
                 arrow_end = ax_corner
                 line = Line2D([arrow_start[0], arrow_end[0]], [arrow_start[1], arrow_end[1]],
-                            transform=fig.transFigure, color="red", lw=2)
+                            transform=fig.transFigure, color="black", lw=1)
                 fig.add_artist(line)
+
+            ax_inset = fig.add_axes([inset_pos[0], inset_pos[1], ax_w, ax_w])
+            chi_pred = chis[tsne_idx]
+            geometry_type, geometry_params = extract_geometry(chi_pred)
+            draw_geometry(geometry_type, geometry_params, ax_inset)
 
             ax_inset.set_xticks([])
             ax_inset.set_yticks([])
