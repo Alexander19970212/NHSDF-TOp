@@ -123,7 +123,7 @@ def main(args):
             [-140, 50],
             [-120, -120],
             [80, -100],
-            [80, -100],
+            [40, -120],
             [80, 100]
         ],
         "gf_types":[ # n: doesn't matter, c: circle, t: triangle, q: quadrangle
