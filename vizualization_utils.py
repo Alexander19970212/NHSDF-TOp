@@ -343,9 +343,14 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
 
             scatter_sizes[closests_indices] = 500
 
+            latents_inner_axes = latent_vectors[closests_indices]
+
+            plot_inner_axes = True
+
         else:
             searching_points = None
             closests_indices = None
+            plot_inner_axes = False
     else:
         # Use t-SNE for dimensionality reduction
         from sklearn.manifold import TSNE
@@ -354,6 +359,8 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
 
         np.save(latents_2d_path, latent_2d)
 
+        plot_inner_axes = False
+
     
     # Concatenate and convert class labels
     # class_labels = torch.cat(class_labels, dim=0)[:num_samples].cpu().numpy()
@@ -361,7 +368,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     class_labels = [class_names[int(label*2)] for label in class_labels]
     
     # Plot the reduced dimensions with colors based on class labels
-    plt.figure(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=(8, 8))
     
     # Convert class labels to numeric values for coloring
     unique_labels = list(set(class_labels))
@@ -386,6 +393,22 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
             edgecolors='w', 
             s=sc_sizes
         )
+
+    if plot_inner_axes:
+        z_batch = torch.from_numpy(latents_inner_axes)
+        chis = model.decoder_input(z_batch).detach().cpu().numpy()
+    
+        # x = np.linspace(-1.0, 1.0, 100)
+        # y = np.linspace(-1.0, 1.0, 100)
+        # X, Y = np.meshgrid(x, y)
+        # grid_points = torch.tensor(np.stack([X.flatten(), Y.flatten()], axis=1), dtype=torch.float32)
+
+        for tsne_idx, tsne_coord in enumerate(tsne_coords):
+            ax_inset = fig.add_axes([tsne_coord[0], tsne_coord[1], 0.18, 0.18])
+            chi_pred = chis[tsne_idx]
+            geometry_type, geometry_params = extract_geometry(chi_pred)
+            draw_geometry(geometry_type, geometry_params, ax_inset)
+        
 
     # plt.title('t-SNE Visualization of Latent Space Clusters', fontsize=14)
     plt.xlabel('t-SNE Dimension 1', fontsize=25)
@@ -793,7 +816,7 @@ def plot_sdf_transition_triangle(model, z1, z2, z3, num_steps=10, filename=None,
 
     # z_batch = torch.tensor(z_steps).to(model.device)
     z_batch = torch.stack(z_steps)
-    print(z_batch.shape)
+    # print(z_batch.shape)
     chis = model.decoder_input(z_batch).detach().cpu().numpy()
     
     x = np.linspace(-1.0, 1.0, 100)
