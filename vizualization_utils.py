@@ -339,9 +339,11 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
 
             # Find the closest points in latent_2d for each point in tsne_coords
             closests_indices = []
+            existing_points = []
             for point in tsne_coords:
                 distance, index = kdtree.query(point)
                 closests_indices.append(index)
+                existing_points.append(latent_2d[index])
 
             scatter_sizes[closests_indices] = 500
 
@@ -415,7 +417,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
             # print(tsne_coord)
             # ax_inset = fig.add_axes([tsne_coord[0], tsne_coord[1], 0.18, 0.18])
             # Transform tsne_coord (data coordinates of the tsne plot) into figure coordinates
-            scatter_pos = fig.transFigure.inverted().transform(ax.transData.transform(tsne_coord))
+            scatter_pos = fig.transFigure.inverted().transform(ax.transData.transform(existing_points[tsne_idx]))
             inset_pos = fig.transFigure.inverted().transform(ax.transData.transform(axes_positions[tsne_idx]))
             # print(inset_pos)
             ax_inset = fig.add_axes([inset_pos[0], inset_pos[1], 0.1, 0.1])
