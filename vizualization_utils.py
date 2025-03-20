@@ -446,7 +446,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
         # X, Y = np.meshgrid(x, y)
         # grid_points = torch.tensor(np.stack([X.flatten(), Y.flatten()], axis=1), dtype=torch.float32)
 
-        for tsne_idx, tsne_coord in enumerate(tsne_coords):
+        for tsne_idx in range(len(closests_indices)):
             case_color = colors(inner_class_indices[tsne_idx])
             # print(tsne_coord)
             # ax_inset = fig.add_axes([tsne_coord[0], tsne_coord[1], 0.18, 0.18])
