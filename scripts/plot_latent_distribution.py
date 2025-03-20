@@ -117,14 +117,16 @@ def main(args):
             [5, -120],
             [30, -70],
             [30, -70],
-            [70, 60]
+            [70, 60],
+            [-70, 105]
         ],
         "axes_positions": [
             [-140, 50],
             [-140, -127],
             [85, -127],
             [85, -93],
-            [85, 100]
+            [85, 100],
+            [-25, 100]
         ],
         "gf_types":[ # n: doesn't matter, c: circle, t: triangle, q: quadrangle
             "n",
@@ -134,7 +136,7 @@ def main(args):
             "n"
         ],
         "specified_ids": [
-            10000
+            20000
         ],
         "specified_axes_positions": [
             [-140, -93]
@@ -142,6 +144,7 @@ def main(args):
     }
     json.dump(searching_points, open(searching_points_path, 'w'))
     ########## temporary ##########
+
     print(f"Plotting latent space ...")
     plot_latent_space(vae_model, test_loader, filename=filename_latents)
 
