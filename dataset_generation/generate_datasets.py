@@ -82,7 +82,7 @@ def main(args):
 
     #################### reconstruction dataset ####################
 
-    # n_features_per_shape = 5000000
+    n_features_per_shape = 5000000
 
     # training dataset
     # dataset_path = f'{root_path}/triangle_reconstruction_dataset_train'
