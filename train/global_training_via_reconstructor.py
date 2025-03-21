@@ -70,8 +70,7 @@ def main(args):
     configs_dir = args.config_dir
     config_name = args.config_name
     models_dir = args.model_dir
-    saved_model_path = f'{models_dir}/{config_name}.pt'
-    run_name = f'scnd_{config_name}'
+    run_name = f'scnd_{config_name}_{args.run_name}'
 
     dataset_train_files = [f'{dataset_path}/ellipse_reconstruction_dataset_train.csv',
                        f'{dataset_path}/triangle_reconstruction_dataset_train.csv',
@@ -163,12 +162,12 @@ def main(args):
 
 
     # Save model weights
-    checkpoint_path = f'{models_dir}/{config_name}_ReconDecGlobal.ckpt'
+    checkpoint_path = f'{models_dir}/{run_name}_ReconDecGlobal.ckpt'
     trainer.save_checkpoint(checkpoint_path)
     print(f"Model weights saved to {checkpoint_path}")
 
     # Save just the model weights
-    model_weights_path = f'{models_dir}/{config_name}_ReconDecGlobal.pt'
+    model_weights_path = f'{models_dir}/{run_name}_ReconDecGlobal.pt'
     torch.save(vae_model.state_dict(), model_weights_path)
     print(f"Model weights saved to {model_weights_path}")
 
@@ -195,6 +194,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset_path', type=str, default='shape_datasets', help='Path to the dataset')
     parser.add_argument('--config_dir', type=str, default='configs/NN_sdf_experiments/architectures', help='Path to the config directory')
     parser.add_argument('--config_name', type=str, default='AE_DeepSDF', help='Name of the config')
+    parser.add_argument('--run_name', type=str, default='10smf', help='Name of the run')
     parser.add_argument('--metrics_file', type=str, default='src/metrics.json', help='Path to the metrics file')
     args = parser.parse_args()
     main(args)

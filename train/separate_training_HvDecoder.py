@@ -69,24 +69,24 @@ def main(args):
     config_name = args.config_name
     models_dir = args.model_dir
 
-    run_name = f'scnd_{config_name}'
+    run_name = f'scnd_{config_name}_{args.run_name}'
 
-    saved_model_path = f'{models_dir}/{config_name}_ReconDecGlobal.pt'
+    saved_model_path = f'{models_dir}/{run_name}_ReconDecGlobal.pt'
 
-    dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_5000.csv',
-                    f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_5000.csv', 
-                    f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_5000.csv']
+    dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf10_arc_ratio_5000.csv',
+                    f'{dataset_path}/triangle_sdf_dataset_smf10_arc_ratio_5000.csv', 
+                    f'{dataset_path}/quadrangle_sdf_dataset_smf10_arc_ratio_5000.csv']
     
-    dataset_test_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_500_test.csv',
-                 f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_500_test.csv', 
-                 f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_500_test.csv']
+    dataset_test_files = [f'{dataset_path}/ellipse_sdf_dataset_smf10_arc_ratio_500_test.csv',
+                 f'{dataset_path}/triangle_sdf_dataset_smf10_arc_ratio_500_test.csv', 
+                 f'{dataset_path}/quadrangle_sdf_dataset_smf10_arc_ratio_500_test.csv']
     
-    surface_files = [f'{dataset_path}/ellipse_sdf_surface_dataset_smf22_150.csv',
-                 f'{dataset_path}/triangle_sdf_surface_dataset_smf20_150.csv',
-                 f'{dataset_path}/quadrangle_sdf_surface_dataset_smf20_150.csv']
+    surface_files = [f'{dataset_path}/ellipse_sdf_surface_dataset_smf10_150.csv',
+                 f'{dataset_path}/triangle_sdf_surface_dataset_smf10_150.csv',
+                 f'{dataset_path}/quadrangle_sdf_surface_dataset_smf10_150.csv']
     
-    radius_samples_files = [f'{dataset_path}/triangle_sdf_dataset_smf40_radius_sample_100.csv',
-                            f'{dataset_path}/quadrangle_sdf_dataset_smf40_radius_sample_100.csv']
+    radius_samples_files = [f'{dataset_path}/triangle_sdf_dataset_smf10_radius_sample_100.csv',
+                            f'{dataset_path}/quadrangle_sdf_dataset_smf10_radius_sample_100.csv']
 
     # dataset_files = ['shape_datasets/ellipse_sdf_dataset_onlMove.csv',
     #                  'shape_datasets/triangle_sdf_dataset_test.csv', 
@@ -218,7 +218,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VAE model.')
     parser.add_argument('--max_epochs', type=int, default=1, help='Maximum number of epochs for training')
-    # parser.add_argument('--run_name', type=str, default='uba_NTM_F_reg5em3', help='Name of the run')
+    parser.add_argument('--run_name', type=str, default='10smf', help='Name of the run')
     parser.add_argument('--model_dir', type=str, default='model_weights', help='Path to the model directory')
     parser.add_argument('--dataset_path', type=str, default='shape_datasets', help='Path to the dataset')
     parser.add_argument('--config_dir', type=str, default='configs/NN_sdf_experiments/architectures', help='Path to the config directory')
