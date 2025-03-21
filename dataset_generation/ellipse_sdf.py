@@ -151,7 +151,8 @@ def generate_ellipse_reconstruction_dataset(
         filename='ellipse_reconstruction_dataset',
         min_ratio=0.5,
         max_ratio=1.5,
-        axes_length=1):
+        axes_length=1,
+        num_golden_ellipse=0):
     """
     Generate a dataset of points and their SDFs for random ellipses.
     Each ellipse is defined by its center, semi-major axis, semi-minor axis and rotation angle.
@@ -159,12 +160,16 @@ def generate_ellipse_reconstruction_dataset(
     # Lists to store our data
     data = []
     
-    for _ in tqdm(range(num_ellipse)):
+    for e_idx in tqdm(range(num_ellipse)):
         # Generate random ellipse parameters
         center = np.array([0, 0])  # Center fixed at (0, 0)
         # a = np.random.uniform(0.2, 0.8)  # Semi-major axis
         a = 0.5
-        b_w = np.random.uniform(min_ratio, max_ratio)  # Semi-minor axis (smaller than a)
+        if e_idx < num_golden_ellipse:
+            print(f"Golden ellipse {e_idx}")
+            b_w = 1
+        else:
+            b_w = np.random.uniform(min_ratio, max_ratio)  # Semi-minor axis (smaller than a)
         b = a * b_w
         
         data.append([
