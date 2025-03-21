@@ -82,8 +82,8 @@ def main(args):
                  f'{dataset_path}/triangle_sdf_surface_dataset_smf10_150.csv',
                  f'{dataset_path}/quadrangle_sdf_surface_dataset_smf10_150.csv']
     
-    radius_samples_files = [f'{dataset_path}/triangle_sdf_dataset_smf10_radius_sample_100.csv',
-                            f'{dataset_path}/quadrangle_sdf_dataset_smf10_radius_sample_100.csv']
+    # radius_samples_files = [f'{dataset_path}/triangle_sdf_dataset_smf10_radius_sample_100.csv',
+    #                         f'{dataset_path}/quadrangle_sdf_dataset_smf10_radius_sample_100.csv']
 
     # dataset_files = ['shape_datasets/ellipse_sdf_dataset_onlMove.csv',
     #                  'shape_datasets/triangle_sdf_dataset_test.csv', 
@@ -96,7 +96,7 @@ def main(args):
     train_dataset = SdfDataset(dataset_train_files, exclude_ellipse=False)
     test_dataset = SdfDataset(dataset_test_files, exclude_ellipse=False)
     surface_dataset = SdfDatasetSurface(surface_files, cut_value=False)
-    radius_samples_dataset = RadiusDataset(radius_samples_files)
+    # radius_samples_dataset = RadiusDataset(radius_samples_files)
 
     # Create DataLoaders with shuffling
     batch_size = 64
@@ -122,17 +122,17 @@ def main(args):
         collate_fn=collate_fn_surface
     )
    
-    radius_samples_loader = torch.utils.data.DataLoader(
-        radius_samples_dataset,
-        batch_size=1,
-        shuffle=False,
-        num_workers=15
-    )
+    # radius_samples_loader = torch.utils.data.DataLoader(
+    #     radius_samples_dataset,
+    #     batch_size=1,
+    #     shuffle=False,
+    #     num_workers=15
+    # )
 
     print(f"Training set size: {len(train_dataset)}")
     print(f"Test set size: {len(test_dataset)}")
     print(f"Surface test set size: {len(surface_test_loader)}")
-    print(f"Radius samples set size: {len(radius_samples_loader)}")
+    # print(f"Radius samples set size: {len(radius_samples_loader)}")
 
     #################################################
 
@@ -186,9 +186,9 @@ def main(args):
     vae_trainer = LitHvDecoderGlobal(**trainer_params)
 
     # Train the model
-    trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
-    trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
-    final_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader, radius_samples_loader])
+    trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader])
+    trainer.fit(vae_trainer, train_loader, val_dataloaders=[test_loader, surface_test_loader])
+    final_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader])
 
     # Save model weights
     checkpoint_path = f'{models_dir}/{run_name}_HvDecGlobal.ckpt'
