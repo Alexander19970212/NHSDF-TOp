@@ -63,6 +63,7 @@ def main(args):
     quadrangle_index = args.quadrangle_index
     triangle_index = args.triangle_index
     ellipse_index = args.ellipse_index
+    dr_method = args.dr_method
 
     run_name = f'{strategy}_{config_name}_{args.run_name}'
 
@@ -151,7 +152,7 @@ def main(args):
     ########## temporary ##########
 
     print(f"Plotting latent space ...")
-    plot_latent_space(vae_model, test_loader, filename=filename_latents)
+    plot_latent_space(vae_model, test_loader, dr_method=dr_method, filename=filename_latents)
 
     print(f"Getting latent subspaces ...")
     triangle_latent_vectors, quadrangle_latent_vectors, ellipse_latent_vectors = get_latent_subspaces(
@@ -192,6 +193,7 @@ if __name__ == '__main__':
     parser.add_argument('--config_name', type=str, default='VAE_DeepSDF')
     parser.add_argument('--strategy', type=str, default='frst')
     parser.add_argument('--run_name', type=str, default='10smf', help='Name of the run')
+    parser.add_argument('--dr_method', type=str, default='pca', help='Name of the run')
     parser.add_argument('--quadrangle_index', type=int, default=1)
     parser.add_argument('--triangle_index', type=int, default=0)
     parser.add_argument('--ellipse_index', type=int, default=4)

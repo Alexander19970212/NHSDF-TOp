@@ -300,7 +300,7 @@ type2ids = {
     "q": 2
 }
 
-def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
+def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=4000, filename = None):
     """Visualize the latent space"""
     model.eval()
     latent_vectors = []
@@ -332,7 +332,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
     all_indices = np.arange(latent_vectors.shape[0])
 
     parent_dir = os.path.dirname(os.path.abspath(filename))
-    latents_2d_path = parent_dir + "/latent_2d.npy"
+    latents_2d_path = parent_dir + f"/latent_2d_{dr_method}.npy"
 
     scatter_sizes = np.ones(latent_vectors.shape[0])*50
 
@@ -393,9 +393,20 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
             plot_inner_axes = False
     else:
         # Use t-SNE for dimensionality reduction
-        from sklearn.manifold import TSNE
-        tsne = TSNE(n_components=2, random_state=42)
-        latent_2d = tsne.fit_transform(latent_vectors)
+        if dr_method == "tsne":
+            from sklearn.manifold import TSNE
+            tsne = TSNE(n_components=2, random_state=42)
+            latent_2d = tsne.fit_transform(latent_vectors)
+
+        elif dr_method == "pca":
+            from sklearn.decomposition import PCA
+            pca = PCA(n_components=2)
+            latent_2d = pca.fit_transform(latent_vectors)
+
+        elif dr_method == "umap":
+            import umap
+            umap = umap.UMAP(n_components=2, random_state=42)
+            latent_2d = umap.fit_transform(latent_vectors)
 
         np.save(latents_2d_path, latent_2d)
 
@@ -497,6 +508,7 @@ def plot_latent_space(model, dataloader, num_samples=4000, filename = None):
 
 
     if filename is not None:
+        filename = filename.replace(".png", f"_{dr_method}.png")
         plt.savefig(filename, dpi=300, bbox_inches='tight')
 
 
