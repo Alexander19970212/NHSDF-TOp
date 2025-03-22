@@ -64,10 +64,12 @@ def main(args):
     triangle_index = args.triangle_index
     ellipse_index = args.ellipse_index
 
-    configs_dir = f'../configs/NN_sdf_experiments/final_experiments/{arch_dirs[config_name]}'
-    saved_model_path = f'{models_dir}/{strategy}_{config_name}_full.pt'
+    run_name = f'{strategy}_{config_name}_{args.run_name}'
 
-    save_plot_dir = f'../src/{strategy}_{config_name}'
+    configs_dir = f'../configs/NN_sdf_experiments/final_experiments/{arch_dirs[config_name]}'
+    saved_model_path = f'{models_dir}/{run_name}_full.pt'
+
+    save_plot_dir = f'../src/{run_name}'
     os.makedirs(save_plot_dir, exist_ok=True)
 
     filename_latents = f'{save_plot_dir}/latents.png'
@@ -101,7 +103,7 @@ def main(args):
     model_params = config['model']['params']
     model_params['input_dim'] = 17 # train_dataset.feature_dim
 
-    print(f"Loading model {strategy}_{config_name}")
+    print(f"Loading model {run_name}")
     vae_model = models[config['model']['type']](**model_params)
 
     # Load pre-trained weights for the model
@@ -187,6 +189,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_name', type=str, default='VAE_DeepSDF')
     parser.add_argument('--strategy', type=str, default='frst')
+    parser.add_argument('--run_name', type=str, default='10smf', help='Name of the run')
     parser.add_argument('--quadrangle_index', type=int, default=1)
     parser.add_argument('--triangle_index', type=int, default=0)
     parser.add_argument('--ellipse_index', type=int, default=4)
