@@ -143,7 +143,7 @@ def main(args):
             20000
         ],
         "specified_axes_positions": [
-            [-140, 50],
+            [-140, 10],
             [-140, -93]
         ]
     }
