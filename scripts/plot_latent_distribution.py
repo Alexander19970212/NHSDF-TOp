@@ -115,12 +115,12 @@ def main(args):
     searching_points_path = f'{save_plot_dir}/searching_points.json'
     searching_points = {
         "tsne_coords": [
-            [-52, 45],
+            [60, 45],
+            [-60, -70],
+            [-70, 30],
+            [-70, 30],
             [5, -120],
-            [30, -70],
-            [30, -70],
-            [70, 60],
-            [-70, 105]
+            [75, 100]
         ],
         "axes_positions": [
             [-140, 50],
@@ -139,9 +139,11 @@ def main(args):
             "n"
         ],
         "specified_ids": [
+            0,
             20000
         ],
         "specified_axes_positions": [
+            [-140, 50],
             [-140, -93]
         ]
     }
