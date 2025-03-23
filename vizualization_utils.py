@@ -434,11 +434,14 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=500, file
         true_indices = [i for i, x in enumerate(class_bids_initial) if x]
         np.random.shuffle(true_indices)
         selected_indices = true_indices[:num_samples]
-        class_bids = np.array([i in selected_indices for i in range(len(class_bids_initial))])
+        class_bids = [i in selected_indices for i in range(len(class_bids_initial))]
 
         # investigated points are always plotted
-        print(closests_indices)
-        class_bids[np.array(closests_indices)] = class_bids_initial[np.array(closests_indices)]
+
+        for closests_index in closests_indices:
+            class_bids[closests_index] = class_bids_initial[closests_index]
+        # print(closests_indices)
+        # class_bids[np.array(closests_indices)] = class_bids_initial[np.array(closests_indices)]
         # Get points for this class
         class_points = latent_2d[class_bids]    
         sc_sizes = scatter_sizes[class_bids]
