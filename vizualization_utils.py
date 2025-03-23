@@ -300,7 +300,7 @@ type2ids = {
     "q": 2
 }
 
-def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=500, filename = None):
+def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, filename = None):
     """Visualize the latent space"""
     model.eval()
     latent_vectors = []
@@ -407,6 +407,40 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=500, file
             import umap
             umap = umap.UMAP(n_components=2, random_state=42)
             latent_2d = umap.fit_transform(latent_vectors)
+
+        # Additional methods focused more on saving distances
+        elif dr_method == "mds":
+            from sklearn.manifold import MDS
+            mds = MDS(n_components=2, random_state=42, dissimilarity='euclidean')
+            latent_2d = mds.fit_transform(latent_vectors)
+
+        elif dr_method == "isomap":
+            from sklearn.manifold import Isomap
+            # Adjust n_neighbors based on your dataset size and the underlying manifold's structure
+            isomap = Isomap(n_components=2, n_neighbors=30)
+            latent_2d = isomap.fit_transform(latent_vectors)
+
+        elif dr_method == "lle":
+            from sklearn.manifold import LocallyLinearEmbedding
+            lle = LocallyLinearEmbedding(n_components=2, n_neighbors=30, method='standard')
+            latent_2d = lle.fit_transform(latent_vectors)
+
+        elif dr_method == "spectral":
+            from sklearn.manifold import SpectralEmbedding
+            spectral = SpectralEmbedding(n_components=2, random_state=42)
+            latent_2d = spectral.fit_transform(latent_vectors)
+
+        elif dr_method == "kernel_pca":
+            from sklearn.decomposition import KernelPCA
+            kpca = KernelPCA(n_components=2, kernel='rbf', gamma=15)
+            latent_2d = kpca.fit_transform(latent_vectors)
+
+        elif dr_method == "diffusion":
+            # Diffusion Maps are not in scikit-learn; you can use the pydiffmap package.
+            # Make sure to install it via `pip install pydiffmap`
+            from pydiffmap import diffusion_map as dm
+            dmap = dm.DiffusionMap(n_components=2, alpha=0.5)
+            latent_2d = dmap.fit_transform(latent_vectors)
 
         np.save(latents_2d_path, latent_2d)
 
