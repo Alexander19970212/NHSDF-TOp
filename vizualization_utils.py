@@ -438,7 +438,7 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=500, file
 
         # investigated points are always plotted
         print(closests_indices)
-        class_bids[closests_indices] = class_bids_initial[closests_indices]
+        class_bids[np.array(closests_indices)] = class_bids_initial[np.array(closests_indices)]
         # Get points for this class
         class_points = latent_2d[class_bids]    
         sc_sizes = scatter_sizes[class_bids]
