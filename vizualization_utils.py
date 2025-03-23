@@ -300,7 +300,7 @@ type2ids = {
     "q": 2
 }
 
-def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=4000, filename = None):
+def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=500, filename = None):
     """Visualize the latent space"""
     model.eval()
     latent_vectors = []
@@ -418,7 +418,7 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=4000, fil
     # Convert class labels to numeric values for coloring
     unique_labels = list(set(class_labels))
     label_to_num = {label: i for i, label in enumerate(unique_labels)}
-    numeric_labels = [label_to_num[label] for label in class_labels]
+    # numeric_labels = [label_to_num[label] for label in class_labels]
 
     # Use a distinct colormap for better differentiation
     # colors = plt.cm.get_cmap('tab10', len(class_names))
@@ -428,7 +428,16 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=4000, fil
     colors = mcolors.ListedColormap(darkened_colors)
 
     for i, label in enumerate(class_names):
-        class_bids = [x == label for x in class_labels]
+        class_bids_initial = [x == label for x in class_labels]
+        # Make only random num_samples of true in class_bids equal to true
+        num_samples = min(50, sum(class_bids_initial))  # Adjust the number of samples as needed
+        true_indices = [i for i, x in enumerate(class_bids_initial) if x]
+        np.random.shuffle(true_indices)
+        selected_indices = true_indices[:num_samples]
+        class_bids = [i in selected_indices for i in range(len(class_bids_initial))]
+
+        # investigated points are always plotted
+        class_bids[closests_indices] = class_bids_initial[closests_indices]
         # Get points for this class
         class_points = latent_2d[class_bids]    
         sc_sizes = scatter_sizes[class_bids]

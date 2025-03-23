@@ -5,6 +5,8 @@ from matplotlib.patches import Ellipse, Polygon
 from tqdm import tqdm
 import gmsh
 
+import matplotlib.colors as mcolors
+
 def triag_area(point1, point2, point3):
     mat = np.array([[point1[0], point1[1], 1],
                     [point2[0], point2[1], 1],
@@ -89,20 +91,56 @@ class LoadedMesh2D:
         plt.axis('equal')
         plt.show()
 
-    def plot_topology(self, xPhys, image_size=12,
+    def plot_topology(self, xPhys, von_mises=None, image_size=12,
                       zoom_center = None, zoom_radius = None, zoom_factor = 3,
                       ellipse_color = 'red',
                       geometry_features = None, filename=None):
         # fig = plt.figure(figsize=(12, 4))
+
+        # if von_mises is not None:
+        #     mask = xPhys > 0.1
+
         
         x = self.q[:, 0]
         y = self.q[:, 1]
+
+
         triangulation = mtri.Triangulation(x.ravel(), y.ravel(), self.me)
         fig, ax = plt.subplots(figsize=(image_size, image_size * (y.max() / x.max())))
         
         ax.set_xlim(0, x.max())
         ax.set_ylim(0, y.max())
-        ax.tripcolor(triangulation, facecolors=xPhys, cmap='gray_r')
+
+        if von_mises is not None:
+            # von_mises_masked = np.full(von_mises.shape, np.nan, dtype=float)
+            # von_mises_masked[mask] = von_mises[mask]
+            # cmap = plt.get_cmap('viridis')
+            # colors = cmap(von_mises)
+            # print(colors)
+            # colors[:, 3] = xPhys  # Set alpha channel using xPhys: 0 is fully transparent, 1 is fully opaque
+            # print(colors)
+            num_colors = 10
+            # rescaled_von_mises = np.clip(von_mises, 1, 5000)
+            markers = np.array([0, 500])
+            markers = np.append(markers, np.linspace(2500, 7000, num_colors - 3))
+            markers = np.append(markers, 8000)
+            markers = np.append(markers, von_mises.max())
+            discrete_cmap = plt.get_cmap('turbo', num_colors)
+            norm = mcolors.BoundaryNorm(markers, num_colors)
+            tpc = ax.tripcolor(triangulation, facecolors=von_mises, alpha=xPhys,
+                               cmap=discrete_cmap, norm=norm, shading='flat')
+            fig.colorbar(tpc, ax=ax)
+
+            # Create an additional axes for the histogram inset
+            # ax_hist = fig.add_axes([0.7, 0.2, 0.2, 0.2])  # [left, bottom, width, height] in figure fraction coordinates
+            # Plot the histogram of von_mises values, flatten in case it's multidimensional
+            # ax_hist.hist(von_mises.flatten(), bins=30, color='blue', edgecolor='black')
+            # ax_hist.set_title("Distribution of Von Mises")
+            # ax_hist.set_xlabel("Von Mises")
+            # ax_hist.set_ylabel("Frequency")
+            # tpc.set_array(np.array([]))
+        else:
+            ax.tripcolor(triangulation, facecolors=xPhys, cmap='gray_r')
         ax.set_aspect('equal')
 
         if geometry_features is not None:

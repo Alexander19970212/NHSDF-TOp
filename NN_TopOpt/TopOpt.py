@@ -345,6 +345,86 @@ class TopOptimizer2D:
             self.update_meth_args()
 
         self.x = xPhys
+
+        self.stresses = self.compute_stresses()
+        self.von_mises = self.compute_von_mises(self.stresses)
+
+        self.Th.plot_topology(xPhys, von_mises=self.von_mises, image_size=self.image_size)
+
+    def compute_stresses(self):
+        """
+        Compute the stress tensor (stress vector components) for each element using the current
+        displacement field (self.u). For each element, the strain is calculated as
+            ε = B_std u_e,
+        where the standard strain–displacement matrix is given by
+            B_std = B / (2*Area),
+        and then the stress is computed using:
+            σ = C ε.
+            
+        Returns:
+            stresses: numpy.ndarray of shape (nme, 3)
+                Each row contains the stress components [sigma_x, sigma_y, tau_xy]
+                for the corresponding element.
+        """
+        stresses = []
+        for k in tqdm(range(self.nme), desc="Computing stresses"):
+            # Get nodal coordinates for element k 
+            # (ql: 3 x 2 array of node positions)
+            ql = self.Th.q[self.Th.me[k]]
+            area = self.Th.areas[k]
+            
+            # Compute the B matrix similar to ElemStiffElasMatBa2DP1 but without the final scaling.
+            # Here we use:
+            #   u_vec = ql[1]-ql[2],  v_vec = ql[2]-ql[0],  w_vec = ql[0]-ql[1]
+            # Then the rows of B are:
+            #   [y2-y3,    0,  y3-y1,    0,  y1-y2,    0]
+            #   [   0, -(x2-x3),    0, -(x3-x1),    0, -(x1-x2)]
+            #   [-(x2-x3), (y2-y3), -(x3-x1), (y3-y1), -(x1-x2), (y1-y2)]
+            u_vec = ql[1] - ql[2]
+            v_vec = ql[2] - ql[0]
+            w_vec = ql[0] - ql[1]
+            B = np.array([
+                [u_vec[1],     0,      v_vec[1],    0,      w_vec[1],     0],
+                [0,       -u_vec[0],    0,     -v_vec[0],    0,     -w_vec[0]],
+                [-u_vec[0],  u_vec[1],  -v_vec[0],  v_vec[1],  -w_vec[0],  w_vec[1]]
+            ])
+            
+            # Divide by (2 * area) to obtain the standard B matrix (i.e. shape function derivative terms)
+            B_std = B / (2 * area)
+            
+            # Get the element displacement vector using the precomputed edof list.
+            # u_e is a 6-component vector containing displacement components at the 3 nodes.
+            u_e = self.u[self.edof[k]]
+            
+            # Compute the strain vector: ε = B_std u_e.
+            epsilon = B_std.dot(u_e)
+            
+            # Compute stress: σ = C ε.
+            sigma = self.C.dot(epsilon)
+            stresses.append(sigma)
+            
+        return np.array(stresses)
+    
+    def compute_von_mises(self, stresses):
+        """
+        Compute the von Mises stress for each element based on the stress vector components.
+        
+        Parameters:
+            stresses: numpy.ndarray, shape (nme, 3)
+                Each row is [sigma_x, sigma_y, tau_xy].
+                
+        Returns:
+            von_mises: numpy.ndarray, shape (nme,)
+                The von Mises stress for each element.
+        """
+        sigma_x = stresses[:, 0]
+        sigma_y = stresses[:, 1]
+        tau_xy  = stresses[:, 2]
+        
+        # For plane stress, the von Mises stress is computed as:
+        #   sigma_vm = sqrt( sigma_x^2 - sigma_x*sigma_y + sigma_y^2 + 3*tau_xy^2 )
+        von_mises = np.sqrt(sigma_x**2 - sigma_x * sigma_y + sigma_y**2 + 3 * tau_xy**2)
+        return von_mises
                    
 class TopOptimizer2D_ADMM(TopOptimizer2D):
     def __init__(self, method_dict, args, activate_method = True) -> None:
