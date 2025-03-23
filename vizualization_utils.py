@@ -300,7 +300,7 @@ type2ids = {
     "q": 2
 }
 
-def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=500, filename = None):
+def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, filename = None):
     """Visualize the latent space"""
     model.eval()
     latent_vectors = []
@@ -411,6 +411,7 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=500, file
         np.save(latents_2d_path, latent_2d)
 
         plot_inner_axes = False
+        closests_indices = []
     
     # Plot the reduced dimensions with colors based on class labels
     fig, ax = plt.subplots(figsize=(8, 8))
