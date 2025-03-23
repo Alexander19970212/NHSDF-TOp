@@ -412,6 +412,10 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, fil
         elif dr_method == "mds":
             from sklearn.manifold import MDS
             mds = MDS(n_components=2, random_state=42, dissimilarity='euclidean')
+            subset_size = int(0.3 * len(latent_vectors))
+            subset_indices = np.random.choice(len(latent_vectors), subset_size, replace=False)
+            latent_vectors_subset = latent_vectors[subset_indices]
+            mds.fit(latent_vectors_subset)
             latent_2d = mds.fit_transform(latent_vectors)
 
         elif dr_method == "isomap":
