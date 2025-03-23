@@ -417,7 +417,7 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, fil
         elif dr_method == "isomap":
             from sklearn.manifold import Isomap
             # Adjust n_neighbors based on your dataset size and the underlying manifold's structure
-            isomap = Isomap(n_components=2, n_neighbors=30)
+            isomap = Isomap(n_components=2, n_neighbors=50)
             latent_2d = isomap.fit_transform(latent_vectors)
 
         elif dr_method == "lle":
