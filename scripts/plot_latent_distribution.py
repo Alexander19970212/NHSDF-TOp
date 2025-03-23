@@ -193,7 +193,7 @@ if __name__ == '__main__':
     parser.add_argument('--config_name', type=str, default='VAE_DeepSDF')
     parser.add_argument('--strategy', type=str, default='frst')
     parser.add_argument('--run_name', type=str, default='10smf', help='Name of the run')
-    parser.add_argument('--dr_method', type=str, default='mds', help='Name of the run')
+    parser.add_argument('--dr_method', type=str, default='lle', help='Name of the run')
     parser.add_argument('--quadrangle_index', type=int, default=1)
     parser.add_argument('--triangle_index', type=int, default=0)
     parser.add_argument('--ellipse_index', type=int, default=4)
