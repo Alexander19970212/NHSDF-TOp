@@ -300,7 +300,7 @@ type2ids = {
     "q": 2
 }
 
-def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, filename = None):
+def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=500, filename = None):
     """Visualize the latent space"""
     model.eval()
     latent_vectors = []
@@ -431,7 +431,7 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, fil
     for i, label in enumerate(class_names):
         class_bids_initial = [x == label for x in class_labels]
         # Make only random num_samples of true in class_bids equal to true
-        num_samples = min(50, sum(class_bids_initial))  # Adjust the number of samples as needed
+        num_samples = min(num_samples, sum(class_bids_initial))  # Adjust the number of samples as needed
         true_indices = [i for i, x in enumerate(class_bids_initial) if x]
         np.random.shuffle(true_indices)
         selected_indices = true_indices[:num_samples]
