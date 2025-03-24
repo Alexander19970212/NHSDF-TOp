@@ -3,7 +3,7 @@ import pandas as pd
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 from utils_generation import contour_points_generator
-
+import os
 def ellipse_sdf(points, a, b, smooth_factor, heaviside=True):
     """
     Approximate signed distance function for a set of points with respect to an ellipse.
@@ -120,7 +120,7 @@ def generate_ellipse_sdf_surface_dataset(
         b_w = np.random.uniform(min_ratio, max_ratio)  # Semi-minor axis (smaller than a)
         b = a * b_w
         
-        sdf = ellipse_sdf(points, a, b)
+        sdf = ellipse_sdf(points, a, b, smooth_factor)
         # sdf = 1/(1 + np.exp(-smooth_factor*sdf))
 
         sdf_str = ','.join(map(str, sdf.tolist()))
@@ -209,6 +209,8 @@ def generate_ellipse_vae_dataset(num_ellipse=1000,
     if dataset_dir is None:
         raise ValueError("dataset_dir must be provided")
     
+    os.makedirs(dataset_dir, exist_ok=True)
+    
     # Create a grid of points
     point_per_side = image_size
     x = np.linspace(-1, 1, point_per_side)
@@ -237,16 +239,16 @@ def generate_ellipse_vae_dataset(num_ellipse=1000,
             b_w = np.random.uniform(min_ratio, max_ratio)  # Semi-minor axis (smaller than a)
         b = a * b_w
         
-        sdf = ellipse_sdf(points, a, b, smooth_factor)
+        hv_sdf = ellipse_sdf(points, a, b, smooth_factor)
         # bw = b_w/max_ratio
         chi[1] = b_w/max_ratio
 
-        sdf_2d = sdf.reshape(image_size, image_size)
+        hv_sdf_2d = hv_sdf.reshape(image_size, image_size)
         filename = f'{dataset_dir}/ellipse_{e_idx}.npy'
         data_to_save = {
-            "sdf_2d": sdf_2d,
+            "hv_sdf_2d": hv_sdf_2d,
             "chi": chi,
-            "golden_ellipse": golden_ellipse
+            "golden": golden_ellipse
         }
         np.save(filename, data_to_save)
     

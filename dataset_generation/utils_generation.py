@@ -1,5 +1,22 @@
 import numpy as np
 
+chi_indexing = {"c": 0,
+                "bw": 1,
+                "x3": 2,
+                "y3": 3,
+                "R1": 4,
+                "R2": 5,
+                "R3": 6,
+                "x6": 7,
+                "y6": 8,
+                "x7": 9,
+                "y7": 10,
+                "R4": 11,
+                "R5": 12,
+                "R6": 13,
+                "R7": 14
+                }
+
 # Using the signed_distance function from previous example
 def point_to_line_distance(point, line_start, line_end):
     """Calculate signed distance from point to line segment"""
@@ -1373,3 +1390,35 @@ def plot_sdf_heav_item(
     if filename:
         plt.savefig(filename, bbox_inches='tight', pad_inches=0.05)
     plt.show()
+
+##############################
+
+import glob
+# import matplotlib.pyplot as plt
+import os
+def plot_vae_dataset(dataset_dir, gf_type='ellipse'):
+    # Get list of .npy files in the dataset directory
+    npy_files = glob.glob(os.path.join(dataset_dir, '*.npy'))
+    npy_files = [file for file in npy_files if gf_type in os.path.basename(file)]
+    
+    if not npy_files:
+        print("No .npy files found in", dataset_dir)
+    else:
+        # Plot a few examples (up to 3 files)
+        num_files_to_plot = min(3, len(npy_files))
+        for file in npy_files[:num_files_to_plot]:
+            # Load the saved numpy file (assumes data was saved as a dict)
+            data = np.load(file, allow_pickle=True).item()
+            # Try to extract 'hv_sdf_2d'; if not found, fall back to 'sdf_2d'
+            hv_sdf_2d = data.get('hv_sdf_2d', data.get('sdf_2d', None))
+            if hv_sdf_2d is None:
+                print(f"Neither 'hv_sdf_2d' nor 'sdf_2d' found in {file}")
+                continue
+
+            # Plot the 2D array using imshow
+            plt.figure(figsize=(5, 5))
+            plt.imshow(hv_sdf_2d, cmap='viridis')
+            plt.title(f"Hv SDF 2D from {os.path.basename(file)}")
+            plt.colorbar()
+            plt.show()
+

@@ -5,6 +5,7 @@ import pandas as pd
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 from utils_generation import point_to_line_distance, contour_points_generator
+import os
 
 def generate_quadrangle(mirrored_quadrangle=True, golden_quadrangle=False):
     """
@@ -465,6 +466,75 @@ def generate_quadrangle_reconstruction_dataset(
     print(f"Dataset saved to {filename}")
 
     return df
+
+def generate_quadrangle_vae_dataset(num_quadrangle=1000,
+                                 smooth_factor=10,
+                                 dataset_dir=None,
+                                 num_golden_quadrangle=0,
+                                 image_size=64,
+                                 max_radius_limit=3,
+                                 chi_size = 17):
+    """
+    Generate a dataset of points and their SDFs for random quadrangle.
+    """
+    from utils_generation import chi_indexing
+
+    if dataset_dir is None:
+        raise ValueError("dataset_dir must be provided")
+    
+    os.makedirs(dataset_dir, exist_ok=True)
+    
+    # Create a grid of points
+    point_per_side = image_size
+    x = np.linspace(-1, 1, point_per_side)
+    y = np.linspace(-1, 1, point_per_side)
+    X, Y = np.meshgrid(x, y)
+    points = np.array([X.flatten(), Y.flatten()]).T
+
+    min_ratio = 0.5
+    max_ratio = 1.5
+
+    chi = np.zeros(chi_size)
+    chi[0] = 1
+
+    
+    for q_idx in tqdm(range(num_quadrangle)):
+        # Generate random quadrangle parameters
+        golden_quadrangle = q_idx < num_golden_quadrangle
+        if golden_quadrangle:
+            print(f"Golden quadrangle {q_idx}")
+        while True:
+            vertices = generate_quadrangle(golden_quadrangle=golden_quadrangle)
+            # vertices = generate_triangle()
+            line_segments, arc_segments, arcs_intersection = (
+                get_rounded_polygon_segments_rand_radius(vertices, 0.1, max_radius_limit=max_radius_limit,
+                                                         golden_quadrangle=golden_quadrangle))
+            if arcs_intersection == False:
+                break
+
+        v1, v2, v3, v4 = vertices
+        arc_radii = np.array([radius for _, _, _, radius in arc_segments])
+
+        hv_sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
+        
+        chi[chi_indexing["x6"]] = v3[0]
+        chi[chi_indexing["y6"]] = v3[1]
+        chi[chi_indexing["x7"]] = v4[0]
+        chi[chi_indexing["y7"]] = v4[1]
+        
+        chi[chi_indexing["R4"]] = arc_radii[0]/max_radius_limit
+        chi[chi_indexing["R5"]] = arc_radii[1]/max_radius_limit
+        chi[chi_indexing["R6"]] = arc_radii[2]/max_radius_limit
+        chi[chi_indexing["R7"]] = arc_radii[3]/max_radius_limit
+
+        hv_sdf_2d = hv_sdf.reshape(image_size, image_size)
+        filename = f'{dataset_dir}/quadrangle_{q_idx}.npy'
+        data_to_save = {
+            "hv_sdf_2d": hv_sdf_2d,
+            "chi": chi,
+            "golden": golden_quadrangle
+        }
+        np.save(filename, data_to_save)
 
 #############################################################
 
