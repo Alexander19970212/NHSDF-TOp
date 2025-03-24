@@ -147,7 +147,7 @@ def main(args):
         #     [-140, 10],
         #     [-140, -93]
         # ],
-        # "specified_axes_positions_2": [
+        "specified_axes_positions_2": [[1, -1], [1, 1]],
         #     [-100, 10],
         #     [-100, -93]
         # ]
