@@ -304,6 +304,8 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, fil
     """Visualize the latent space"""
     model.eval()
     
+    parent_dir = os.path.dirname(os.path.abspath(filename))
+    latents_2d_path = parent_dir + f"/latent_2d_{dr_method}.npy"
 
     latent_vectors_dir = parent_dir + f"/latent_vectors.npy"
     class_labels_dir = parent_dir + f"/class_labels.npy"
@@ -313,7 +315,7 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, fil
     else:
         latent_vectors = []
         class_labels = []
-        
+
         with torch.no_grad():
             for batch in dataloader:
                 output = model(batch[0])
@@ -334,8 +336,6 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, fil
 
     all_indices = np.arange(latent_vectors.shape[0])
 
-    parent_dir = os.path.dirname(os.path.abspath(filename))
-    latents_2d_path = parent_dir + f"/latent_2d_{dr_method}.npy"
 
     scatter_sizes = np.ones(latent_vectors.shape[0])*50
 
