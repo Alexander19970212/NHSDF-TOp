@@ -146,6 +146,10 @@ def main(args):
         "specified_axes_positions": [
             [-140, 10],
             [-140, -93]
+        ],
+        "specified_axes_positions_2": [
+            [-100, 10],
+            [-100, -93]
         ]
     }
     json.dump(searching_points, open(searching_points_path, 'w'))
