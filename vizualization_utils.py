@@ -300,7 +300,7 @@ type2ids = {
     "q": 2
 }
 
-def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, filename = None):
+def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=5000, filename = None):
     """Visualize the latent space"""
     model.eval()
     
