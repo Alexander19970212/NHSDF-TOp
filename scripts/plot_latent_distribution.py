@@ -115,7 +115,11 @@ def main(args):
     ########## temporary ##########
     searching_points_path = f'{save_plot_dir}/searching_points.json'
     searching_points = {
-        "tsne_coords": [],
+        "tsne_coords": [[-0.26, -0.4],
+                        [-0.51, -0.24],
+                        [-0.51, -0.24],
+                        [0.75, 0.4],
+                        [0.75, 0.4]],
         #     [60, 45],
         #     [-60, -70],
         #     [-70, 30],
@@ -123,7 +127,12 @@ def main(args):
         #     [5, -120],
         #     [75, 100]
         # ],
-        "axes_positions": [],
+        "axes_positions": [[-1, -0.75],
+                           [-1, -0.5],
+                           [-1, -0.25],
+                        #    [1, 0.25],
+                           [1, 0.5],
+                           [1, 0.75]],
         #     [-140, 50],
         #     [-140, -127],
         #     [85, -127],
@@ -131,14 +140,14 @@ def main(args):
         #     [85, 100],
         #     [-25, 100]
         # ],
-        "gf_types":[ ],# n: doesn't matter, c: circle, t: triangle, q: quadrangle
-        #     "n",
-        #     "n",
-        #     "t",
-        #     "q",
-        #     "n",
+        "gf_types":[ # n: doesn't matter, c: circle, t: triangle, q: quadrangle
+            "n",
+            "c",
+            "t",
+            "q",
+            "t",
         #     "n"
-        # ],
+        ],
         "specified_ids": [
             0,
             20000
