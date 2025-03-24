@@ -384,17 +384,17 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, fil
                 axes_positions.append(specified_axes_position)
 
                 #find the closest point in another claster
-                class_id = class_indices[specified_id]
-                other_cluster_bids = class_indices != class_id
-                other_cluster_indices = all_indices[other_cluster_bids]
-                other_cluster_latents = latent_vectors[other_cluster_bids]
+                # class_id = class_indices[specified_id]
+                # other_cluster_bids = class_indices != class_id
+                # other_cluster_indices = all_indices[other_cluster_bids]
+                # other_cluster_latents = latent_vectors[other_cluster_bids]
 
-                kdtree = cKDTree(other_cluster_latents)
-                distance, other_cluster_index = kdtree.query(latent_vectors[specified_id])
+                # kdtree = cKDTree(other_cluster_latents)
+                # distance, other_cluster_index = kdtree.query(latent_vectors[specified_id])
 
-                closests_indices.append(other_cluster_indices[other_cluster_index])
-                existing_points.append(latent_2d[other_cluster_indices[other_cluster_index]])
-                axes_positions.append(specified_axes_positions_2[i])
+                # closests_indices.append(other_cluster_indices[other_cluster_index])
+                # existing_points.append(latent_2d[other_cluster_indices[other_cluster_index]])
+                # axes_positions.append(specified_axes_positions_2[i])
 
             # print(closests_indices)
             scatter_sizes[closests_indices] = 500
