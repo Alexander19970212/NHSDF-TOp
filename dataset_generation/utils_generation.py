@@ -507,10 +507,10 @@ def points_to_line_distance(points, line_start, line_end): # +|
     dist = np.linalg.norm(points - nearest, axis=1)
     return dist
 
-def signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=40, heaviside=True): # + |
+def signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=10, heaviside=True): # + |
     distances = []
     for line_segment in line_segments:
-        if np.linalg.norm(line_segment[0] - line_segment[1]) != 0:
+        if np.linalg.norm(line_segment[0] - line_segment[1]) > 0.0000001:
             distances.append(points_to_line_distance(points, line_segment[0], line_segment[1]))
     for arc_segment in arc_segments:
         distances.append(points_to_arc_distances(points,
@@ -567,6 +567,47 @@ def SDF_polygon_3D(points, bottom_level, line_segments, arc_segments, vertices, 
     sdf_3d[out_contour_under_bottom_level] = -np.sqrt(sdf_xy[out_contour_under_bottom_level]**2 + sdf_z[out_contour_under_bottom_level]**2)
 
     return sdf_3d
+
+def contour_points_generator(sdf_func, sdf_args, n_points_per_figure):
+
+    n_contour_points_percent = 0.85
+    contour_area_percent = 0.3 
+    noise_scale = 0.01
+
+    n_contour_points = int(n_points_per_figure*n_contour_points_percent)
+    n_outer_points = n_points_per_figure - n_contour_points
+    point_per_side = int(np.sqrt(n_contour_points/contour_area_percent))
+
+    x = np.linspace(-1, 1, point_per_side)
+    y = np.linspace(-1, 1, point_per_side)
+    # Create meshgrid
+    X, Y = np.meshgrid(x, y)
+    # Reshape to get array of 3D points
+    points = np.vstack([X.ravel(), Y.ravel()]).T
+    noise = np.random.normal(loc=0.0, scale=noise_scale, size=points.shape)
+    points = points + noise
+
+    sdf = sdf_func(points, *sdf_args)
+
+    sdf_abs = np.abs(sdf - 0.5)
+    filter_bids = np.argsort(sdf_abs)[:n_contour_points]
+    # Identify outer points that are not among the contour (i.e. lowest |sdf|) points
+    contour_points_temp = points[filter_bids]
+    contour_sdf_temp = sdf[filter_bids]
+    all_indices = np.arange(points.shape[0])
+    non_contour_indices = np.setdiff1d(all_indices, filter_bids)
+    # Randomly sample n_outer_points from the non-contour indices
+    if len(non_contour_indices) >= n_outer_points:
+        random_outer_indices = np.random.choice(non_contour_indices, size=n_outer_points, replace=False)
+    else:
+        random_outer_indices = non_contour_indices
+    outer_points = points[random_outer_indices]
+    outer_sdf = sdf[random_outer_indices]
+    # Combine contour points with the randomly selected outer points (contour points come first)
+    points = np.concatenate([contour_points_temp, outer_points], axis=0)
+    sdf = np.concatenate([contour_sdf_temp, outer_sdf], axis=0)
+
+    return points, sdf
 
 # Plot a sample from the generated DataFrame
 def plot_sample_from_df(df, points_df, sample_index=0):

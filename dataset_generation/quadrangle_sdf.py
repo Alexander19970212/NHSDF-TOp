@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from matplotlib import pyplot as plt
-from utils_generation import point_to_line_distance
+from utils_generation import point_to_line_distance, contour_points_generator
 
 def generate_quadrangle(mirrored_quadrangle=True, golden_quadrangle=False):
     """
@@ -135,7 +135,7 @@ def signed_distance_quadrangle(point, v1, v2, v3, v4, smooth_factor=40, corner_r
 
 def generate_quadrangle_sdf_dataset(num_quadrangle=1000,
                                     points_per_quadrangle=100,
-                                    smooth_factor=40,
+                                    smooth_factor=10,
                                     filename='quadrangle_sdf_dataset.csv'):
     """
     Generate dataset of signed distances for random quadrangle
@@ -208,7 +208,7 @@ from utils_generation import get_rounded_polygon_segments_rand_radius, signed_di
 def generate_rounded_quadrangle_sdf_dataset(
         num_quadrangle=1000,
         points_per_quadrangle=100,
-        smooth_factor=40,
+        smooth_factor=10,
         min_radius=0.01,
         max_radius_limit=3,
         filename='quadrangle_sdf_dataset.csv',
@@ -247,38 +247,44 @@ def generate_rounded_quadrangle_sdf_dataset(
         arc_ratio = arc_perimeter / perimeter
         arc_centers = np.array([center for _, _, center, _ in arc_segments])
         
+        ###########################################
         # Generate random points
         # Sample more points near the triangle
-        quadrangle_center = (v1 + v2 + v3 + v4) / 4
+        # quadrangle_center = (v1 + v2 + v3 + v4) / 4
         
-        # Mix of uniform and gaussian sampling
-        # num_uniform = points_per_quadrangle // 3
-        num_points_in_vertices = points_per_quadrangle // 3
-        num_gaussian = points_per_quadrangle // 3
+        # # Mix of uniform and gaussian sampling
+        # # num_uniform = points_per_quadrangle // 3
+        # num_points_in_vertices = points_per_quadrangle // 3
+        # num_gaussian = points_per_quadrangle // 3
 
-        points_gaussian = np.random.normal(loc=quadrangle_center, scale=0.5, size=(num_gaussian, 2))
-        points_gaussian = np.clip(points_gaussian, -1, 1)
+        # points_gaussian = np.random.normal(loc=quadrangle_center, scale=0.5, size=(num_gaussian, 2))
+        # points_gaussian = np.clip(points_gaussian, -1, 1)
         
-        # Uniform sampling in the bounding box
-        # points_uniform = np.random.rand(num_uniform, 2)*2 - 1           
+        # # Uniform sampling in the bounding box
+        # # points_uniform = np.random.rand(num_uniform, 2)*2 - 1           
 
-        # Generate points in the vertices
-        points_in_vertices = []
-        for center, radius in zip([v1, v2, v3, v4], arc_radii):
-            points_in_circle = np.random.normal(loc=center, scale=0.2, size=(num_points_in_vertices // 4, 2))
-            points_in_circle = np.clip(points_in_circle, -1, 1)
-            points_in_vertices.append(points_in_circle)
+        # # Generate points in the vertices
+        # points_in_vertices = []
+        # for center, radius in zip([v1, v2, v3, v4], arc_radii):
+        #     points_in_circle = np.random.normal(loc=center, scale=0.2, size=(num_points_in_vertices // 4, 2))
+        #     points_in_circle = np.clip(points_in_circle, -1, 1)
+        #     points_in_vertices.append(points_in_circle)
         
-        points_in_vertices = np.vstack(points_in_vertices)
+        # points_in_vertices = np.vstack(points_in_vertices)
 
-        # Gaussian sampling around the triangle
-        num_uniform = points_per_quadrangle - points_in_vertices.shape[0] - points_gaussian.shape[0]
-        points_uniform = np.random.rand(num_uniform, 2)*2 - 1        
+        # # Gaussian sampling around the triangle
+        # num_uniform = points_per_quadrangle - points_in_vertices.shape[0] - points_gaussian.shape[0]
+        # points_uniform = np.random.rand(num_uniform, 2)*2 - 1        
 
-        # Combine points
-        points = np.vstack([points_uniform, points_gaussian, points_in_vertices])
+        # # Combine points
+        # points = np.vstack([points_uniform, points_gaussian, points_in_vertices])
 
-        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
+        # sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
+
+        ###########################################
+
+        points, sdf = contour_points_generator(signed_distance_polygon, (line_segments, arc_segments, vertices, smooth_factor),
+                                               points_per_quadrangle)
         
         # Calculate signed distance for each point
         for i, point in enumerate(points):
@@ -316,7 +322,7 @@ def generate_rounded_quadrangle_sdf_dataset(
 def generate_rounded_quadrangle_sdf_surface_dataset(
         num_quadrangle=1000,
         points_per_quadrangle=1000,
-        smooth_factor=40,
+        smooth_factor=10,
         filename='../shape_datasets/quadrangle_sdf_surface_dataset_test',
         max_radius_limit=3,
         axes_length=1):
@@ -465,7 +471,7 @@ def generate_quadrangle_reconstruction_dataset(
 def generate_quadrangle_random_radius_dataset(
         num_quadrangle=100,
         sample_per_quadrangle=100,
-        smooth_factor=40,
+        smooth_factor=10,
         filename='quadrangle_random_radius_dataset',
         max_radius_limit=3,
         axes_length=1   

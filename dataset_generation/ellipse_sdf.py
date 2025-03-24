@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from matplotlib import pyplot as plt
+from utils_generation import contour_points_generator
 
-def ellipse_sdf(points, a, b):
+def ellipse_sdf(points, a, b, smooth_factor, heaviside=True):
     """
     Approximate signed distance function for a set of points with respect to an ellipse.
     Positive outside, negative inside, zero on the curve.
@@ -30,11 +31,15 @@ def ellipse_sdf(points, a, b):
     
     # Approximate the actual distance
     # Inside: positive, Outside: negative
-    return min_axis - scaled_dist * min_axis
+    sdf =  min_axis - scaled_dist * min_axis
+    if heaviside:
+        return 1/(1 + np.exp(-smooth_factor*sdf))
+    else:
+        return sdf
 
 def generate_ellipse_sdf_dataset(num_ellipse=1000,
                                  points_per_ellipse=500,
-                                 smooth_factor=44,
+                                 smooth_factor=10,
                                  min_ratio=0.5,
                                  max_ratio=1.5,
                                  filename='shape_datasets/ellipse_sdf_dataset.csv', 
@@ -44,7 +49,7 @@ def generate_ellipse_sdf_dataset(num_ellipse=1000,
     Each ellipse is defined by its center, semi-major axis, semi-minor axis and rotation angle.
     """
     data = []
-    
+
     for e_idx in tqdm(range(num_ellipse)):
         # Generate random ellipse parameters
         center = np.array([0, 0])  # Center fixed at (0, 0)
@@ -57,16 +62,17 @@ def generate_ellipse_sdf_dataset(num_ellipse=1000,
             b_w = np.random.uniform(min_ratio, max_ratio)  # Semi-minor axis (smaller than a)
         b = a * b_w
         # Generate random points
-        points = np.random.uniform(-1, 1, (points_per_ellipse, 2))
-
-        sdf = ellipse_sdf(points, a, b)
-        sdf = 1/(1 + np.exp(-smooth_factor*sdf))
+        # points = np.random.uniform(-1, 1, (points_per_ellipse, 2))
+        
+        points, hv_sdf = contour_points_generator(ellipse_sdf, (a, b, smooth_factor),
+                                               points_per_ellipse)
+        
         
         for i, point in enumerate(points):
             data.append([
                 point[0], point[1],  # Point coordinates
                 b_w/max_ratio,  # normalized semi-axes ratio
-                sdf[i],
+                hv_sdf[i],
                 1
             ])
     
@@ -88,7 +94,7 @@ def generate_ellipse_sdf_dataset(num_ellipse=1000,
 def generate_ellipse_sdf_surface_dataset(
         num_ellipse=1000,
         points_per_ellipse=1000,
-        smooth_factor=44,
+        smooth_factor=10,
         filename='../shape_datasets/ellipse_sdf_surface_dataset_test',
         min_ratio=0.5,
         max_ratio=1.5,
