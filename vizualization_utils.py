@@ -303,29 +303,32 @@ type2ids = {
 def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, filename = None):
     """Visualize the latent space"""
     model.eval()
-    latent_vectors = []
-    # X = []
-    # sdf = []
-    # sdf_target = []
-    class_labels = []
-    with torch.no_grad():
-        for batch in dataloader:
-            output = model(batch[0])
-            # print(output)
-            latent_vectors.append(output["z"])
-            # X.append(batch[0])
-            # sdf.append(output["sdf_pred"])
-            # sdf_target.append(batch[1])
-            class_labels.append(batch[0][:, 2])
-            # if len(latent_vectors) * batch[0].shape[0] >= num_samples:
-            #     break
-                
-    latent_vectors = torch.cat(latent_vectors, dim=0) #[:num_samples]
-    latent_vectors = latent_vectors.cpu().numpy()
+    
+
+    latent_vectors_dir = parent_dir + f"/latent_vectors.npy"
+    class_labels_dir = parent_dir + f"/class_labels.npy"
+    if os.path.exists(latent_vectors_dir) and os.path.exists(class_labels_dir):
+        latent_vectors = np.load(latent_vectors_dir)
+        class_labels = np.load(class_labels_dir)
+    else:
+        latent_vectors = []
+        class_labels = []
+        
+        with torch.no_grad():
+            for batch in dataloader:
+                output = model(batch[0])
+                latent_vectors.append(output["z"])
+                class_labels.append(batch[0][:, 2])
+
+        latent_vectors = torch.cat(latent_vectors, dim=0) #[:num_samples]
+        latent_vectors = latent_vectors.cpu().numpy()
+        class_labels = torch.cat(class_labels, dim=0).cpu().numpy()
+        np.save(latent_vectors_dir, latent_vectors)
+        np.save(class_labels_dir, class_labels)
 
     # Concatenate and convert class labels
     # class_labels = torch.cat(class_labels, dim=0)[:num_samples].cpu().numpy()
-    class_labels = torch.cat(class_labels, dim=0).cpu().numpy()
+    
     class_indices = np.array([int(label*2) for label in class_labels])
     class_labels = [class_names[int(label*2)] for label in class_labels]
 
