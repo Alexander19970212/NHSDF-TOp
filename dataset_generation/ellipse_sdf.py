@@ -121,7 +121,7 @@ def generate_ellipse_sdf_surface_dataset(
         b = a * b_w
         
         sdf = ellipse_sdf(points, a, b)
-        sdf = 1/(1 + np.exp(-smooth_factor*sdf))
+        # sdf = 1/(1 + np.exp(-smooth_factor*sdf))
 
         sdf_str = ','.join(map(str, sdf.tolist()))
         
@@ -197,6 +197,59 @@ def generate_ellipse_reconstruction_dataset(
     
     return df
 
+def generate_ellipse_vae_dataset(num_ellipse=1000,
+                                 smooth_factor=10,
+                                 dataset_dir=None,
+                                 num_golden_ellipse=0,
+                                 image_size=64,
+                                 chi_size = 17):
+    """
+    Generate a dataset of points and their SDFs for random ellipses.
+    """
+    if dataset_dir is None:
+        raise ValueError("dataset_dir must be provided")
+    
+    # Create a grid of points
+    point_per_side = image_size
+    x = np.linspace(-1, 1, point_per_side)
+    y = np.linspace(-1, 1, point_per_side)
+    X, Y = np.meshgrid(x, y)
+    points = np.array([X.flatten(), Y.flatten()]).T
+
+    min_ratio = 0.5
+    max_ratio = 1.5
+
+    chi = np.zeros(chi_size)
+    chi[0] = 0
+
+    
+    for e_idx in tqdm(range(num_ellipse)):
+        # Generate random ellipse parameters
+        center = np.array([0, 0])  # Center fixed at (0, 0)
+        # a = np.random.uniform(0.2, 0.8)  # Semi-major axis
+        a = 0.5
+        if e_idx < num_golden_ellipse:
+            print(f"Golden ellipse {e_idx}")
+            golden_ellipse = True
+            b_w = 1
+        else:
+            golden_ellipse = False
+            b_w = np.random.uniform(min_ratio, max_ratio)  # Semi-minor axis (smaller than a)
+        b = a * b_w
+        
+        sdf = ellipse_sdf(points, a, b, smooth_factor)
+        # bw = b_w/max_ratio
+        chi[1] = b_w/max_ratio
+
+        sdf_2d = sdf.reshape(image_size, image_size)
+        filename = f'{dataset_dir}/ellipse_{e_idx}.npy'
+        data_to_save = {
+            "sdf_2d": sdf_2d,
+            "chi": chi,
+            "golden_ellipse": golden_ellipse
+        }
+        np.save(filename, data_to_save)
+    
 ##########################################################################################
 
 def plot_ellipse_sdf_dataset(df, points_per_ellipse=1000):
