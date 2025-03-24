@@ -140,9 +140,9 @@ def main(args):
         #     [85, 100],
         #     [-25, 100]
         # ],
-        "gf_types":[ # n: doesn't matter, c: circle, t: triangle, q: quadrangle
+        "gf_types":[ # n: doesn't matter, e: ellipse, t: triangle, q: quadrangle
             "n",
-            "c",
+            "e",
             "t",
             "q",
             "t",
