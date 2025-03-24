@@ -115,30 +115,30 @@ def main(args):
     ########## temporary ##########
     searching_points_path = f'{save_plot_dir}/searching_points.json'
     searching_points = {
-        "tsne_coords": [
-            [60, 45],
-            [-60, -70],
-            [-70, 30],
-            [-70, 30],
-            [5, -120],
-            [75, 100]
-        ],
-        "axes_positions": [
-            [-140, 50],
-            [-140, -127],
-            [85, -127],
-            [85, -93],
-            [85, 100],
-            [-25, 100]
-        ],
-        "gf_types":[ # n: doesn't matter, c: circle, t: triangle, q: quadrangle
-            "n",
-            "n",
-            "t",
-            "q",
-            "n",
-            "n"
-        ],
+        "tsne_coords": [],
+        #     [60, 45],
+        #     [-60, -70],
+        #     [-70, 30],
+        #     [-70, 30],
+        #     [5, -120],
+        #     [75, 100]
+        # ],
+        "axes_positions": [],
+        #     [-140, 50],
+        #     [-140, -127],
+        #     [85, -127],
+        #     [85, -93],
+        #     [85, 100],
+        #     [-25, 100]
+        # ],
+        "gf_types":[ ],# n: doesn't matter, c: circle, t: triangle, q: quadrangle
+        #     "n",
+        #     "n",
+        #     "t",
+        #     "q",
+        #     "n",
+        #     "n"
+        # ],
         "specified_ids": [
             0,
             20000
@@ -197,7 +197,7 @@ if __name__ == '__main__':
     parser.add_argument('--config_name', type=str, default='VAE_DeepSDF')
     parser.add_argument('--strategy', type=str, default='frst')
     parser.add_argument('--run_name', type=str, default='10smf', help='Name of the run')
-    parser.add_argument('--dr_method', type=str, default='mds', help='Name of the run')
+    parser.add_argument('--dr_method', type=str, default='htsne', help='Name of the run')
     parser.add_argument('--quadrangle_index', type=int, default=1)
     parser.add_argument('--triangle_index', type=int, default=0)
     parser.add_argument('--ellipse_index', type=int, default=4)
