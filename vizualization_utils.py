@@ -351,7 +351,7 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, fil
 
             specified_ids = searching_points["specified_ids"]
             specified_axes_positions = searching_points["specified_axes_positions"]
-            specified_axes_positions_2 = searching_points["specified_axes_positions_2"]
+            # specified_axes_positions_2 = searching_points["specified_axes_positions_2"]
 
             tsne_coords = np.array(tsne_coords) # P x 2
 
