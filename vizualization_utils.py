@@ -395,7 +395,11 @@ def plot_latent_space(model, dataloader, dr_method="tsne", num_samples=1500, fil
         # Use t-SNE for dimensionality reduction
         if dr_method == "tsne":
             from sklearn.manifold import TSNE
-            tsne = TSNE(n_components=2, random_state=42)
+            tsne = TSNE(n_components=2,
+                        perplexity=50,
+                        random_state=42,
+                        n_jobs=4,
+                        verbose=1)
             latent_2d = tsne.fit_transform(latent_vectors)
 
         elif dr_method == "pca":
