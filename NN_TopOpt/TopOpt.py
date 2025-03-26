@@ -94,8 +94,15 @@ class TopOptimizer2D:
         self.ce = np.ones(self.Th.me.shape[0]) # vector of compliances
 
         # get Hooke matrix
-        la = 1.5
-        mu = 0.5
+
+        youngs_modulus = 1.0
+        poissons_ratio = 0.3
+
+        # la = 1.5
+        # mu = 0.5
+        la = youngs_modulus * poissons_ratio / ((1 + poissons_ratio) * (1 - 2 * poissons_ratio))
+        mu = youngs_modulus / (2 * (1 + poissons_ratio))
+        
         self.C=Hooke2DP1(la,mu)
 
         self.build_stiffness_matrix()

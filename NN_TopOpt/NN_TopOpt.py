@@ -30,7 +30,7 @@ from TopOpt import SIMP_basic
 from TopOpt import TopOptimizer2D
 from TopOpt import fit_ellipsoid
 
-from dataset_generation.utils_generation import extract_geometry, get_rounded_polygon
+from dataset_generation_new.utils_generation import extract_geometry, get_rounded_polygon
 
 from models.sdf_models import AE_DeepSDF, AE, VAE, VAE_DeepSDF, MMD_VAE, MMD_VAE_DeepSDF
 models = {'AE_DeepSDF': AE_DeepSDF,

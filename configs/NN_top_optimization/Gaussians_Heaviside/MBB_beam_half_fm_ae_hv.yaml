@@ -31,7 +31,7 @@ params:
   config_dir: ../configs/NN_sdf_experiments/model_arch
   merging_marker: 10
   merging_adaptation_length: 10
-  compliance_w: 1
+  compliance_w: 1024000000 #1
   volfrac_w: 3000000
   gaussian_overlap_w: 0
   gaussian_overlap_scale: 1.3

@@ -119,16 +119,22 @@ class LoadedMesh2D:
             # print(colors)
             # colors[:, 3] = xPhys  # Set alpha channel using xPhys: 0 is fully transparent, 1 is fully opaque
             # print(colors)
+
             num_colors = 10
-            # rescaled_von_mises = np.clip(von_mises, 1, 5000)
             markers = np.array([0, 500])
             markers = np.append(markers, np.linspace(2500, 7000, num_colors - 3))
             markers = np.append(markers, 8000)
             markers = np.append(markers, von_mises.max())
             discrete_cmap = plt.get_cmap('turbo', num_colors)
             norm = mcolors.BoundaryNorm(markers, num_colors)
+
+            # tpc = ax.tripcolor(triangulation, facecolors=von_mises, alpha=xPhys,
+            #                    cmap=discrete_cmap, norm=norm, shading='flat')
+            
+
             tpc = ax.tripcolor(triangulation, facecolors=von_mises, alpha=xPhys,
-                               cmap=discrete_cmap, norm=norm, shading='flat')
+                               cmap="turbo", shading='flat')
+            
             fig.colorbar(tpc, ax=ax)
 
             # Create an additional axes for the histogram inset

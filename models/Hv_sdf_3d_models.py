@@ -12,7 +12,7 @@ import lightning as L
 from torch.optim.lr_scheduler import LambdaLR, CosineAnnealingLR, SequentialLR
 
 from sklearn.feature_selection import mutual_info_regression
-from dataset_generation.utils_generation import plot_sdf_heav_item_by_tensor
+from dataset_generation_new.utils_generation import plot_sdf_heav_item_by_tensor
 
 import os
 

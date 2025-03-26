@@ -16,7 +16,7 @@ import matplotlib.tri as mtri
 from IPython.display import HTML
 
 from matplotlib.patches import Ellipse, Polygon
-from dataset_generation.utils_generation import extract_geometry
+from dataset_generation_new.utils_generation import extract_geometry
 
 import os
 from os import listdir
