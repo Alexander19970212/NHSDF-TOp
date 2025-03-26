@@ -232,7 +232,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VAE model.')
     parser.add_argument('--max_epochs', type=int, default=1, help='Maximum number of epochs for training')
-    parser.add_argument('--run_name', type=str, default='10smf', help='Name of the run')
+    parser.add_argument('--run_name', type=str, default='20smf', help='Name of the run')
     parser.add_argument('--model_dir', type=str, default='model_weights', help='Path to the model directory')
     parser.add_argument('--dataset_path', type=str, default='shape_datasets', help='Path to the dataset')
     parser.add_argument('--config_dir', type=str, default='configs/NN_sdf_experiments/architectures', help='Path to the config directory')

@@ -195,7 +195,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset_path', type=str, default='shape_datasets', help='Path to the dataset')
     parser.add_argument('--config_dir', type=str, default='configs/NN_sdf_experiments/architectures', help='Path to the config directory')
     parser.add_argument('--config_name', type=str, default='AE_DeepSDF', help='Name of the config')
-    parser.add_argument('--run_name', type=str, default='10smf', help='Name of the run')
+    parser.add_argument('--run_name', type=str, default='20smf', help='Name of the run')
     parser.add_argument('--metrics_file', type=str, default='src/metrics.json', help='Path to the metrics file')
     args = parser.parse_args()
     main(args)
