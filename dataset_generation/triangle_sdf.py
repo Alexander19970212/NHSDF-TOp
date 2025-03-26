@@ -128,7 +128,6 @@ def generate_triangle_sdf_dataset(num_triangle=100, points_per_triangle=1000, sm
 
 #################################################################################################################
 from utils_generation import get_rounded_polygon_segments_rand_radius, signed_distance_polygon, compute_perimeter
-from utils_generation import contour_points_generator
 
 def generate_rounded_triangle_sdf_dataset(
         num_triangle=1000,
@@ -160,53 +159,47 @@ def generate_rounded_triangle_sdf_dataset(
             if arcs_intersection == False:
                 break
 
-        ###########################################
         perimeter, line_perimeter, arc_perimeter = compute_perimeter(line_segments, arc_segments)
         arc_ratio = arc_perimeter / perimeter
 
         v1, v2, v3 = vertices
         arc_radii = np.array([radius for _, _, _, radius in arc_segments])
         arc_centers = np.array([center for _, _, center, _ in arc_segments])
-        ##############################################
-        # # Generate random points
-        # # Sample more points near the triangle
-        # triangle_center = (v1 + v2 + v3) / 3
         
-        # # Mix of uniform and gaussian sampling
-        # # num_uniform = points_per_triangle // 3
-        # num_gaussian = points_per_triangle // 3
-        # num_points_in_vertices = points_per_triangle // 3
-        # # num_points_in_vertices = points_per_triangle
-
-        # # Uniform sampling in the bounding box
-        # # points_uniform = np.random.rand(num_uniform, 2)*2 - 1
+        # Generate random points
+        # Sample more points near the triangle
+        triangle_center = (v1 + v2 + v3) / 3
         
-        # # Gaussian sampling around the triangle
-        # points_gaussian = np.random.normal(loc=triangle_center, scale=0.5, size=(num_gaussian, 2))
-        # points_gaussian = np.clip(points_gaussian, -1, 1)
+        # Mix of uniform and gaussian sampling
+        # num_uniform = points_per_triangle // 3
+        num_gaussian = points_per_triangle // 3
+        num_points_in_vertices = points_per_triangle // 3
+        # num_points_in_vertices = points_per_triangle
 
-        # # Generate points in the vertices
-        # points_in_vertices = []
-        # for center, radius in zip([v1, v2, v3], arc_radii):
-        #     points_in_circle = np.random.normal(loc=center, scale=0.2, size=(num_points_in_vertices // 3, 2))
-        #     points_in_circle = np.clip(points_in_circle, -1, 1)
-        #     points_in_vertices.append(points_in_circle)
-        
-        # points_in_vertices = np.vstack(points_in_vertices)
-
-        # num_uniform = points_per_triangle - points_in_vertices.shape[0] - points_gaussian.shape[0]
+        # Uniform sampling in the bounding box
         # points_uniform = np.random.rand(num_uniform, 2)*2 - 1
         
-        # # Combine points
-        # points = np.vstack([points_uniform, points_gaussian, points_in_vertices])
-        # # points = points_in_vertices
+        # Gaussian sampling around the triangle
+        points_gaussian = np.random.normal(loc=triangle_center, scale=0.5, size=(num_gaussian, 2))
+        points_gaussian = np.clip(points_gaussian, -1, 1)
 
-        # sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
+        # Generate points in the vertices
+        points_in_vertices = []
+        for center, radius in zip([v1, v2, v3], arc_radii):
+            points_in_circle = np.random.normal(loc=center, scale=0.2, size=(num_points_in_vertices // 3, 2))
+            points_in_circle = np.clip(points_in_circle, -1, 1)
+            points_in_vertices.append(points_in_circle)
+        
+        points_in_vertices = np.vstack(points_in_vertices)
 
-        ###########################################
+        num_uniform = points_per_triangle - points_in_vertices.shape[0] - points_gaussian.shape[0]
+        points_uniform = np.random.rand(num_uniform, 2)*2 - 1
+        
+        # Combine points
+        points = np.vstack([points_uniform, points_gaussian, points_in_vertices])
+        # points = points_in_vertices
 
-        points, sdf = contour_points_generator(signed_distance_polygon, (line_segments, arc_segments, vertices, smooth_factor),
-                                               points_per_triangle)
+        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
         
         # Calculate signed distance for each point
         for i, point in enumerate(points):

@@ -1,1 +1,0 @@
-python quadrangle3D_sdf.py --mode 3d_heaviside_sdf_grid --num_quadrangle 100 --smooth_factor 20 --min_radius 0.01 --max_radius_limit 3 --store_dir ../shape_datasets/quadrangle_3DHeavisideSDF_grid

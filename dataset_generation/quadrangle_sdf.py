@@ -4,10 +4,9 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from matplotlib import pyplot as plt
-from utils_generation import point_to_line_distance, contour_points_generator
-import os
+from utils_generation import point_to_line_distance
 
-def generate_quadrangle(mirrored_quadrangle=True, golden_quadrangle=False):
+def generate_quadrangle():
     """
     Generate a random quadrangle without self-intersections in [0, 1] domain.
     Returns vertices as a numpy array of shape (4, 2).
@@ -21,21 +20,10 @@ def generate_quadrangle(mirrored_quadrangle=True, golden_quadrangle=False):
         x3 = np.random.uniform(-0.8, 0.8)
         y3 = np.random.uniform(-0.2, 0.8)
         v3 = np.array([x3, y3])
-        
-        if golden_quadrangle:
-            v3 = np.array([0.5, 0.5])
-            v4 = np.array([-0.5, 0.5])
 
-        else:
-            p = np.random.uniform(0, 1)
-            if mirrored_quadrangle and p < 0.15:
-                x4 = -x3
-                y4 = y3
-                v4 = np.array([x4, y4])
-            else:
-                x4 = np.random.uniform(-0.8, 0.8)
-                y4 = np.random.uniform(-0.8, 0.2)
-                v4 = np.array([x4, y4])
+        x4 = np.random.uniform(-0.8, 0.8)
+        y4 = np.random.uniform(0.2, 0.8)
+        v4 = np.array([x4, y4])
 
         vertices = np.array([v1, v2, v3, v4])
         
@@ -136,7 +124,7 @@ def signed_distance_quadrangle(point, v1, v2, v3, v4, smooth_factor=40, corner_r
 
 def generate_quadrangle_sdf_dataset(num_quadrangle=1000,
                                     points_per_quadrangle=100,
-                                    smooth_factor=10,
+                                    smooth_factor=40,
                                     filename='quadrangle_sdf_dataset.csv'):
     """
     Generate dataset of signed distances for random quadrangle
@@ -209,11 +197,10 @@ from utils_generation import get_rounded_polygon_segments_rand_radius, signed_di
 def generate_rounded_quadrangle_sdf_dataset(
         num_quadrangle=1000,
         points_per_quadrangle=100,
-        smooth_factor=10,
+        smooth_factor=40,
         min_radius=0.01,
         max_radius_limit=3,
-        filename='quadrangle_sdf_dataset.csv',
-        num_golden_quadrangle=1
+        filename='quadrangle_sdf_dataset.csv'
 ):
     """
     Generate dataset of signed distances for random quadrangle
@@ -227,18 +214,13 @@ def generate_rounded_quadrangle_sdf_dataset(
     data = []
     
     # Generate multiple triangles
-    for q_idx in tqdm(range(num_quadrangle)):
+    for _ in tqdm(range(num_quadrangle)):
         # Generate random quadrangle vertices
-        golden_quadrangle = q_idx < num_golden_quadrangle
-        if golden_quadrangle:
-            print(f"Golden quadrangle {q_idx}")
         while True:
-            vertices = generate_quadrangle(golden_quadrangle=golden_quadrangle)
+            vertices = generate_quadrangle()
             # vertices = generate_triangle()
             line_segments, arc_segments, arcs_intersection = (
-                get_rounded_polygon_segments_rand_radius(vertices, min_radius,
-                                                         max_radius_limit=max_radius_limit,
-                                                         golden_quadrangle=golden_quadrangle))
+                get_rounded_polygon_segments_rand_radius(vertices, min_radius, max_radius_limit=max_radius_limit))
             if arcs_intersection == False:
                 break
 
@@ -248,44 +230,38 @@ def generate_rounded_quadrangle_sdf_dataset(
         arc_ratio = arc_perimeter / perimeter
         arc_centers = np.array([center for _, _, center, _ in arc_segments])
         
-        ###########################################
         # Generate random points
         # Sample more points near the triangle
-        # quadrangle_center = (v1 + v2 + v3 + v4) / 4
+        quadrangle_center = (v1 + v2 + v3 + v4) / 4
         
-        # # Mix of uniform and gaussian sampling
-        # # num_uniform = points_per_quadrangle // 3
-        # num_points_in_vertices = points_per_quadrangle // 3
-        # num_gaussian = points_per_quadrangle // 3
+        # Mix of uniform and gaussian sampling
+        # num_uniform = points_per_quadrangle // 3
+        num_points_in_vertices = points_per_quadrangle // 3
+        num_gaussian = points_per_quadrangle // 3
 
-        # points_gaussian = np.random.normal(loc=quadrangle_center, scale=0.5, size=(num_gaussian, 2))
-        # points_gaussian = np.clip(points_gaussian, -1, 1)
+        points_gaussian = np.random.normal(loc=quadrangle_center, scale=0.5, size=(num_gaussian, 2))
+        points_gaussian = np.clip(points_gaussian, -1, 1)
         
-        # # Uniform sampling in the bounding box
-        # # points_uniform = np.random.rand(num_uniform, 2)*2 - 1           
+        # Uniform sampling in the bounding box
+        # points_uniform = np.random.rand(num_uniform, 2)*2 - 1           
 
-        # # Generate points in the vertices
-        # points_in_vertices = []
-        # for center, radius in zip([v1, v2, v3, v4], arc_radii):
-        #     points_in_circle = np.random.normal(loc=center, scale=0.2, size=(num_points_in_vertices // 4, 2))
-        #     points_in_circle = np.clip(points_in_circle, -1, 1)
-        #     points_in_vertices.append(points_in_circle)
+        # Generate points in the vertices
+        points_in_vertices = []
+        for center, radius in zip([v1, v2, v3, v4], arc_radii):
+            points_in_circle = np.random.normal(loc=center, scale=0.2, size=(num_points_in_vertices // 4, 2))
+            points_in_circle = np.clip(points_in_circle, -1, 1)
+            points_in_vertices.append(points_in_circle)
         
-        # points_in_vertices = np.vstack(points_in_vertices)
+        points_in_vertices = np.vstack(points_in_vertices)
 
-        # # Gaussian sampling around the triangle
-        # num_uniform = points_per_quadrangle - points_in_vertices.shape[0] - points_gaussian.shape[0]
-        # points_uniform = np.random.rand(num_uniform, 2)*2 - 1        
+        # Gaussian sampling around the triangle
+        num_uniform = points_per_quadrangle - points_in_vertices.shape[0] - points_gaussian.shape[0]
+        points_uniform = np.random.rand(num_uniform, 2)*2 - 1        
 
-        # # Combine points
-        # points = np.vstack([points_uniform, points_gaussian, points_in_vertices])
+        # Combine points
+        points = np.vstack([points_uniform, points_gaussian, points_in_vertices])
 
-        # sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
-
-        ###########################################
-
-        points, sdf = contour_points_generator(signed_distance_polygon, (line_segments, arc_segments, vertices, smooth_factor),
-                                               points_per_quadrangle)
+        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
         
         # Calculate signed distance for each point
         for i, point in enumerate(points):
@@ -323,7 +299,7 @@ def generate_rounded_quadrangle_sdf_dataset(
 def generate_rounded_quadrangle_sdf_surface_dataset(
         num_quadrangle=1000,
         points_per_quadrangle=1000,
-        smooth_factor=10,
+        smooth_factor=40,
         filename='../shape_datasets/quadrangle_sdf_surface_dataset_test',
         max_radius_limit=3,
         axes_length=1):
@@ -406,8 +382,7 @@ def generate_quadrangle_reconstruction_dataset(
         smooth_factor=40,
         filename='quadrangle_reconstruction_dataset',
         axes_length=1,
-        max_radius_limit=3,
-        num_golden_quadrangle=1):
+        max_radius_limit=3):
     """
     Generate dataset of signed distances for random quadrangle
     
@@ -420,17 +395,13 @@ def generate_quadrangle_reconstruction_dataset(
     # Create a grid of points
 
     # Generate multiple triangles
-    for q_idx in tqdm(range(num_quadrangle)):
+    for _ in tqdm(range(num_quadrangle)):
         # Generate random quadrangle vertices
-        golden_quadrangle = q_idx < num_golden_quadrangle
-        if golden_quadrangle:
-            print(f"Golden quadrangle {q_idx}")
         while True:
-            vertices = generate_quadrangle(golden_quadrangle=golden_quadrangle)
+            vertices = generate_quadrangle()
             # vertices = generate_triangle()
             line_segments, arc_segments, arcs_intersection = (
-                get_rounded_polygon_segments_rand_radius(vertices, 0.1, max_radius_limit=max_radius_limit,
-                                                         golden_quadrangle=golden_quadrangle))
+                get_rounded_polygon_segments_rand_radius(vertices, 0.1, max_radius_limit=max_radius_limit))
             if arcs_intersection == False:
                 break
 
@@ -467,81 +438,12 @@ def generate_quadrangle_reconstruction_dataset(
 
     return df
 
-def generate_quadrangle_vae_dataset(num_quadrangle=1000,
-                                 smooth_factor=10,
-                                 dataset_dir=None,
-                                 num_golden_quadrangle=0,
-                                 image_size=64,
-                                 max_radius_limit=3,
-                                 chi_size = 17):
-    """
-    Generate a dataset of points and their SDFs for random quadrangle.
-    """
-    from utils_generation import chi_indexing
-
-    if dataset_dir is None:
-        raise ValueError("dataset_dir must be provided")
-    
-    os.makedirs(dataset_dir, exist_ok=True)
-    
-    # Create a grid of points
-    point_per_side = image_size
-    x = np.linspace(-1, 1, point_per_side)
-    y = np.linspace(-1, 1, point_per_side)
-    X, Y = np.meshgrid(x, y)
-    points = np.array([X.flatten(), Y.flatten()]).T
-
-    min_ratio = 0.5
-    max_ratio = 1.5
-
-    chi = np.zeros(chi_size)
-    chi[0] = 1
-
-    
-    for q_idx in tqdm(range(num_quadrangle)):
-        # Generate random quadrangle parameters
-        golden_quadrangle = q_idx < num_golden_quadrangle
-        if golden_quadrangle:
-            print(f"Golden quadrangle {q_idx}")
-        while True:
-            vertices = generate_quadrangle(golden_quadrangle=golden_quadrangle)
-            # vertices = generate_triangle()
-            line_segments, arc_segments, arcs_intersection = (
-                get_rounded_polygon_segments_rand_radius(vertices, 0.1, max_radius_limit=max_radius_limit,
-                                                         golden_quadrangle=golden_quadrangle))
-            if arcs_intersection == False:
-                break
-
-        v1, v2, v3, v4 = vertices
-        arc_radii = np.array([radius for _, _, _, radius in arc_segments])
-
-        hv_sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor)
-        
-        chi[chi_indexing["x6"]] = v3[0]
-        chi[chi_indexing["y6"]] = v3[1]
-        chi[chi_indexing["x7"]] = v4[0]
-        chi[chi_indexing["y7"]] = v4[1]
-        
-        chi[chi_indexing["R4"]] = arc_radii[0]/max_radius_limit
-        chi[chi_indexing["R5"]] = arc_radii[1]/max_radius_limit
-        chi[chi_indexing["R6"]] = arc_radii[2]/max_radius_limit
-        chi[chi_indexing["R7"]] = arc_radii[3]/max_radius_limit
-
-        hv_sdf_2d = hv_sdf.reshape(image_size, image_size)
-        filename = f'{dataset_dir}/quadrangle_{q_idx}.npy'
-        data_to_save = {
-            "hv_sdf_2d": hv_sdf_2d,
-            "chi": chi,
-            "golden": golden_quadrangle
-        }
-        np.save(filename, data_to_save)
-
 #############################################################
 
 def generate_quadrangle_random_radius_dataset(
         num_quadrangle=100,
         sample_per_quadrangle=100,
-        smooth_factor=10,
+        smooth_factor=40,
         filename='quadrangle_random_radius_dataset',
         max_radius_limit=3,
         axes_length=1   

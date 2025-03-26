@@ -71,6 +71,10 @@ class TopOptimizer2D:
 
         self.Th = LoadedMesh2D(f'../{self.problem_args["meshfile"]}')
 
+        self.volumes = self.Th.areas
+        self.volumes_sum = self.volumes.sum()
+        self.treshold = args.get('treshold', None)
+
         # to save indeces and K_e for assembling global stiffness matrix
         self.ik = []
         self.jk = []
@@ -290,6 +294,31 @@ class TopOptimizer2D:
     def save_solution(self, directory):
         np.save(f"{directory}/u.npy", self.u)
         np.save(f"{directory}/x.npy", self.x)
+
+    def solve_linear_elasticity(self, xPhys):
+
+        # build global stiffness matrix
+        sK=(self.K_sep.T*(self.Emin+(xPhys)**self.penal*(self.Emax-self.Emin))).flatten(order='F')
+        K = coo_matrix((sK,(self.iK,self.jK)),shape=(self.ndof,self.ndof)).tocsc()
+
+        # compute RHS
+        # F_free = self.f[self.free_dof] - (K[self.free_dof,:][:,np.concatenate((self.moved_dof, self.fixed_dof)).astype(int)] @ self.u[np.concatenate((self.moved_dof, self.fixed_dof)).astype(int)])
+        F_free = self.f[self.free_dof] - (K[self.free_dof,:][:,self.moved_fixed_dof] @ self.u[self.moved_fixed_dof])
+        
+        K_free = K[self.free_dof,:][:,self.free_dof]
+
+        # compute SLE
+        K_free = K_free.tocsc() #  Need CSR for SuperLU factorisation
+        lu = sla.splu(K_free)
+        self.u[self.free_dof] = lu.solve(F_free)
+
+        for i, (edof_e, K_e_flatten) in enumerate(zip(self.edof, self.K_sep)): # iterate each element
+            u_e = self.u[edof_e] # vector of displacements for the element
+            K_e = K_e_flatten.reshape(6, 6) # upload K_e
+            self.ce[i] = np.dot(np.dot(u_e.T, K_e), u_e) # compute compliance for the element
+
+        self.obj=((self.Emin+xPhys**self.penal*(self.Emax-self.Emin))*self.ce).sum() # global compliance
+
     
     def optimize(self, plot_interval = 10):
         self.log_meta()
@@ -298,31 +327,7 @@ class TopOptimizer2D:
             counter += 1
             xPhys = self.method.get_x(self.meth_args)
 
-            # build global stiffness matrix
-            sK=(self.K_sep.T*(self.Emin+(xPhys)**self.penal*(self.Emax-self.Emin))).flatten(order='F')
-            # print(sK.shape)
-            # print(self.iK.shape)
-            # print(self.ndof)
-            K = coo_matrix((sK,(self.iK,self.jK)),shape=(self.ndof,self.ndof)).tocsc()
-
-            # compute RHS
-            # print("compute RHS")
-            # F_free = self.f[self.free_dof] - (K[self.free_dof,:][:,np.concatenate((self.moved_dof, self.fixed_dof)).astype(int)] @ self.u[np.concatenate((self.moved_dof, self.fixed_dof)).astype(int)])
-            F_free = self.f[self.free_dof] - (K[self.free_dof,:][:,self.moved_fixed_dof] @ self.u[self.moved_fixed_dof])
-            
-            K_free = K[self.free_dof,:][:,self.free_dof]
-
-            # if counter == 30:
-            #     self.F_free_to_invest = F_free.copy()
-            #     self.K_free_to_invest = K_free.copy()
-            #     break
-
-            # compute SLE
-            # print("compute SLE")
-            K_free = K_free.tocsc() #  Need CSR for SuperLU factorisation
-            lu = sla.splu(K_free)
-            self.u[self.free_dof] = lu.solve(F_free)
-
+            self.solve_linear_elasticity(xPhys)
             # show displacement
             # self.Th.plot_displacement(self.u)
             # break
@@ -332,24 +337,22 @@ class TopOptimizer2D:
             # print("U max", self.u.max())
             # compute compliance vector
             # print("Compute compliance vecotor ...")
-            for i, (edof_e, K_e_flatten) in enumerate(zip(self.edof, self.K_sep)): # iterate each element
-                u_e = self.u[edof_e] # vector of displacements for the element
-                K_e = K_e_flatten.reshape(6, 6) # upload K_e
-                self.ce[i] = np.dot(np.dot(u_e.T, K_e), u_e) # compute compliance for the element
-
-            
-            self.obj=((self.Emin+xPhys**self.penal*(self.Emax-self.Emin))*self.ce).sum() # global compliance
             # print("Computer obj ...: ", self.obj)
 
             self.log_meta()
             self.update_meth_args()
 
-        self.x = xPhys
+        if self.treshold is not None:
+            self.x = np.where(xPhys > self.treshold, 1, 0)
+        else:
+            self.x = xPhys
+
+        self.solve_linear_elasticity(self.x)
 
         self.stresses = self.compute_stresses()
         self.von_mises = self.compute_von_mises(self.stresses)
 
-        self.Th.plot_topology(xPhys, von_mises=self.von_mises, image_size=self.image_size)
+        self.Th.plot_topology(self.x, von_mises=self.von_mises, image_size=self.image_size)
 
     def compute_stresses(self):
         """
@@ -425,6 +428,90 @@ class TopOptimizer2D:
         #   sigma_vm = sqrt( sigma_x^2 - sigma_x*sigma_y + sigma_y^2 + 3*tau_xy^2 )
         von_mises = np.sqrt(sigma_x**2 - sigma_x * sigma_y + sigma_y**2 + 3 * tau_xy**2)
         return von_mises
+    
+
+    def load_solution_from_2d_tensor(self, filename, h_flopping=False, v_flopping=False):
+        self.xPhys_2d = np.load(filename)
+
+        min_x = np.round(self.Th.q[:, 0].min(), 2)
+        max_x = np.round(self.Th.q[:, 0].max(), 2)
+        min_y = np.round(self.Th.q[:, 1].min(), 2)
+        max_y = np.round(self.Th.q[:, 1].max(), 2)
+
+        # Compute the expected aspect ratio based on the physical domain dimensions
+        expected_ratio = (max_x - min_x) / (max_y - min_y)
+        # Get the current grid aspect ratio from the loaded 2D tensor (columns/rows)
+        grid_rows, grid_cols = self.xPhys_2d.shape
+        grid_ratio = grid_cols / grid_rows
+        # Check if the grid ratio matches the expected ratio within a relative tolerance
+        if not np.isclose(expected_ratio, grid_ratio, rtol=0.1):
+            print(f"[INFO] Aspect ratio mismatch detected: expected ratio {expected_ratio:.2f} vs grid ratio {grid_ratio:.2f}. Transposing xPhys_2d.")
+            self.xPhys_2d = self.xPhys_2d.T
+
+        if h_flopping:
+            self.xPhys_2d = np.flip(self.xPhys_2d, axis=1)
+        if v_flopping:
+            self.xPhys_2d = np.flip(self.xPhys_2d, axis=0)
+
+        # Determine the grid dimensions from the loaded 2D physical solution
+        grid_rows, grid_cols = self.xPhys_2d.shape  # rows correspond to y, cols to x
+
+        # Compute element centroids; if precomputed centroids exist use them, otherwise compute from nodal coordinates.
+        if hasattr(self.Th, 'centroids'):
+            centroids = self.Th.centroids
+        else:
+            centroids = np.array([np.mean(self.Th.q[self.Th.me[i]], axis=0) for i in range(self.Th.me.shape[0])])
+
+        # Initialize self.x to store the interpolated value for each element
+        xPhys = np.zeros(centroids.shape[0])
+
+        # For each element, map its centroid to the grid and compute the average of the four closest grid points.
+        for i, (x_coord, y_coord) in enumerate(centroids):
+            # Map physical coordinates to fractional grid indices using the provided limits.
+            col_f = (x_coord - min_x) / (max_x - min_x) * (grid_cols - 1)
+            row_f = (y_coord - min_y) / (max_y - min_y) * (grid_rows - 1)
+
+            # Determine the indices of the four surrounding grid points.
+            left_idx = int(np.floor(col_f))
+            right_idx = left_idx + 1
+            top_idx = int(np.floor(row_f))
+            bottom_idx = top_idx + 1
+
+            # Clamp the indices to ensure they fall within the valid range.
+            if right_idx >= grid_cols:
+                right_idx = grid_cols - 1
+                left_idx = right_idx - 1
+            if bottom_idx >= grid_rows:
+                bottom_idx = grid_rows - 1
+                top_idx = bottom_idx - 1
+
+            # Extract the values from the four nearest grid points.
+            v1 = self.xPhys_2d[top_idx, left_idx]
+            v2 = self.xPhys_2d[top_idx, right_idx]
+            v3 = self.xPhys_2d[bottom_idx, left_idx]
+            v4 = self.xPhys_2d[bottom_idx, right_idx]
+
+            # Compute the average value and assign it to self.x for the current element.
+            xPhys[i] = (v1 + v2 + v3 + v4) / 4.0
+
+        # self.xPhys = np.zeros((self.Th.nelems, self.Th.q.shape[0]))
+
+        if self.treshold is not None:
+            self.x = np.where(xPhys > self.treshold, 1, 0)
+        else:
+            self.x = xPhys
+        self.solve_linear_elasticity(self.x)
+
+        self.stresses = self.compute_stresses()
+        self.von_mises = self.compute_von_mises(self.stresses)
+
+        self.Th.plot_topology(self.x, von_mises=self.von_mises, image_size=self.image_size)
+
+    def print_metrics(self):
+        vf = (self.x.T @ self.volumes)/self.volumes_sum
+        compliance = self.obj
+        max_stress = np.max(self.von_mises)
+        print(f"vf: {vf:.6f} | compliance: {compliance:.6f} | max_stress: {max_stress:.6f}")
                    
 class TopOptimizer2D_ADMM(TopOptimizer2D):
     def __init__(self, method_dict, args, activate_method = True) -> None:
@@ -676,9 +763,10 @@ class SIMP_basic:
         # H_vec = torch.clamp(self.H, min=self.Emin, max=self.Emax)**self.penal
         # compliance = torch.dot(H_vec, ce.float())
 
-        print("current volume: ", (self.x.T @ self.volumes)/self.volumes_sum)
-        print("current c: ", obj)
-        
+        # print("current volume: ", (self.x.T @ self.volumes)/self.volumes_sum)
+        # print("current c: ", obj)
+        print(f"Iteration: {self.global_i} | current volfrac: {(self.x.T @ self.volumes)/self.volumes_sum:.6f} | compliance: {obj:.6f}")
+
         change=np.linalg.norm(self.x.reshape(self.nme,1)-self.xold.reshape(self.nme,1),np.inf)
 
         self.global_i += 1

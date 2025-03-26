@@ -1,22 +1,5 @@
 import numpy as np
 
-chi_indexing = {"c": 0,
-                "bw": 1,
-                "x3": 2,
-                "y3": 3,
-                "R1": 4,
-                "R2": 5,
-                "R3": 6,
-                "x6": 7,
-                "y6": 8,
-                "x7": 9,
-                "y7": 10,
-                "R4": 11,
-                "R5": 12,
-                "R6": 13,
-                "R7": 14
-                }
-
 # Using the signed_distance function from previous example
 def point_to_line_distance(point, line_start, line_end):
     """Calculate signed distance from point to line segment"""
@@ -238,49 +221,8 @@ def get_rounded_polygon_segments(vertices, radius): # + -> |
     
     return line_segments, arc_segments, arcs_intersection
 
-def get_rounded_polygon_segments_with_given_radiuses(vertices, radiuses): # + -> |
-    """Get arc segments and line segments for a polygon with rounded corners."""
-    num_vertices = len(vertices)
-    line_segments = []
-    arc_ends = []
-    arc_segments = []
-    v_p_distances = []
-    
-    for i in range(num_vertices):
-        v1 = vertices[i - 1]
-        v2 = vertices[i]
-        v3 = vertices[(i + 1) % num_vertices]
-        
-        p1_new, p2_new, center, start_angle, end_angle = get_corner_points(v1, v2, v3, radiuses[(i - 1) % num_vertices])
-        
-        arc_ends.append((p2_new, p1_new))
-        arc_segments.append((center, start_angle, end_angle, radiuses[(i - 1) % num_vertices]))
-        v_p_distances.append(np.linalg.norm(v2 - p2_new))
 
-    arcs_intersection = False
-    for i in range(num_vertices):
-        v_1 = vertices[i - 1]
-        v_2 = vertices[i]
-        v_1_p_distance = v_p_distances[i - 1]
-        v_2_p_distance = v_p_distances[i]
-
-        segment_length = np.linalg.norm(v_2 - v_1)
-        if v_1_p_distance + v_2_p_distance > segment_length:
-            arcs_intersection = True
-            break
-
-
-    for i in range(num_vertices):
-        line_segments.append((arc_ends[i][0], arc_ends[(i + 1) % num_vertices][1]))
-
-    
-    return line_segments, arc_segments, arcs_intersection
-
-
-def get_rounded_polygon_segments_rand_radius(vertices,
-                                             min_radius = 0.01,
-                                             max_radius_limit = 3,
-                                             golden_quadrangle = False): # + ->
+def get_rounded_polygon_segments_rand_radius(vertices, min_radius = 0.01, max_radius_limit = 3): # + ->
     """Get arc segments and line segments for a polygon with rounded corners."""
     
     line_segments_cut, _,  arcs_intersection = get_rounded_polygon_segments(vertices, min_radius)
@@ -299,10 +241,6 @@ def get_rounded_polygon_segments_rand_radius(vertices,
         second_middle_segments = [] 
 
         random_variables = np.random.uniform(0.2, 0.8, num_vertices)
-        
-        previous_radius = max_radius_limit
-
-        all_equal_radius = np.random.uniform(0, 1) < 0.15
 
         for i in range(num_vertices):
             v1 = vertices[i]
@@ -330,17 +268,7 @@ def get_rounded_polygon_segments_rand_radius(vertices,
 
             max_radius, center = maximal_rounding_radius(A1, A2, B1, B2)
             max_radius = min(max_radius, max_radius_limit)
-
-            p = np.random.uniform(0, 1)
-            
-            if p > 0.85 or golden_quadrangle or all_equal_radius:
-                if golden_quadrangle:
-                    valid_radius = 0.5
-                elif all_equal_radius or p > 0.5:
-                    valid_radius = min(max_radius, previous_radius)
-                else:
-                    valid_radius = max_radius
-            elif p < 0.5:
+            if np.random.uniform(0, 1) < 0.5:
                 valid_radius = np.random.uniform(min_radius, max_radius)
             else:
                 valid_radius = np.random.uniform(min_radius, min_radius + (max_radius - min_radius)*0.2)
@@ -350,8 +278,6 @@ def get_rounded_polygon_segments_rand_radius(vertices,
             v_p_distances.append(np.linalg.norm(v2 - p2_new))
             arc_ends.append((p2_new, p1_new))
             arc_segments.append((center, start_angle, end_angle, valid_radius))
-
-            previous_radius = valid_radius
 
         # arcs_intersection = False
         for i in range(num_vertices):
@@ -524,11 +450,10 @@ def points_to_line_distance(points, line_start, line_end): # +|
     dist = np.linalg.norm(points - nearest, axis=1)
     return dist
 
-def signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=10, heaviside=True): # + |
+def signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=40, heaviside=True): # + |
     distances = []
     for line_segment in line_segments:
-        if np.linalg.norm(line_segment[0] - line_segment[1]) > 0.0000001:
-            distances.append(points_to_line_distance(points, line_segment[0], line_segment[1]))
+        distances.append(points_to_line_distance(points, line_segment[0], line_segment[1]))
     for arc_segment in arc_segments:
         distances.append(points_to_arc_distances(points,
                                                 arc_segment[0],
@@ -546,85 +471,6 @@ def signed_distance_polygon(points, line_segments, arc_segments, vertices, smoot
         return 1/(1 + np.exp(-smooth_factor*min_distances))
     else:
         return min_distances
-    
-
-def SDF_polygon_3D(points, bottom_level, line_segments, arc_segments, vertices, smooth_factor=40):
-    """
-    Calculate signed distance from points to a 3D polygon
-    
-    Parameters:
-    points: np.array([[x1, y1, z1], [x2, y2, z2], ...]) - points to calculate distance from
-    bottom_level: float - bottom level of the polygon (z-axis)
-    line_segments: list of tuples - line segments of the polygon
-    arc_segments: list of tuples - arc segments of the polygon
-    vertices: np.array([[x1, y1, z1], [x2, y2, z2], ...]) - vertices of the polygon
-    smooth_factor: float - smooth factor for the signed distance
-    """
-    
-    points_xy = points[:, :2]
-    points_z = points[:, 2]
-
-    sdf_xy = signed_distance_polygon(points_xy,
-                                     line_segments,
-                                     arc_segments,
-                                     vertices,
-                                     smooth_factor=smooth_factor,
-                                     heaviside=False)
-    sdf_z = points_z - bottom_level
-
-    in_contour_over_bottom_level = np.logical_and(sdf_xy > 0, sdf_z >= 0)
-    in_contour_under_bottom_level = np.logical_and(sdf_xy > 0, sdf_z < 0)
-    out_contour_over_bottom_level = np.logical_and(sdf_xy <= 0, sdf_z >= 0)
-    out_contour_under_bottom_level = np.logical_and(sdf_xy <= 0, sdf_z < 0)
-
-    sdf_3d = np.zeros_like(sdf_xy)
-    sdf_3d[in_contour_over_bottom_level] = np.min([sdf_xy[in_contour_over_bottom_level], sdf_z[in_contour_over_bottom_level]], axis=0)
-    sdf_3d[in_contour_under_bottom_level] = sdf_z[in_contour_under_bottom_level]
-    sdf_3d[out_contour_over_bottom_level] = sdf_xy[out_contour_over_bottom_level]
-    sdf_3d[out_contour_under_bottom_level] = -np.sqrt(sdf_xy[out_contour_under_bottom_level]**2 + sdf_z[out_contour_under_bottom_level]**2)
-
-    return sdf_3d
-
-def contour_points_generator(sdf_func, sdf_args, n_points_per_figure):
-
-    n_contour_points_percent = 0.85
-    contour_area_percent = 0.3 
-    noise_scale = 0.01
-
-    n_contour_points = int(n_points_per_figure*n_contour_points_percent)
-    n_outer_points = n_points_per_figure - n_contour_points
-    point_per_side = int(np.sqrt(n_contour_points/contour_area_percent))
-
-    x = np.linspace(-1, 1, point_per_side)
-    y = np.linspace(-1, 1, point_per_side)
-    # Create meshgrid
-    X, Y = np.meshgrid(x, y)
-    # Reshape to get array of 3D points
-    points = np.vstack([X.ravel(), Y.ravel()]).T
-    noise = np.random.normal(loc=0.0, scale=noise_scale, size=points.shape)
-    points = points + noise
-
-    sdf = sdf_func(points, *sdf_args)
-
-    sdf_abs = np.abs(sdf - 0.5)
-    filter_bids = np.argsort(sdf_abs)[:n_contour_points]
-    # Identify outer points that are not among the contour (i.e. lowest |sdf|) points
-    contour_points_temp = points[filter_bids]
-    contour_sdf_temp = sdf[filter_bids]
-    all_indices = np.arange(points.shape[0])
-    non_contour_indices = np.setdiff1d(all_indices, filter_bids)
-    # Randomly sample n_outer_points from the non-contour indices
-    if len(non_contour_indices) >= n_outer_points:
-        random_outer_indices = np.random.choice(non_contour_indices, size=n_outer_points, replace=False)
-    else:
-        random_outer_indices = non_contour_indices
-    outer_points = points[random_outer_indices]
-    outer_sdf = sdf[random_outer_indices]
-    # Combine contour points with the randomly selected outer points (contour points come first)
-    points = np.concatenate([contour_points_temp, outer_points], axis=0)
-    sdf = np.concatenate([contour_sdf_temp, outer_sdf], axis=0)
-
-    return points, sdf
 
 # Plot a sample from the generated DataFrame
 def plot_sample_from_df(df, points_df, sample_index=0):
@@ -1004,187 +850,6 @@ def plot_feature_sdf_item(
         plt.savefig(filename, bbox_inches='tight', pad_inches=0.05)
     plt.show()
 
-
-#################################################
-
-import matplotlib.tri as tri
-from matplotlib.colors import TwoSlopeNorm
-
-def plot_sdf_heav_item_by_tensor(
-        vertices_list,
-        radiuses_list,
-        heaviside_list, # N x WH
-        points, # N x W x H x 2
-        filename=None,
-        # line_segments,
-        # arc_segments        
-):
-    
-    # # Create figure and axis
-    # plt.figure(figsize=(8, 8))
-    # ax = plt.gca()
-    num_of_rows = len(vertices_list)
-    num_samples = points.shape[0]
-
-    print(num_of_rows, num_samples)
-
-    fig = plt.figure(figsize=(4*num_samples, 4*num_of_rows))
-    
-    for j in range(len(vertices_list)):
-        vertices = vertices_list[j]
-        radiuses = radiuses_list[j]
-        heaviside = heaviside_list[j]
-
-        # TODO: add line segments and arc segments
-        line_segments, arc_segments, arcs_intersection = (
-            get_rounded_polygon_segments_with_given_radiuses(vertices, radiuses))
-
-        # vertces_list_local = []
-
-        # v1, v2, v3, v4 = vertices
-        # vertces_list_local.append(v1)
-        # vertces_list_local.append(v2)
-        # vertces_list_local.append(v3)
-        # vertces_list_local.append(v4)
-        
-
-        for i in range(num_samples):
-            # First subplot: 2D Feature Contour
-            ax1 = fig.add_subplot(num_of_rows, num_samples, j*num_samples+i+1)
-            # Second subplot: 3D Surface of SDF
-
-            triang1 = tri.Triangulation(points[i, :, 0], points[i, :, 1])
-            v_center = 0.5 if heaviside.min() < 0.5 and heaviside.max() > 0.5 else (heaviside.max() + heaviside.min())/2
-            # print(heaviside.min(), heaviside.max())
-            # print(v_center)
-            norm = TwoSlopeNorm(vcenter=v_center, vmin=heaviside.min(), vmax=heaviside.max())
-            mesh1 = ax1.tripcolor(triang1, heaviside[i], cmap='seismic', shading='gouraud', norm=norm)
-
-            num_points = points.shape[1]
-            point_per_side = int(np.sqrt(num_points))
-
-            # Plot line segments
-            for start, end in line_segments:
-                ax1.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=3)
-                
-            # Plot arc segments
-            for center, start_angle, end_angle, radius in arc_segments:
-                # Calculate angles for arc
-                
-                # Ensure we draw the shorter arc
-                if abs(end_angle - start_angle) > np.pi:
-                    if end_angle > start_angle:
-                        start_angle += 2*np.pi
-                    else:
-                        end_angle += 2*np.pi
-                        
-                # Create points along arc
-                theta = np.linspace(start_angle, end_angle, 100)
-                x = center[0] + radius * np.cos(theta)
-                y = center[1] + radius * np.sin(theta)
-                ax1.plot(x, y, 'r-', linewidth=3)
-                # ax2.plot(x, y, np.zeros_like(x)+z_offset, 'r-', linewidth=line_width)
-
-            # Set equal aspect ratio and limits for 2D contour
-            ax1.set_aspect('equal')
-            ax1.set_xlim(-1, 1)
-            ax1.set_ylim(-1, 1)
-
-            ax1.set_xticks([])
-            ax1.set_yticks([])
-
-            for spine in ax1.spines.values():
-                spine.set_visible(False)
-
-    plt.tight_layout()
-    if filename:
-        plt.savefig(filename, bbox_inches='tight', pad_inches=0.05)
-    plt.show()
-
-
-def plot_sdf_heav_item_by_tensor_one_row(
-        vertices,
-        radiuses,
-        heaviside, # N x WH
-        points, # N x W x H x 2
-        filename=None,
-        # line_segments,
-        # arc_segments        
-):
-    
-    # # Create figure and axis
-    # plt.figure(figsize=(8, 8))
-    # ax = plt.gca()
-    num_of_rows = 1
-
-    num_of_rows = len(vertices)
-    fig = plt.figure(figsize=(4*num_of_rows, 4*num_of_rows))
-    num_samples = points.shape[0]
-
-    # TODO: add line segments and arc segments
-    line_segments, arc_segments, arcs_intersection = (
-        get_rounded_polygon_segments_with_given_radiuses(vertices, radiuses))
-
-    # vertces_list_local = []
-
-    # v1, v2, v3, v4 = vertices
-    # vertces_list_local.append(v1)
-    # vertces_list_local.append(v2)
-    # vertces_list_local.append(v3)
-    # vertces_list_local.append(v4)
-    
-
-    for i in range(num_samples):
-        # First subplot: 2D Feature Contour
-        ax1 = fig.add_subplot(num_of_rows, num_samples, i+1)
-        # Second subplot: 3D Surface of SDF
-
-        triang1 = tri.Triangulation(points[i, :, 0], points[i, :, 1])
-        norm = TwoSlopeNorm(vcenter=0.5, vmin=heaviside.min(), vmax=heaviside.max())
-        mesh1 = ax1.tripcolor(triang1, heaviside[i], cmap='seismic', shading='gouraud', norm=norm)
-
-        num_points = points.shape[1]
-        point_per_side = int(np.sqrt(num_points))
-
-        # Plot line segments
-        for start, end in line_segments:
-            ax1.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=3)
-            
-        # Plot arc segments
-        for center, start_angle, end_angle, radius in arc_segments:
-            # Calculate angles for arc
-            
-            # Ensure we draw the shorter arc
-            if abs(end_angle - start_angle) > np.pi:
-                if end_angle > start_angle:
-                    start_angle += 2*np.pi
-                else:
-                    end_angle += 2*np.pi
-                    
-            # Create points along arc
-            theta = np.linspace(start_angle, end_angle, 100)
-            x = center[0] + radius * np.cos(theta)
-            y = center[1] + radius * np.sin(theta)
-            ax1.plot(x, y, 'r-', linewidth=3)
-            # ax2.plot(x, y, np.zeros_like(x)+z_offset, 'r-', linewidth=line_width)
-
-        # Set equal aspect ratio and limits for 2D contour
-        ax1.set_aspect('equal')
-        ax1.set_xlim(-1, 1)
-        ax1.set_ylim(-1, 1)
-
-        ax1.set_xticks([])
-        ax1.set_yticks([])
-
-        for spine in ax1.spines.values():
-            spine.set_visible(False)
-
-    plt.tight_layout()
-    if filename:
-        plt.savefig(filename, bbox_inches='tight', pad_inches=0.05)
-    else:
-        plt.show()
-
 def plot_sdf_heav_item(
         smooth_factor=40,
         num_points=100,
@@ -1198,18 +863,12 @@ def plot_sdf_heav_item(
         feature_type='triangle',
         text_size=45,
         azimuth=75,
-        elev=21,
-        golden_quadrangle=False
+        elev=21
 ):
     
     # # Create figure and axis
     # plt.figure(figsize=(8, 8))
     # ax = plt.gca()
-    from triangle_sdf import generate_triangle
-    from quadrangle_sdf import generate_quadrangle
-    from ellipse_sdf import ellipse_sdf
-    import matplotlib.tri as tri
-    from matplotlib.colors import TwoSlopeNorm
 
 
     if feature_type == 'triangle':
@@ -1222,9 +881,9 @@ def plot_sdf_heav_item(
 
     elif feature_type == 'quadrangle':
         while True:
-            vertices = generate_quadrangle(golden_quadrangle=golden_quadrangle)
+            vertices = generate_quadrangle()
             line_segments, arc_segments, arcs_intersection = (
-                get_rounded_polygon_segments_rand_radius(vertices, 0.1, golden_quadrangle=golden_quadrangle))
+                get_rounded_polygon_segments_rand_radius(vertices, 0.1))
             if arcs_intersection == False:
                 break
 
@@ -1267,17 +926,11 @@ def plot_sdf_heav_item(
         heaviside = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor, heaviside=True)
     else:   
         a = 0.5
-        if golden_quadrangle:
-            b_w = 1
-        else:
-            b_w = np.random.uniform(0.5, 1.5)  # Semi-minor axis (smaller than a)
+        b_w = np.random.uniform(0.5, 1.5)  # Semi-minor axis (smaller than a)
         b = a * b_w
         
         sdf = ellipse_sdf(points, a, b)
-        heaviside = 1/(1 + np.exp(-smooth_factor*sdf))
-
-    print("SDF min: ", sdf.min(), "SDF max: ", sdf.max())
-    print("Heaviside min: ", heaviside.min(), "Heaviside max: ", heaviside.max())
+        heaviside = 1/(1 + np.exp(smooth_factor*sdf))
 
     fig = plt.figure(figsize=(12, 4))
 
@@ -1300,9 +953,6 @@ def plot_sdf_heav_item(
     Z = sdf.reshape((point_per_side, point_per_side))
     # Adjust the colormap to center around 0
     z_offset = 0.05
-
-    # Plot the surface after plotting the segments to ensure they are not obscured
-    surf1 = ax2.plot_surface(X, Y, Z, cmap=scatter_cmap, edgecolor='none', alpha=1, norm=norm)
 
     if feature_type == 'triangle' or feature_type == 'quadrangle':
 
@@ -1329,7 +979,8 @@ def plot_sdf_heav_item(
             ax1.plot(x, y, 'r-', linewidth=line_width)
             # ax2.plot(x, y, np.zeros_like(x)+z_offset, 'r-', linewidth=line_width)
 
-        
+        # Plot the surface after plotting the segments to ensure they are not obscured
+        surf1 = ax2.plot_surface(X, Y, Z, cmap=scatter_cmap, edgecolor='none', alpha=1, norm=norm)
 
             
     if feature_type == 'ellipse':
@@ -1390,35 +1041,3 @@ def plot_sdf_heav_item(
     if filename:
         plt.savefig(filename, bbox_inches='tight', pad_inches=0.05)
     plt.show()
-
-##############################
-
-import glob
-# import matplotlib.pyplot as plt
-import os
-def plot_vae_dataset(dataset_dir, gf_type='ellipse'):
-    # Get list of .npy files in the dataset directory
-    npy_files = glob.glob(os.path.join(dataset_dir, '*.npy'))
-    npy_files = [file for file in npy_files if gf_type in os.path.basename(file)]
-    
-    if not npy_files:
-        print("No .npy files found in", dataset_dir)
-    else:
-        # Plot a few examples (up to 3 files)
-        num_files_to_plot = min(3, len(npy_files))
-        for file in npy_files[:num_files_to_plot]:
-            # Load the saved numpy file (assumes data was saved as a dict)
-            data = np.load(file, allow_pickle=True).item()
-            # Try to extract 'hv_sdf_2d'; if not found, fall back to 'sdf_2d'
-            hv_sdf_2d = data.get('hv_sdf_2d', data.get('sdf_2d', None))
-            if hv_sdf_2d is None:
-                print(f"Neither 'hv_sdf_2d' nor 'sdf_2d' found in {file}")
-                continue
-
-            # Plot the 2D array using imshow
-            plt.figure(figsize=(5, 5))
-            plt.imshow(hv_sdf_2d, cmap='viridis')
-            plt.title(f"Hv SDF 2D from {os.path.basename(file)}")
-            plt.colorbar()
-            plt.show()
-
