@@ -70,17 +70,30 @@ def main(args):
     models_dir = args.model_dir
     run_name = f'frst_{config_name}_{args.run_name}'
 
-    dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf10_arc_ratio_5000.csv',
-                    f'{dataset_path}/triangle_sdf_dataset_smf10_arc_ratio_5000.csv', 
-                    f'{dataset_path}/quadrangle_sdf_dataset_smf10_arc_ratio_5000.csv']
+    # dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf10_arc_ratio_5000.csv',
+    #                 f'{dataset_path}/triangle_sdf_dataset_smf10_arc_ratio_5000.csv', 
+    #                 f'{dataset_path}/quadrangle_sdf_dataset_smf10_arc_ratio_5000.csv']
     
-    dataset_test_files = [f'{dataset_path}/ellipse_sdf_dataset_smf10_arc_ratio_500_test.csv',
-                 f'{dataset_path}/triangle_sdf_dataset_smf10_arc_ratio_500_test.csv', 
-                 f'{dataset_path}/quadrangle_sdf_dataset_smf10_arc_ratio_500_test.csv']
+    # dataset_test_files = [f'{dataset_path}/ellipse_sdf_dataset_smf10_arc_ratio_500_test.csv',
+    #              f'{dataset_path}/triangle_sdf_dataset_smf10_arc_ratio_500_test.csv', 
+    #              f'{dataset_path}/quadrangle_sdf_dataset_smf10_arc_ratio_500_test.csv']
     
-    surface_files = [f'{dataset_path}/ellipse_sdf_surface_dataset_smf10_150.csv',
-                 f'{dataset_path}/triangle_sdf_surface_dataset_smf10_150.csv',
-                 f'{dataset_path}/quadrangle_sdf_surface_dataset_smf10_150.csv']
+    # surface_files = [f'{dataset_path}/ellipse_sdf_surface_dataset_smf10_150.csv',
+    #              f'{dataset_path}/triangle_sdf_surface_dataset_smf10_150.csv',
+    #              f'{dataset_path}/quadrangle_sdf_surface_dataset_smf10_150.csv']
+
+    dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_5000.csv',
+                    f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_5000.csv', 
+                    f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_5000.csv']
+    
+    dataset_test_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_500_test.csv',
+                 f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_500_test.csv', 
+                 f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_500_test.csv']
+    
+    surface_files = [f'{dataset_path}/ellipse_sdf_surface_dataset_smf22_150.csv',
+                 f'{dataset_path}/triangle_sdf_surface_dataset_smf20_150.csv',
+                 f'{dataset_path}/quadrangle_sdf_surface_dataset_smf20_150.csv']
+    
     
     # radius_samples_files = [f'{dataset_path}/triangle_sdf_dataset_smf10_radius_sample_100.csv',
     #                         f'{dataset_path}/quadrangle_sdf_dataset_smf10_radius_sample_100.csv']

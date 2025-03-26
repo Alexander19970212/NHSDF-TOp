@@ -75,6 +75,15 @@ def main(args):
     saved_model_path = f'{models_dir}/{run_name}_HvDecGlobal.pt'
 
 
+    # dataset_train_files = [f'{dataset_path}/ellipse_reconstruction_dataset_train.csv',
+    #                    f'{dataset_path}/triangle_reconstruction_dataset_train.csv',
+    #                     f'{dataset_path}/quadrangle_reconstruction_dataset_train.csv',
+    #                     ]
+
+    # dataset_test_files = [f'{dataset_path}/ellipse_reconstruction_dataset_test.csv',
+    #                     f'{dataset_path}/triangle_reconstruction_dataset_test.csv',
+    #                     f'{dataset_path}/quadrangle_reconstruction_dataset_test.csv',
+    #                 ]
     dataset_train_files = [f'{dataset_path}/ellipse_reconstruction_dataset_train.csv',
                        f'{dataset_path}/triangle_reconstruction_dataset_train.csv',
                         f'{dataset_path}/quadrangle_reconstruction_dataset_train.csv',

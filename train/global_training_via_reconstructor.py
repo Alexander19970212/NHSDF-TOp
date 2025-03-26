@@ -81,6 +81,7 @@ def main(args):
                         f'{dataset_path}/triangle_reconstruction_dataset_test.csv',
                         f'{dataset_path}/quadrangle_reconstruction_dataset_test.csv',
                     ]
+    
 
     train_dataset = ReconstructionDataset(dataset_train_files)
     test_dataset = ReconstructionDataset(dataset_test_files)
