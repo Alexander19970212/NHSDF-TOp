@@ -9,7 +9,7 @@ DATASET_PATH="shape_datasets"
 
 # ROUND_NUM=6
 
-for ROUND_NUM in 7 8 9; do
+for ROUND_NUM in 11 12 13; do
     echo "Running round ${ROUND_NUM}"
     METRICS_FILE="src/final_metrics_round${ROUND_NUM}_frst_strtg_VAEs.json"
     METRICS_FILE_RECON="src/final_metrics_round${ROUND_NUM}_frst_strtg_VAEs_recon.json"
