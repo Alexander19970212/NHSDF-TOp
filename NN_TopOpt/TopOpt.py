@@ -286,17 +286,24 @@ class TopOptimizer2D:
                           zoom_center=None,
                           zoom_radius=0.01,
                           zoom_factor=3,
+                          plot_von_mises=True,
                           ellipse_color='darkorange'):
-        self.Th.plot_topology(
-            self.x,
-            image_size=self.image_size,
-            geometry_features=geometry_features,
-            filename=filename,
-            zoom_center=zoom_center,
-            zoom_radius=zoom_radius,
-            zoom_factor=zoom_factor,
-            ellipse_color=ellipse_color
-        )
+        
+        plot_args = {
+            "xPhys": self.x,
+            "image_size": self.image_size,
+            "geometry_features": geometry_features,
+            "filename": filename,
+            "zoom_center": zoom_center,
+            "zoom_radius": zoom_radius,
+            "zoom_factor": zoom_factor,
+            "ellipse_color": ellipse_color
+        }
+        if plot_von_mises:
+            plot_args["von_mises"] = self.von_mises
+
+        self.Th.plot_topology(**plot_args)
+         
 
     def save_solution(self, directory):
         np.save(f"{directory}/u.npy", self.u)
@@ -519,6 +526,8 @@ class TopOptimizer2D:
         compliance = self.obj
         max_stress = np.max(self.von_mises)
         print(f"vf: {vf:.6f} | compliance: {compliance:.6f} | max_stress: {max_stress:.6f}")
+
+        return vf, compliance, max_stress
                    
 class TopOptimizer2D_ADMM(TopOptimizer2D):
     def __init__(self, method_dict, args, activate_method = True) -> None:

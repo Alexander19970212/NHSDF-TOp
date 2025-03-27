@@ -8,7 +8,7 @@ DATASET_PATH="shape_datasets"
 MAX_EPOCHS=1  # Adjust as needed
 # ROUND_NUM=6
 
-for ROUND_NUM in 11 12 13; do
+for ROUND_NUM in 6 8 9; do
     echo "Running round ${ROUND_NUM}"
     METRICS_FILE="src/final_metrics_round${ROUND_NUM}_scnd_strtg_MMD_VAEs.json"
     METRICS_FILE_RECON="src/final_metrics_round${ROUND_NUM}_scnd_strtg_MMD_VAEs_recon.json"

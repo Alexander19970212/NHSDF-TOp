@@ -1091,6 +1091,11 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.config_dir = args["args"]["config_dir"]
         num_samples = args["args"]["N_g"]
 
+        self.ks_smooth_factor = args["args"].get("ks_smooth_factor", 40)
+        print(self.ks_smooth_factor)
+        self.H_min = 0.5
+        self.H_max = 0.5
+
         self.input_dim = 17
 
         self.coords = coords.to(torch.float32)   
@@ -1562,13 +1567,17 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
             self.compute_merging_pairs(kernel)
 
         # Kreisselmeier-Steinhause
-        sm_coeff = 40
+        sm_coeff = self.ks_smooth_factor
         kernel_sum = kernel.sum(dim=1)
         kernel = torch.sigmoid(self.smooth_k*(kernel - 0.5))
         exp_kernel_sum = torch.exp(sm_coeff*kernel).sum(dim=1)+1e-8
         # exp_kernel_sum_shifted = torch.exp(kernel_shifted).sum(dim=1)+1e-8
         # self.H = (1 - self.Emin)*torch.sigmoid(-self.smooth_k*(kernel_sum - 0.5)) + self.Emin
         self.H = (1 - self.Emin)*(1 - torch.log(exp_kernel_sum)/sm_coeff) + self.Emin
+
+        self.H_min = min(self.H_min, self.H.min())
+        self.H_max = max(self.H_max, self.H.max())
+
         # self.H_splitted = torch.sigmoid(0.1*self.smooth_k*(kernel_shifted - 0.5))
         self.H_splitted = kernel_shifted
         self.H_splitted_sum = self.H_splitted.sum(dim=1)

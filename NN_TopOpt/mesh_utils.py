@@ -119,6 +119,7 @@ class LoadedMesh2D:
             # print(colors)
             # colors[:, 3] = xPhys  # Set alpha channel using xPhys: 0 is fully transparent, 1 is fully opaque
             # print(colors)
+            xPhys = np.clip(xPhys, 0.0, 1.0)
 
             num_colors = 10
             markers = np.array([0, 500])
@@ -132,10 +133,46 @@ class LoadedMesh2D:
             #                    cmap=discrete_cmap, norm=norm, shading='flat')
             
 
-            tpc = ax.tripcolor(triangulation, facecolors=von_mises, alpha=xPhys,
-                               cmap="turbo", shading='flat')
+            # tpc = ax.tripcolor(triangulation, facecolors=von_mises, alpha=xPhys,
+            #                    cmap="turbo", shading='flat')
+            # Convert triangle-based von_mises values to node-based values by averaging
+            node_vals = np.zeros(x.shape)
+            counts = np.zeros(x.shape)
+            # Accumulate triangle values to their respective nodes
+            np.add.at(node_vals, self.me.ravel(), np.repeat(von_mises, self.me.shape[1]))
+            np.add.at(counts, self.me.ravel(), 1)
+            # Compute the average for each node
+            node_vals = node_vals / counts
+
+            #mask the nodes with xPhys < 0.3
+            mask = xPhys < 0.3
+            triangulation.set_mask(mask)
+
+            von_mises_max = von_mises[~mask].max()
+            von_mises_min = von_mises[~mask].min()
+
+            print(von_mises_max, von_mises_min)
+
+            # Create levels for the contour plot
+            levels_percentages = np.array([0, 0.05, 0.08, 0.1, 0.12, 0.14, 0.16,  0.2, 0.4, 0.7, 0.8, 1])
+            levels = levels_percentages * (von_mises_max - von_mises_min) + von_mises_min
             
-            fig.colorbar(tpc, ax=ax)
+            # Compute contour levels using quantile statistics on the node_vals distribution.
+            # This approach divides the data into bins with equal probability mass, so regions with more frequent values
+            # receive finer resolution in the contour plot.
+            # n_levels = 12  # Adjust the number of contour levels as needed for finer resolution in dense areas
+            # levels = np.percentile(node_vals, np.linspace(0, 100, n_levels))
+            # # Remove any duplicate levels that may occur in low variance scenarios to ensure proper contouring.
+            # levels = np.unique(levels)
+
+            tpc = ax.tricontourf(triangulation, node_vals,
+                                levels=levels,
+                                cmap="turbo")
+
+            cbar = fig.colorbar(tpc, ax=ax)
+            cbar.set_label("Von Mises stress (Pa)")
+
+            ax.set_title("Von Mises stress")
 
             # Create an additional axes for the histogram inset
             # ax_hist = fig.add_axes([0.7, 0.2, 0.2, 0.2])  # [left, bottom, width, height] in figure fraction coordinates

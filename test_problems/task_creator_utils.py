@@ -34,7 +34,7 @@ def create_task(poligone_vertices, task_name, constraints, loads, meshsize = 0.0
     # Creates  graphical user interface
     # if 'close' not in sys.argv:
         # gmsh.fltk.run()\
-    gmsh.write(f"{task_name}.msh")
+    # gmsh.write(f"{task_name}.msh")
     
     # It finalize the Gmsh API
     gmsh.finalize()

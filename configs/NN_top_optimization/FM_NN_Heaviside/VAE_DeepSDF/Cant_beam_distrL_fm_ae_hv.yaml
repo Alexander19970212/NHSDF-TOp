@@ -33,8 +33,8 @@ params:
   config_dir: ../configs/NN_sdf_experiments/final_experiments/VAEs
   merging_marker: 10
   merging_adaptation_length: 10
-  compliance_w: 16
-  volfrac_w: 3000000
+  compliance_w: 16384000000 #16
+  volfrac_w: 4000000
   gaussian_overlap_w: 0
   gaussian_overlap_scale: 1.3
   rc_loss_w: 100000
