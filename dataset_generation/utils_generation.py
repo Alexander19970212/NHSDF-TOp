@@ -450,7 +450,8 @@ def points_to_line_distance(points, line_start, line_end): # +|
     dist = np.linalg.norm(points - nearest, axis=1)
     return dist
 
-def signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=40, heaviside=True): # + |
+def signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=40, heaviside=True,
+                            noise=False, noise_level=0.01): # + |
     distances = []
     for line_segment in line_segments:
         distances.append(points_to_line_distance(points, line_segment[0], line_segment[1]))
@@ -467,6 +468,8 @@ def signed_distance_polygon(points, line_segments, arc_segments, vertices, smoot
     inside_grid, middle_points_intermideate_line_segments = if_points_in_polygon(points, line_segments, arc_segments, vertices)
 
     min_distances[~inside_grid] = -min_distances[~inside_grid]
+    if noise:
+        min_distances = min_distances + np.random.uniform(-noise_level, noise_level, size=min_distances.shape)
     if heaviside:
         return 1/(1 + np.exp(-smooth_factor*min_distances))
     else:
@@ -863,13 +866,20 @@ def plot_sdf_heav_item(
         feature_type='triangle',
         text_size=45,
         azimuth=75,
-        elev=21
+        elev=21,
+        noise_sdf=False,
+        noise_heaviside=False,
+        noise_level=0.01
 ):
     
     # # Create figure and axis
     # plt.figure(figsize=(8, 8))
     # ax = plt.gca()
-
+    from triangle_sdf import generate_triangle
+    from quadrangle_sdf import generate_quadrangle
+    from ellipse_sdf import ellipse_sdf
+    import matplotlib.tri as tri
+    from matplotlib.colors import TwoSlopeNorm
 
     if feature_type == 'triangle':
         while True:
@@ -922,8 +932,13 @@ def plot_sdf_heav_item(
 
 
     if feature_type == 'triangle' or feature_type == 'quadrangle':
-        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor, heaviside=False)
-        heaviside = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor, heaviside=True)
+        sdf = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor, heaviside=False,
+                                      noise=noise_sdf, noise_level=noise_level)
+        heaviside = signed_distance_polygon(points, line_segments, arc_segments, vertices, smooth_factor=smooth_factor, heaviside=True,
+                                            noise=noise_sdf, noise_level=noise_level)
+        
+        if noise_heaviside:
+            heaviside = heaviside + np.random.uniform(-noise_level, noise_level, size=heaviside.shape)
     else:   
         a = 0.5
         b_w = np.random.uniform(0.5, 1.5)  # Semi-minor axis (smaller than a)

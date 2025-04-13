@@ -1,0 +1,9 @@
+{
+    "run_3d_HvDecGlobal": {
+        "val_kl_divergence/dataloader_idx_0": 0.822545051574707,
+        "val_reg_loss/dataloader_idx_0": 0.0,
+        "val_hv_sdf_loss/dataloader_idx_0": 0.03391062468290329,
+        "val_total_loss/dataloader_idx_0": 0.04213571548461914,
+        "val_smoothness/dataloader_idx_1": 0.06525550782680511
+    }
+}

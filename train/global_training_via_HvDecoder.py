@@ -68,43 +68,30 @@ def main(args):
     configs_dir = args.config_dir
     config_name = args.config_name
     models_dir = args.model_dir
+    dataset_type = args.get('dataset_type', 'tripple')
+    print(f"Dataset type: {dataset_type}")
     run_name = f'frst_{config_name}_{args.run_name}'
+    print(f"Run name: {run_name}")
 
-    # dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf10_arc_ratio_5000.csv',
-    #                 f'{dataset_path}/triangle_sdf_dataset_smf10_arc_ratio_5000.csv', 
-    #                 f'{dataset_path}/quadrangle_sdf_dataset_smf10_arc_ratio_5000.csv']
-    
-    # dataset_test_files = [f'{dataset_path}/ellipse_sdf_dataset_smf10_arc_ratio_500_test.csv',
-    #              f'{dataset_path}/triangle_sdf_dataset_smf10_arc_ratio_500_test.csv', 
-    #              f'{dataset_path}/quadrangle_sdf_dataset_smf10_arc_ratio_500_test.csv']
-    
-    # surface_files = [f'{dataset_path}/ellipse_sdf_surface_dataset_smf10_150.csv',
-    #              f'{dataset_path}/triangle_sdf_surface_dataset_smf10_150.csv',
-    #              f'{dataset_path}/quadrangle_sdf_surface_dataset_smf10_150.csv']
+    if dataset_type == 'quadrangle':
+        dataset_train_files = [f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_5000.csv']
+        dataset_test_files = [f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_500_test.csv']
+        surface_files = [f'{dataset_path}/quadrangle_sdf_surface_dataset_smf20_150.csv']
 
-    dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_5000.csv',
+    elif dataset_type == 'tripple':
+        dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_5000.csv',
                     f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_5000.csv', 
                     f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_5000.csv']
     
-    dataset_test_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_500_test.csv',
-                 f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_500_test.csv', 
-                 f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_500_test.csv']
-    
-    surface_files = [f'{dataset_path}/ellipse_sdf_surface_dataset_smf22_150.csv',
-                 f'{dataset_path}/triangle_sdf_surface_dataset_smf20_150.csv',
-                 f'{dataset_path}/quadrangle_sdf_surface_dataset_smf20_150.csv']
-    
-    
-    # radius_samples_files = [f'{dataset_path}/triangle_sdf_dataset_smf10_radius_sample_100.csv',
-    #                         f'{dataset_path}/quadrangle_sdf_dataset_smf10_radius_sample_100.csv']
-
-    # dataset_files = ['shape_datasets/ellipse_sdf_dataset_onlMove.csv',
-    #                  'shape_datasets/triangle_sdf_dataset_test.csv', 
-    #                  'shape_datasets/quadrangle_sdf_dataset_test.csv']
-    
-    # surface_files = ['shape_datasets/ellipse_sdf_surface_dataset_test',
-    #                  'shape_datasets/triangle_sdf_surface_dataset_test',
-    #                  'shape_datasets/quadrangle_sdf_surface_dataset_test']
+        dataset_test_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_500_test.csv',
+                    f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_500_test.csv', 
+                    f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_500_test.csv']
+        
+        surface_files = [f'{dataset_path}/ellipse_sdf_surface_dataset_smf22_150.csv',
+                    f'{dataset_path}/triangle_sdf_surface_dataset_smf20_150.csv',
+                    f'{dataset_path}/quadrangle_sdf_surface_dataset_smf20_150.csv']
+    else:
+        raise ValueError(f"Invalid dataset type: {dataset_type}")
 
     train_dataset = SdfDataset(dataset_train_files, exclude_ellipse=False)
     test_dataset = SdfDataset(dataset_test_files, exclude_ellipse=False)
@@ -189,6 +176,7 @@ def main(args):
     # Initialize VAE model
     model_params = config['model']['params']
     model_params['input_dim'] = test_dataset.feature_dim
+    print(f"Feature dim: {test_dataset.feature_dim}")
     vae_model = models[config['model']['type']](**model_params)
 
     # Initialize VAE trainer

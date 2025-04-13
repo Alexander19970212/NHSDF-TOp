@@ -719,7 +719,7 @@ def plot_quadrangle_sdf_dataset(df, points_per_quadrangle=500):
                                 cmap='RdBu')
         plt.colorbar(scatter, ax=axes[i])
         axes[i].set_aspect('equal')
-        axes[i].set_title(f'Triangle {i+1}')
+        axes[i].set_title(f'Quadrangle {i+1}')
 
     plt.tight_layout()
     plt.show()

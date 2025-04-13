@@ -1,0 +1,17 @@
+{
+    "uba_frst_AE_DeepSDF_15_wMI_wT_0001": {
+        "val_reconstruction_loss": 0.00019804939802270383
+    },
+    "uba_frst_AE_DeepSDF_15_wMI_wT_0005": {
+        "val_reconstruction_loss": 0.00021608438692055643
+    },
+    "uba_frst_AE_DeepSDF_15_wMI_wT_001": {
+        "val_reconstruction_loss": 0.00017685208877082914
+    },
+    "uba_frst_AE_DeepSDF_15_wMI_wT_005": {
+        "val_reconstruction_loss": 0.00031964658410288393
+    },
+    "uba_frst_AE_DeepSDF_15_wMI_wT_01": {
+        "val_reconstruction_loss": 0.00028339834534563124
+    }
+}

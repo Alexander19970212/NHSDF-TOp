@@ -1135,8 +1135,8 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         # create variable constraints #######################################################################
         init_scale = args["args"]["init_scale"]
         self.scale_sigma = torch.tensor(init_scale)
-        self.scale_max = torch.tensor(1.5)
-        self.scale_min = torch.tensor(0.05)
+        self.scale_max = torch.tensor(args["args"].get("scale_max", 1.5))
+        self.scale_min = torch.tensor(args["args"].get("scale_min", 0.05))
 
         self.rotation_min = -torch.pi/2
         self.rotation_max = torch.pi/2
@@ -1256,6 +1256,14 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
             [torch.ones(init_num_samples, dtype=bool), torch.zeros(left_over_size, dtype=bool)], dim=0
         )
         self.new_gaussians_mask = torch.zeros_like(self.persistent_mask, dtype=bool)
+
+        n_expected_intersections = 2
+        self.ks_min = torch.log(torch.tensor(n_expected_intersections))/self.ks_smooth_factor
+        self.ks_max = torch.log(n_expected_intersections*torch.exp(torch.tensor(self.ks_smooth_factor)))/self.ks_smooth_factor
+        self.ks_range = self.ks_max - self.ks_min
+
+        self.kernel_max = 0.5
+        self.kernel_min = 0.5
 
         # additional parameters #########################################################################################
 
@@ -1570,13 +1578,19 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         sm_coeff = self.ks_smooth_factor
         kernel_sum = kernel.sum(dim=1)
         kernel = torch.sigmoid(self.smooth_k*(kernel - 0.5))
+        # self.kernel_max = max(self.kernel_max, kernel.max())
+        # self.kernel_min = min(self.kernel_min, kernel.min())
+        # print("kernel min and max: ", kernel.min(), kernel.max())
         exp_kernel_sum = torch.exp(sm_coeff*kernel).sum(dim=1)+1e-8
+        # print("exp_kernel_sum min and max: ", exp_kernel_sum.min(), exp_kernel_sum.max())
         # exp_kernel_sum_shifted = torch.exp(kernel_shifted).sum(dim=1)+1e-8
         # self.H = (1 - self.Emin)*torch.sigmoid(-self.smooth_k*(kernel_sum - 0.5)) + self.Emin
-        self.H = (1 - self.Emin)*(1 - torch.log(exp_kernel_sum)/sm_coeff) + self.Emin
+        self.H = (1 - self.Emin)*(self.ks_max - torch.log(exp_kernel_sum)/sm_coeff)/self.ks_range + self.Emin
 
         self.H_min = min(self.H_min, self.H.min())
         self.H_max = max(self.H_max, self.H.max())
+
+        # print("H min and max: ", self.H.min(), self.H.max())
 
         # self.H_splitted = torch.sigmoid(0.1*self.smooth_k*(kernel_shifted - 0.5))
         self.H_splitted = kernel_shifted

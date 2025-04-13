@@ -16,7 +16,10 @@ class SdfDataset(Dataset):
         dfs = []
         feature_len = 0
         x_i = 0
-        self.x_names = ['point_x', 'point_y', 'class']
+        self.x_names = ['point_x', 'point_y']
+        if len(csv_files) != 1:
+            self.x_names.append('class')
+
         for file in csv_files:
             df = pd.read_csv(file)
             dfs.append(df)
@@ -27,11 +30,12 @@ class SdfDataset(Dataset):
                 x_i += 1    
 
         self.n_classes = len(dfs)
-        for class_i, df in enumerate(dfs):
-            if self.n_classes == 1:
-                df["class"] = 0
-            else:
-                df["class"] = class_i/(self.n_classes-1)
+        if len(dfs) != 1:
+            for class_i, df in enumerate(dfs):
+                if self.n_classes == 1:
+                    df["class"] = 0
+                else:
+                    df["class"] = class_i/(self.n_classes-1)
 
         self.data = pd.concat(dfs, ignore_index=True)
         # Replace NaN values with 0
@@ -191,19 +195,20 @@ class ReconstructionDataset(Dataset):
             df = pd.read_csv(file)
             dfs.append(df)    
 
-        self.n_classes = 3
-        for class_i, df in enumerate(dfs):
-            if self.n_classes == 1:
-                df["class"] = 0
-            else:
-                df["class"] = class_i/(self.n_classes-1)
+        self.n_classes = len(csv_files)
+        if self.n_classes != 1:
+            for class_i, df in enumerate(dfs):
+                if self.n_classes == 1:
+                    df["class"] = 0
+                else:
+                    df["class"] = class_i/(self.n_classes-1)
 
         self.data = pd.concat(dfs, ignore_index=True)
-        self.data = self.data.reindex(columns=feature_names, fill_value=0)
-        # Replace NaN values with 0
+        valid_feature_names = [col for col in feature_names if col in self.data.columns]
+        self.data = self.data.reindex(columns=valid_feature_names, fill_value=0)
         self.data = self.data.fillna(0)
 
-        self.feature_dim = len(feature_names) - 1
+        self.feature_dim = len(self.data.columns) - 1
 
     def __len__(self):
         return len(self.data)

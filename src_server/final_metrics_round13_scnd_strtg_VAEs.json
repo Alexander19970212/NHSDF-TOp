@@ -1,0 +1,22 @@
+{
+    "scnd_VAE_20smf": {
+        "val_kl_divergence/dataloader_idx_0": 51.71908950805664,
+        "val_tau_loss/dataloader_idx_0": 0.4968309700489044,
+        "val_reg_loss/dataloader_idx_0": 0.0,
+        "val_sdf_loss/dataloader_idx_0": 0.0017108157044276595,
+        "val_total_loss/dataloader_idx_0": 0.0017366764368489385,
+        "val_mae/dataloader_idx_1": 0.02103043906390667,
+        "val_rmse/dataloader_idx_1": 0.035723019391298294,
+        "val_smoothness_diff/dataloader_idx_1": 0.018189001828432083
+    },
+    "scnd_VAE_DeepSDF_20smf": {
+        "val_kl_divergence/dataloader_idx_0": 48.1439208984375,
+        "val_tau_loss/dataloader_idx_0": 2.6323070526123047,
+        "val_reg_loss/dataloader_idx_0": 0.0,
+        "val_sdf_loss/dataloader_idx_0": 0.00043492333497852087,
+        "val_total_loss/dataloader_idx_0": 0.0004589953750837594,
+        "val_mae/dataloader_idx_1": 0.007850169204175472,
+        "val_rmse/dataloader_idx_1": 0.018970411270856857,
+        "val_smoothness_diff/dataloader_idx_1": 0.00763610890135169
+    }
+}

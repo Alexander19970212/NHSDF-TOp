@@ -70,32 +70,34 @@ def main(args):
     configs_dir = args.config_dir
     config_name = args.config_name
     models_dir = args.model_dir
+    dataset_type = args.get('dataset_type', 'tripple')
     run_name = f'frst_{config_name}_{args.run_name}'
 
     saved_model_path = f'{models_dir}/{run_name}_HvDecGlobal.pt'
 
+    if dataset_type == 'quadrangle':
+        dataset_train_files = [f'{dataset_path}/quadrangle_reconstruction_dataset_train.csv']
+        dataset_test_files = [f'{dataset_path}/quadrangle_reconstruction_dataset_test.csv']
 
-    # dataset_train_files = [f'{dataset_path}/ellipse_reconstruction_dataset_train.csv',
-    #                    f'{dataset_path}/triangle_reconstruction_dataset_train.csv',
-    #                     f'{dataset_path}/quadrangle_reconstruction_dataset_train.csv',
-    #                     ]
 
-    # dataset_test_files = [f'{dataset_path}/ellipse_reconstruction_dataset_test.csv',
-    #                     f'{dataset_path}/triangle_reconstruction_dataset_test.csv',
-    #                     f'{dataset_path}/quadrangle_reconstruction_dataset_test.csv',
-    #                 ]
-    dataset_train_files = [f'{dataset_path}/ellipse_reconstruction_dataset_train.csv',
-                       f'{dataset_path}/triangle_reconstruction_dataset_train.csv',
-                        f'{dataset_path}/quadrangle_reconstruction_dataset_train.csv',
+    elif dataset_type == 'tripple':
+        dataset_train_files = [f'{dataset_path}/ellipse_reconstruction_dataset_train.csv',
+                    f'{dataset_path}/triangle_reconstruction_dataset_train.csv',
+                    f'{dataset_path}/quadrangle_reconstruction_dataset_train.csv',
+                    ]
+
+        dataset_test_files = [f'{dataset_path}/ellipse_reconstruction_dataset_test.csv',
+                            f'{dataset_path}/triangle_reconstruction_dataset_test.csv',
+                            f'{dataset_path}/quadrangle_reconstruction_dataset_test.csv',
                         ]
 
-    dataset_test_files = [f'{dataset_path}/ellipse_reconstruction_dataset_test.csv',
-                        f'{dataset_path}/triangle_reconstruction_dataset_test.csv',
-                        f'{dataset_path}/quadrangle_reconstruction_dataset_test.csv',
-                    ]
+    else:
+        raise ValueError(f"Invalid dataset type: {dataset_type}")
 
     train_dataset = ReconstructionDataset(dataset_train_files)
     test_dataset = ReconstructionDataset(dataset_test_files)
+
+    print("Feature dim: ", train_dataset.feature_dim)
 
     # Create DataLoaders with shuffling
     batch_size = 64
@@ -154,7 +156,7 @@ def main(args):
 
     # Initialize VAE model
     model_params = config['model']['params']
-    model_params['input_dim'] = 17 # train_dataset.feature_dim
+    model_params['input_dim'] = train_dataset.feature_dim
     vae_model = models[config['model']['type']](**model_params)
 
     # Load pre-trained weights for the model

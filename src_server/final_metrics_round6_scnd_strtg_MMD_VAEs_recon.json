@@ -1,0 +1,30 @@
+{
+    "scnd_MMD_VAE_10smf": {
+        "val_tau_loss": 0.4553978741168976,
+        "val_reg_loss": 0.0,
+        "val_mmd_loss": 0.005529683083295822,
+        "val_reconstruction_loss": 0.00017770868726074696,
+        "val_total_loss": 0.00017776399909052998
+    },
+    "scnd_MMD_VAE_DeepSDF_10smf": {
+        "val_tau_loss": 0.706678032875061,
+        "val_reg_loss": 0.0,
+        "val_mmd_loss": 0.004183558281511068,
+        "val_reconstruction_loss": 0.00018977091531269252,
+        "val_total_loss": 0.00018981273751705885
+    },
+    "scnd_MMD_VAE_20smf": {
+        "val_tau_loss": 4.686737537384033,
+        "val_reg_loss": 0.0,
+        "val_mmd_loss": 0.007348310202360153,
+        "val_reconstruction_loss": 0.00021310419833753258,
+        "val_total_loss": 0.00021317770006135106
+    },
+    "scnd_MMD_VAE_DeepSDF_20smf": {
+        "val_tau_loss": 2.961742639541626,
+        "val_reg_loss": 0.0,
+        "val_mmd_loss": 0.004441293887794018,
+        "val_reconstruction_loss": 0.00018613095744512975,
+        "val_total_loss": 0.0001861754135461524
+    }
+}

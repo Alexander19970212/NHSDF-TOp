@@ -1,0 +1,11 @@
+{
+    "scnd_AE_20smf": {
+        "val_total_loss/dataloader_idx_0": 0.0014903723495081067,
+        "val_tau_loss/dataloader_idx_0": 0.3439960777759552,
+        "val_reg_loss/dataloader_idx_0": 0.0003709358279593289,
+        "val_sdf_loss/dataloader_idx_0": 0.0014866619603708386,
+        "val_mae/dataloader_idx_1": 0.019620362669229507,
+        "val_rmse/dataloader_idx_1": 0.032802462577819824,
+        "val_smoothness_diff/dataloader_idx_1": 0.01736043207347393
+    }
+}

@@ -1,0 +1,8 @@
+{
+    "uba_frst_MMD_VAE": {
+        "val_reconstruction_loss": 0.00022439705207943916
+    },
+    "uba_frst_MMD_VAE_DeepSDF": {
+        "val_reconstruction_loss": 0.0002310074050910771
+    }
+}

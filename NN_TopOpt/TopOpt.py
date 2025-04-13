@@ -444,7 +444,7 @@ class TopOptimizer2D:
         return von_mises
     
 
-    def load_solution_from_2d_tensor(self, filename, h_flopping=False, v_flopping=False):
+    def load_solution_from_2d_tensor(self, filename, h_flopping=False, v_flopping=False, k=6):
         self.xPhys_2d = np.load(filename)
 
         min_x = np.round(self.Th.q[:, 0].min(), 2)
@@ -485,28 +485,23 @@ class TopOptimizer2D:
             col_f = (x_coord - min_x) / (max_x - min_x) * (grid_cols - 1)
             row_f = (y_coord - min_y) / (max_y - min_y) * (grid_rows - 1)
 
-            # Determine the indices of the four surrounding grid points.
-            left_idx = int(np.floor(col_f))
-            right_idx = left_idx + 1
-            top_idx = int(np.floor(row_f))
-            bottom_idx = top_idx + 1
-
-            # Clamp the indices to ensure they fall within the valid range.
-            if right_idx >= grid_cols:
-                right_idx = grid_cols - 1
-                left_idx = right_idx - 1
-            if bottom_idx >= grid_rows:
-                bottom_idx = grid_rows - 1
-                top_idx = bottom_idx - 1
-
-            # Extract the values from the four nearest grid points.
-            v1 = self.xPhys_2d[top_idx, left_idx]
-            v2 = self.xPhys_2d[top_idx, right_idx]
-            v3 = self.xPhys_2d[bottom_idx, left_idx]
-            v4 = self.xPhys_2d[bottom_idx, right_idx]
-
-            # Compute the average value and assign it to self.x for the current element.
-            xPhys[i] = (v1 + v2 + v3 + v4) / 4.0
+            # Compute Euclidean distances from the fractional grid position (row_f, col_f) to all grid points.
+            grid_rows, grid_cols = self.xPhys_2d.shape
+            rows = np.arange(grid_rows)
+            cols = np.arange(grid_cols)
+            # Create a meshgrid where grid_rows_mesh contains row indices and grid_cols_mesh contains column indices.
+            grid_cols_mesh, grid_rows_mesh = np.meshgrid(cols, rows)
+            # Flatten the meshgrid arrays.
+            flat_rows = grid_rows_mesh.ravel()
+            flat_cols = grid_cols_mesh.ravel()
+            # Compute distances from (row_f, col_f) to each grid point.
+            distances = np.sqrt((flat_rows - row_f)**2 + (flat_cols - col_f)**2)
+            # Identify the indices of the k nearest grid points.
+            nearest_indices = np.argsort(distances)[:k]
+            # Extract the corresponding values from the grid.
+            neighbor_values = self.xPhys_2d.ravel()[nearest_indices]
+            # Assign the average of these k nearest values to the current element.
+            xPhys[i] = np.mean(neighbor_values)
 
         # self.xPhys = np.zeros((self.Th.nelems, self.Th.q.shape[0]))
 

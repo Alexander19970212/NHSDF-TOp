@@ -1,0 +1,8 @@
+params:
+  problem_name: Cantilever_beam_distributed_load
+  comment: test
+  method: simp_basic
+  volfrac: 0.34
+  penal: 3
+  rmin: 0.015
+  treshold: 0.51

@@ -169,10 +169,13 @@ class LoadedMesh2D:
                                 levels=levels,
                                 cmap="turbo")
 
-            cbar = fig.colorbar(tpc, ax=ax)
-            cbar.set_label("Von Mises stress (Pa)")
+            from mpl_toolkits.axes_grid1 import make_axes_locatable
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.2)
+            cbar = fig.colorbar(tpc, cax=cax)
+            cbar.set_label("Von Mises stress (Pa)", size=15)
 
-            ax.set_title("Von Mises stress")
+            # ax.set_title("Von Mises stress", size=20)
 
             # Create an additional axes for the histogram inset
             # ax_hist = fig.add_axes([0.7, 0.2, 0.2, 0.2])  # [left, bottom, width, height] in figure fraction coordinates

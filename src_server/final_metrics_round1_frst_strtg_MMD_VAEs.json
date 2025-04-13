@@ -1,0 +1,40 @@
+{
+    "uba_frst_MMD_VAE": {
+        "val_tau_loss/dataloader_idx_0": 0.4172748029232025,
+        "val_reg_loss/dataloader_idx_0": 0.0,
+        "val_mmd_loss/dataloader_idx_0": 0.04230973869562149,
+        "val_sdf_loss/dataloader_idx_0": 0.0012620303314179182,
+        "val_total_loss/dataloader_idx_0": 0.001262454316020012,
+        "val_mae/dataloader_idx_1": 0.017147986218333244,
+        "val_rmse/dataloader_idx_1": 0.027552204206585884,
+        "val_smoothness_pred/dataloader_idx_1": 0.04859435558319092,
+        "val_smoothness_diff/dataloader_idx_1": 0.015562819316983223,
+        "val_diff_smoothness/dataloader_idx_1": 0.003407159587368369,
+        "val_mi_original/dataloader_idx_2": 0.5144503116607666,
+        "val_mi_tau/dataloader_idx_2": 0.4537554681301117,
+        "val_z_original_std/dataloader_idx_2": 0.05357290804386139,
+        "val_z_tau_std/dataloader_idx_2": 0.06777622550725937,
+        "val_z_std_ratio/dataloader_idx_2": 0.791481077671051,
+        "val_mi_ratio/dataloader_idx_2": 1.1894551515579224,
+        "val_tau_loss/dataloader_idx_2": 0.17683957517147064
+    },
+    "uba_frst_MMD_VAE_DeepSDF": {
+        "val_tau_loss/dataloader_idx_0": 0.46518474817276,
+        "val_reg_loss/dataloader_idx_0": 0.0,
+        "val_mmd_loss/dataloader_idx_0": 0.01217158418148756,
+        "val_sdf_loss/dataloader_idx_0": 0.00035500130616128445,
+        "val_total_loss/dataloader_idx_0": 0.00035512272734194994,
+        "val_mae/dataloader_idx_1": 0.005990439094603062,
+        "val_rmse/dataloader_idx_1": 0.014605398289859295,
+        "val_smoothness_pred/dataloader_idx_1": 0.0454036109149456,
+        "val_smoothness_diff/dataloader_idx_1": 0.005677778273820877,
+        "val_diff_smoothness/dataloader_idx_1": 0.00021642701176460832,
+        "val_mi_original/dataloader_idx_2": 0.4855964183807373,
+        "val_mi_tau/dataloader_idx_2": 0.690655529499054,
+        "val_z_original_std/dataloader_idx_2": 0.04147696495056152,
+        "val_z_tau_std/dataloader_idx_2": 0.050500448793172836,
+        "val_z_std_ratio/dataloader_idx_2": 0.8055248856544495,
+        "val_mi_ratio/dataloader_idx_2": 0.7126985788345337,
+        "val_tau_loss/dataloader_idx_2": 0.15107637643814087
+    }
+}

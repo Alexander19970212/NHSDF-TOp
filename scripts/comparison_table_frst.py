@@ -5,6 +5,8 @@ from prettytable import PrettyTable
 def create_comparison_table():
     # Define headers and metrics
 
+    root_dir = "src_server"
+
     headers = ['val_sdf_loss/dataloader_idx_0',
             # 'val_tau_loss/dataloader_idx_0',
             # 'val_reg_loss/dataloader_idx_0',
@@ -60,7 +62,7 @@ def create_comparison_table():
     # results_path = "src/metrics_model_arch_15_wMI_wT_HvDecSeparate.json"
     # results_path = "src/metrics_model_arch_15_wMI_wT_HvDecGlobal.json"
 
-    result_pathes_prefix = "src/final_metrics_round"
+    result_pathes_prefix = os.path.join(root_dir, "final_metrics_round")
     result_pathes_suffixes = ["_frst_strtg_AEs.json",
                               "_frst_strtg_MMD_VAEs.json",
                               "_frst_strtg_VAEs.json"
@@ -76,7 +78,7 @@ def create_comparison_table():
     # reconstruction_results_path = "src/metrics_model_arch_15_wMI_wT_RecDecSeparate.json"
     # reconstruction_results_path = "src/metrics_model_arch_15_wMI_wT_RecDecSeparate_AEs.json"
 
-    reconstruction_result_pathes_prefix = "src/final_metrics_round"
+    reconstruction_result_pathes_prefix = os.path.join(root_dir, "final_metrics_round")
     reconstruction_results_pathes_suffixes = ["_frst_strtg_AEs_recon.json",
                                       "_frst_strtg_MMD_VAEs_recon.json",
                                       "_frst_strtg_VAEs_recon.json"
@@ -85,7 +87,8 @@ def create_comparison_table():
 
 
     recon_suffix = "_recon_dec"
-    experiment_indeces = [1, 2, 3, 4, 5]
+    # experiment_indeces = [1, 2, 3, 4, 5]
+    experiment_indeces = [6, 7, 8, 9, 10]
 
     from collections import defaultdict
     import numpy as np

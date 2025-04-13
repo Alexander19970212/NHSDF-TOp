@@ -1,0 +1,38 @@
+{
+    "uba_frst_AE": {
+        "val_total_loss/dataloader_idx_0": 0.001336685731075704,
+        "val_tau_loss/dataloader_idx_0": 0.3628659248352051,
+        "val_reg_loss/dataloader_idx_0": 0.01215355470776558,
+        "val_sdf_loss/dataloader_idx_0": 0.0012151517439633608,
+        "val_mae/dataloader_idx_1": 0.017582349479198456,
+        "val_rmse/dataloader_idx_1": 0.02826385572552681,
+        "val_smoothness_pred/dataloader_idx_1": 0.049773551523685455,
+        "val_smoothness_diff/dataloader_idx_1": 0.016389373689889908,
+        "val_diff_smoothness/dataloader_idx_1": 0.004586365539580584,
+        "val_mi_original/dataloader_idx_2": 0.4321398437023163,
+        "val_mi_tau/dataloader_idx_2": 0.6150469183921814,
+        "val_z_original_std/dataloader_idx_2": 0.03125297650694847,
+        "val_z_tau_std/dataloader_idx_2": 0.021667685359716415,
+        "val_z_std_ratio/dataloader_idx_2": 1.4677608013153076,
+        "val_mi_ratio/dataloader_idx_2": 0.73531174659729,
+        "val_tau_loss/dataloader_idx_2": 0.09573501348495483
+    },
+    "uba_frst_AE_DeepSDF": {
+        "val_total_loss/dataloader_idx_0": 0.00042418931843712926,
+        "val_tau_loss/dataloader_idx_0": 0.3507983386516571,
+        "val_reg_loss/dataloader_idx_0": 0.009331530891358852,
+        "val_sdf_loss/dataloader_idx_0": 0.00033087367773987353,
+        "val_mae/dataloader_idx_1": 0.005869539920240641,
+        "val_rmse/dataloader_idx_1": 0.014298178255558014,
+        "val_smoothness_pred/dataloader_idx_1": 0.045287150889635086,
+        "val_smoothness_diff/dataloader_idx_1": 0.005600340198725462,
+        "val_diff_smoothness/dataloader_idx_1": 9.996019798563793e-05,
+        "val_mi_original/dataloader_idx_2": 0.424671471118927,
+        "val_mi_tau/dataloader_idx_2": 0.42228785157203674,
+        "val_z_original_std/dataloader_idx_2": 0.027025775983929634,
+        "val_z_tau_std/dataloader_idx_2": 0.02529319003224373,
+        "val_z_std_ratio/dataloader_idx_2": 1.0731664896011353,
+        "val_mi_ratio/dataloader_idx_2": 1.0534980297088623,
+        "val_tau_loss/dataloader_idx_2": 0.09257357567548752
+    }
+}

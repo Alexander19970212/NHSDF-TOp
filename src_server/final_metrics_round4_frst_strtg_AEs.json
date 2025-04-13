@@ -1,0 +1,38 @@
+{
+    "uba_frst_AE": {
+        "val_total_loss/dataloader_idx_0": 0.0011962645221501589,
+        "val_tau_loss/dataloader_idx_0": 0.4221790134906769,
+        "val_reg_loss/dataloader_idx_0": 0.01380274910479784,
+        "val_sdf_loss/dataloader_idx_0": 0.00105823774356395,
+        "val_mae/dataloader_idx_1": 0.016683073714375496,
+        "val_rmse/dataloader_idx_1": 0.026958169415593147,
+        "val_smoothness_pred/dataloader_idx_1": 0.04881191626191139,
+        "val_smoothness_diff/dataloader_idx_1": 0.015505526214838028,
+        "val_diff_smoothness/dataloader_idx_1": 0.003624726552516222,
+        "val_mi_original/dataloader_idx_2": 0.509579598903656,
+        "val_mi_tau/dataloader_idx_2": 0.5892566442489624,
+        "val_z_original_std/dataloader_idx_2": 0.026074688881635666,
+        "val_z_tau_std/dataloader_idx_2": 0.037730809301137924,
+        "val_z_std_ratio/dataloader_idx_2": 0.7012682557106018,
+        "val_mi_ratio/dataloader_idx_2": 0.9334630370140076,
+        "val_tau_loss/dataloader_idx_2": 0.13252052664756775
+    },
+    "uba_frst_AE_DeepSDF": {
+        "val_total_loss/dataloader_idx_0": 0.00041437576874159276,
+        "val_tau_loss/dataloader_idx_0": 0.36951518058776855,
+        "val_reg_loss/dataloader_idx_0": 0.009536187164485455,
+        "val_sdf_loss/dataloader_idx_0": 0.00031901607871986926,
+        "val_mae/dataloader_idx_1": 0.0058382293209433556,
+        "val_rmse/dataloader_idx_1": 0.014292225241661072,
+        "val_smoothness_pred/dataloader_idx_1": 0.045248955488204956,
+        "val_smoothness_diff/dataloader_idx_1": 0.005547806620597839,
+        "val_diff_smoothness/dataloader_idx_1": 6.176862370921299e-05,
+        "val_mi_original/dataloader_idx_2": 0.4037986099720001,
+        "val_mi_tau/dataloader_idx_2": 0.6532328724861145,
+        "val_z_original_std/dataloader_idx_2": 0.027999525889754295,
+        "val_z_tau_std/dataloader_idx_2": 0.02293873019516468,
+        "val_z_std_ratio/dataloader_idx_2": 1.2940948009490967,
+        "val_mi_ratio/dataloader_idx_2": 0.6626715660095215,
+        "val_tau_loss/dataloader_idx_2": 0.10857827216386795
+    }
+}

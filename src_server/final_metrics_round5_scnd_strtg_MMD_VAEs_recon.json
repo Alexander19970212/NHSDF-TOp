@@ -1,0 +1,16 @@
+{
+    "uba_MMD_VAE_recon_dec": {
+        "val_tau_loss": 0.9404788017272949,
+        "val_reg_loss": 0.0,
+        "val_mmd_loss": 0.006047598086297512,
+        "val_reconstruction_loss": 0.00018139040912501514,
+        "val_total_loss": 0.00018145088688470423
+    },
+    "uba_MMD_VAE_DeepSDF_recon_dec": {
+        "val_tau_loss": 1.4313554763793945,
+        "val_reg_loss": 0.0,
+        "val_mmd_loss": 0.004376313183456659,
+        "val_reconstruction_loss": 0.00019021258049178869,
+        "val_total_loss": 0.00019025632354896516
+    }
+}

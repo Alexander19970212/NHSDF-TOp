@@ -1,0 +1,14 @@
+{
+    "scnd_AE_20smf": {
+        "val_total_loss": 0.00016588350990787148,
+        "val_tau_loss": 0.3928391933441162,
+        "val_reg_loss": 0.0007998557412065566,
+        "val_reconstruction_loss": 0.00015788496239110827
+    },
+    "scnd_AE_DeepSDF_20smf": {
+        "val_total_loss": 0.00020617163681890815,
+        "val_tau_loss": 0.3808806836605072,
+        "val_reg_loss": 0.0006669444846920669,
+        "val_reconstruction_loss": 0.00019950214482378215
+    }
+}

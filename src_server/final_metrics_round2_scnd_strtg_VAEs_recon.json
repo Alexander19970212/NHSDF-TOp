@@ -1,0 +1,16 @@
+{
+    "uba_VAE_recon_dec": {
+        "val_kl_divergence": 49.00696563720703,
+        "val_tau_loss": 0.8269846439361572,
+        "val_reg_loss": 0.0,
+        "val_reconstruction_loss": 8.152035297825933e-05,
+        "val_total_loss": 0.0001060238282661885
+    },
+    "uba_VAE_DeepSDF_recon_dec": {
+        "val_kl_divergence": 48.93894958496094,
+        "val_tau_loss": 0.545743465423584,
+        "val_reg_loss": 0.0,
+        "val_reconstruction_loss": 7.453787111444399e-05,
+        "val_total_loss": 9.900736040435731e-05
+    }
+}

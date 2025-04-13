@@ -1,0 +1,20 @@
+{
+    "uba_AE": {
+        "val_total_loss/dataloader_idx_0": 0.0014045049902051687,
+        "val_tau_loss/dataloader_idx_0": 0.35332441329956055,
+        "val_reg_loss/dataloader_idx_0": 0.0009264442487619817,
+        "val_sdf_loss/dataloader_idx_0": 0.0013952420558780432,
+        "val_mae/dataloader_idx_1": 0.019652647897601128,
+        "val_rmse/dataloader_idx_1": 0.031021736562252045,
+        "val_smoothness_diff/dataloader_idx_1": 0.017243141308426857
+    },
+    "uba_AE_DeepSDF": {
+        "val_total_loss/dataloader_idx_0": 0.0007310457294806838,
+        "val_tau_loss/dataloader_idx_0": 0.3441702425479889,
+        "val_reg_loss/dataloader_idx_0": 0.0012626538518816233,
+        "val_sdf_loss/dataloader_idx_0": 0.000718419614713639,
+        "val_mae/dataloader_idx_1": 0.00836842693388462,
+        "val_rmse/dataloader_idx_1": 0.021433280780911446,
+        "val_smoothness_diff/dataloader_idx_1": 0.008111478760838509
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "uba_AE_recon_dec": {
+        "val_total_loss": 0.00021801349066663533,
+        "val_tau_loss": 0.3884645700454712,
+        "val_reg_loss": 0.0004959297948516905,
+        "val_reconstruction_loss": 0.0002130542416125536
+    },
+    "uba_AE_DeepSDF_recon_dec": {
+        "val_total_loss": 0.0002771881700027734,
+        "val_tau_loss": 0.40478476881980896,
+        "val_reg_loss": 0.0009841364808380604,
+        "val_reconstruction_loss": 0.00026734682614915073
+    }
+}

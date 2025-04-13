@@ -1,0 +1,16 @@
+{
+    "scnd_VAE_20smf": {
+        "val_kl_divergence": 48.554176330566406,
+        "val_tau_loss": 1.2273979187011719,
+        "val_reg_loss": 0.0,
+        "val_reconstruction_loss": 7.775866106385365e-05,
+        "val_total_loss": 0.00010203576675849035
+    },
+    "scnd_VAE_DeepSDF_20smf": {
+        "val_kl_divergence": 50.08056640625,
+        "val_tau_loss": 1.157405972480774,
+        "val_reg_loss": 0.0,
+        "val_reconstruction_loss": 7.258060213644058e-05,
+        "val_total_loss": 9.762087574927136e-05
+    }
+}

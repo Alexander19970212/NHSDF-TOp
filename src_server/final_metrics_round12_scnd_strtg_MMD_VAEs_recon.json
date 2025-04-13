@@ -1,0 +1,16 @@
+{
+    "scnd_MMD_VAE_20smf": {
+        "val_tau_loss": 3.3943164348602295,
+        "val_reg_loss": 0.0,
+        "val_mmd_loss": 0.005849935580044985,
+        "val_reconstruction_loss": 0.00018231473222840577,
+        "val_total_loss": 0.00018237326003145427
+    },
+    "scnd_MMD_VAE_DeepSDF_20smf": {
+        "val_tau_loss": 4.888681411743164,
+        "val_reg_loss": 0.0,
+        "val_mmd_loss": 0.006320863962173462,
+        "val_reconstruction_loss": 0.000182994146598503,
+        "val_total_loss": 0.0001830573455663398
+    }
+}
