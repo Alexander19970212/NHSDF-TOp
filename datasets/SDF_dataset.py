@@ -74,7 +74,12 @@ class SdfDatasetSurface(Dataset):
         points_dfs = []
         feature_len = 0
         x_i = 0
-        self.x_names = ['class']
+        
+        if len(csv_files) != 1:
+            self.x_names = ['class']
+        else:
+            self.x_names = []
+
         for file in csv_files:
             df = pd.read_csv(f'{file}.csv')
             df_points = pd.read_csv(f'{file}_grid.csv')
@@ -89,11 +94,12 @@ class SdfDatasetSurface(Dataset):
                 x_i += 1    
 
         self.n_classes = len(dfs)
-        for class_i, df in enumerate(dfs):
-            if self.n_classes == 1:
-                df["class"] = 0
-            else:
-                df["class"] = class_i/(self.n_classes-1)
+        if len(dfs) != 1:
+            for class_i, df in enumerate(dfs):
+                if self.n_classes == 1:
+                    df["class"] = 0
+                else:
+                    df["class"] = class_i/(self.n_classes-1)
 
         self.data = pd.concat(dfs, ignore_index=True)
         self.points_data = torch.tensor(np.array(points_dfs), dtype=torch.float32)
