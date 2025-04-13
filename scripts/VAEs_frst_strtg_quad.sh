@@ -17,7 +17,7 @@ METRICS_FILE_RECON="src/final_metrics_frst_strtg_VAEs_quad_recon.json"
 # for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do
 CONFIG_NAME="VAE_DeepSDF_quad.yaml"
 RUN_NAME="quad"
-DATASET_TYPE="quad"
+DATASET_TYPE="quadrangle"
 
 echo "Running VAE_training.py with config: $CONFIG_NAME"
 
