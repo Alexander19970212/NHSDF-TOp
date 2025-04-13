@@ -74,7 +74,7 @@ class SdfDatasetSurface(Dataset):
         points_dfs = []
         feature_len = 0
         x_i = 0
-        
+
         if len(csv_files) != 1:
             self.x_names = ['class']
         else:
@@ -126,8 +126,11 @@ class SdfDatasetSurface(Dataset):
         X = torch.tensor(X_list, dtype=torch.float32)
         # print(row['sdf'])
         y = torch.tensor(row['sdf'], dtype=torch.float32)
-        class_idx = int(row['class'] * (self.n_classes - 1))
-        points = self.points_data[class_idx]
+        if self.n_classes != 1:
+            class_idx = int(row['class'] * (self.n_classes - 1))
+            points = self.points_data[class_idx]
+        else:
+            points = self.points_data[0]
 
         if self.cut_value:
             limit_mask = torch.logical_and(y > self.value_limit, y < (1-self.value_limit))
