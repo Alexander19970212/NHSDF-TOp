@@ -17,6 +17,7 @@ METRICS_FILE_RECON="src/final_metrics_frst_strtg_VAEs_quad_recon.json"
 # for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do
 CONFIG_NAME="VAE_DeepSDF_quad.yaml"
 RUN_NAME="quad"
+DATASET_TYPE="quad"
 
 echo "Running VAE_training.py with config: $CONFIG_NAME"
 
@@ -26,7 +27,8 @@ python train/global_training_via_HvDecoder.py \
     --config_dir "$CONFIG_DIR" \
     --config_name "$CONFIG_NAME" \
     --metrics_file "$METRICS_FILE" \
-    --run_name "$RUN_NAME"
+    --run_name "$RUN_NAME" \
+    --dataset_type "$DATASET_TYPE"
 
 echo "Completed run: $RUN_NAME"
 echo "----------------------------------------"
@@ -44,7 +46,8 @@ python train/separate_training_reconstructor.py \
     --config_dir "$CONFIG_DIR" \
     --config_name "$CONFIG_NAME" \
     --metrics_file "$METRICS_FILE_RECON" \
-    --run_name "$RUN_NAME"
+    --run_name "$RUN_NAME" \
+    --dataset_type "$DATASET_TYPE"
 
 echo "Completed run: $RUN_NAME"
 echo "----------------------------------------"

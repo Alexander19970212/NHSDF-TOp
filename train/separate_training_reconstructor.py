@@ -70,7 +70,7 @@ def main(args):
     configs_dir = args.config_dir
     config_name = args.config_name
     models_dir = args.model_dir
-    dataset_type = args.get('dataset_type', 'tripple')
+    dataset_type = args.dataset_type
     run_name = f'frst_{config_name}_{args.run_name}'
 
     saved_model_path = f'{models_dir}/{run_name}_HvDecGlobal.pt'
@@ -207,6 +207,7 @@ if __name__ == "__main__":
     parser.add_argument('--max_epochs', type=int, default=1, help='Maximum number of epochs for training')
     parser.add_argument('--model_dir', type=str, default='model_weights', help='Path to the model directory')
     parser.add_argument('--dataset_path', type=str, default='shape_datasets', help='Path to the dataset')
+    parser.add_argument('--dataset_type', type=str, default='tripple', help='Type of the dataset')
     parser.add_argument('--config_dir', type=str, default='configs/NN_sdf_experiments/architectures', help='Path to the config directory')
     parser.add_argument('--config_name', type=str, default='AE_DeepSDF', help='Name of the config')
     parser.add_argument('--run_name', type=str, default='20smf', help='Name of the run')
