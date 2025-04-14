@@ -131,7 +131,7 @@ def main():
         ]  
     elif args.dataset_type == 'quadrangle':
         dataset_test_files = [
-            os.path.join(args.dataset_path, 'quadrangle_sdf_dataset_smf20_arc_ratio_500.csv')
+            os.path.join(args.dataset_path, 'quadrangle_sdf_dataset_smf20_arc_ratio_500_test.csv')
         ]
     else:
         raise ValueError(f"Invalid dataset type: {args.dataset_type}")
