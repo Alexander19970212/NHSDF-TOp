@@ -6,6 +6,10 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 from torch.utils.data import DataLoader
+
+# Add the parent directory of NN_TopOpt to the system path
+sys.path.append(os.path.abspath('NN_TopOpt'))
+
 from models.sdf_models import (
     LitSdfAE_MINE,
     AE,
