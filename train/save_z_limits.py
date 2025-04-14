@@ -37,9 +37,14 @@ def parse_arguments():
         required=True,
         help="Path to the models directory."
     )
+    parser.add_argument('--dataset_type', type=str, default='tripple', help='Type of the dataset')
+    parser.add_argument('--config_name', type=str, default='AE_DeepSDF', help='Name of the config')
+    parser.add_argument('--run_name', type=str, default='20smf', help='Name of the run')
+    
+
     return parser.parse_args()
 
-def load_model(configs_dir, models_dir, config_name):
+def load_model(args, feature_dim=17):
     models = {
         'AE_DeepSDF': AE_DeepSDF,
         'AE': AE, 
@@ -49,19 +54,21 @@ def load_model(configs_dir, models_dir, config_name):
         'MMD_VAE_DeepSDF': MMD_VAE_DeepSDF
     }
 
+    run_name = f'frst_{args.config_name}_{args.run_name}'
+
     # Load configuration from YAML file
-    config_path = os.path.join(configs_dir, f"{config_name}.yaml")
+    config_path = os.path.join(args.configs_dir, f"{args.config_name}.yaml")
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
 
     # Initialize model
     model_type = config['model']['type']
     model_params = config['model']['params']
-    model_params['input_dim'] = 17  # train_dataset.feature_dim
+    model_params['input_dim'] = feature_dim  # train_dataset.feature_dim
     model = models[model_type](**model_params)
 
     # Load pre-trained weights
-    saved_model_path = os.path.join(models_dir, f"uba_frst_{config_name}_full.pt")
+    saved_model_path = f'{args.models_dir}/{run_name}_full.pt'
     state_dict = torch.load(saved_model_path)
     new_state_dict = model.state_dict()
 
@@ -72,7 +79,7 @@ def load_model(configs_dir, models_dir, config_name):
 
     model.load_state_dict(state_dict)
     model.eval()
-    return model, config_name
+    return model
 
 def investigate_latent_space(model, dataloader, stats_dir, config_name):
     """Visualize the latent space"""
@@ -109,11 +116,18 @@ def main():
     sys.path.append(os.path.abspath('NN_TopOpt'))
 
     # Initialize dataset
-    dataset_test_files = [
-        os.path.join(args.dataset_path, 'ellipse_sdf_dataset_smf22_arc_ratio_500.csv'),
-        os.path.join(args.dataset_path, 'triangle_sdf_dataset_smf20_arc_ratio_500.csv'),
-        os.path.join(args.dataset_path, 'quadrangle_sdf_dataset_smf20_arc_ratio_500.csv')
-    ]
+    if args.dataset_type == 'tripple':
+        dataset_test_files = [
+            os.path.join(args.dataset_path, 'ellipse_sdf_dataset_smf22_arc_ratio_500.csv'),
+            os.path.join(args.dataset_path, 'triangle_sdf_dataset_smf20_arc_ratio_500.csv'),
+            os.path.join(args.dataset_path, 'quadrangle_sdf_dataset_smf20_arc_ratio_500.csv')
+        ]  
+    elif args.dataset_type == 'quadrangle':
+        dataset_test_files = [
+            os.path.join(args.dataset_path, 'quadrangle_sdf_dataset_smf20_arc_ratio_500.csv')
+        ]
+    else:
+        raise ValueError(f"Invalid dataset type: {args.dataset_type}")
     
     test_dataset = SdfDataset(dataset_test_files, exclude_ellipse=False)
     
@@ -127,12 +141,11 @@ def main():
     )
 
     # Load model
-    config_name = 'MMD_VAE_DeepSDF'
-    model, config_name = load_model(args.configs_dir, args.models_dir, config_name)
+    model = load_model(args, feature_dim=test_dataset.feature_dim)
 
     # Investigate latent space
     stats_dir = '../z_limits'
-    investigate_latent_space(model, test_loader, stats_dir=stats_dir, config_name=config_name)
+    investigate_latent_space(model, test_loader, stats_dir=stats_dir, config_name=args.config_name)
 
 if __name__ == "__main__":
     main()

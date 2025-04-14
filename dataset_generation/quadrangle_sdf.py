@@ -598,11 +598,11 @@ def plot_sdf_random_quadrangle(smooth_factor=40):
     plt.tight_layout()
     plt.show()
 
-def plot_quadrangle_sdf_dataset(df, points_per_quadrangle=500):
+def plot_quadrangle_sdf_dataset(df, points_per_quadrangle=500, n_quadrangle=3):
     # Plot first few triangles and their points
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    fig, axes = plt.subplots(1, n_quadrangle, figsize=(15, 5))
 
-    for i in range(3):
+    for i in range(n_quadrangle):
         # Get data for one quadrangle
         quadrangle_data = df.iloc[i*points_per_quadrangle:(i+1)*points_per_quadrangle]
         v1 = np.array([-0.5, -0.5])
