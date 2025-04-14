@@ -1096,7 +1096,8 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.H_min = 0.5
         self.H_max = 0.5
 
-        self.input_dim = 17
+        self.input_dim = args["args"].get("input_dim", 17)
+        self.dataset_type = args["args"].get("dataset_type", "tripple")
 
         self.coords = coords.to(torch.float32)   
         self.volumes = volumes.to(torch.float32)
@@ -1121,6 +1122,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         self.model = models[config['model']['type']](**model_params)
 
         # Load pre-trained weights for the model
+        print(saved_model_path)
         state_dict = torch.load(saved_model_path)
         # new_state_dict = self.model.state_dict()
 
@@ -1203,15 +1205,20 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         ### start from squares
         R = 0.45/3
-        encoder_input[:, 2] = 1
-        encoder_input[:, 9] = 0.5
-        encoder_input[:, 10] = 0.5
-        encoder_input[:, 11] = -0.5
-        encoder_input[:, 12] = 0.5
-        encoder_input[:, 13] = R
-        encoder_input[:, 14] = R
-        encoder_input[:, 15] = R
-        encoder_input[:, 16] = R
+        if self.dataset_type == "tripple":
+            encoder_input[:, 2] = 1
+            chi_offset = 9
+        elif self.dataset_type == "quadrangle":
+            chi_offset = 2
+
+        encoder_input[:, chi_offset] = 0.5
+        encoder_input[:, chi_offset+1] = 0.5
+        encoder_input[:, chi_offset+2] = -0.5
+        encoder_input[:, chi_offset+3] = 0.5
+        encoder_input[:, chi_offset+4] = R
+        encoder_input[:, chi_offset+5] = R
+        encoder_input[:, chi_offset+6] = R
+        encoder_input[:, chi_offset+7] = R
 
         # get initial latent vectors
         output = self.model(encoder_input)
@@ -1356,7 +1363,7 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         geometry_features = []
 
         for i in range(batch_size):
-            geometry_type, geometry_params = extract_geometry(chis[i].detach().cpu().numpy())
+            geometry_type, geometry_params = extract_geometry(chis[i].detach().cpu().numpy(), self.dataset_type)
 
             if geometry_type == "ellipse":
                 a = geometry_params[1]*base_scale[i]

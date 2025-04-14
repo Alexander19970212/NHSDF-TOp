@@ -28,22 +28,24 @@ def main(args):
     num_golden_quadrangle = 3
     num_golden_ellipse = 3
     os.makedirs(root_path, exist_ok=True)
-    smooth_factor = 10
+    smooth_factor = 20
+    suffix = 'Bprec'
+
 
     #################### train dataset ####################
-    num_samples = 10000
+    num_samples = 15000
 
-    dataset_path = f'{root_path}/ellipse_sdf_dataset_smf{smooth_factor}_arc_ratio_{num_samples}.csv'
-    df = generate_ellipse_sdf_dataset(num_ellipse=num_samples,
-                                      points_per_ellipse=1000,
-                                      smooth_factor=smooth_factor,
-                                      filename=dataset_path,
-                                      num_golden_ellipse=num_golden_ellipse)
+    # dataset_path = f'{root_path}/ellipse_sdf_dataset_smf{smooth_factor}_arc_ratio_{num_samples}_{suffix}.csv'
+    # df = generate_ellipse_sdf_dataset(num_ellipse=num_samples,
+    #                                   points_per_ellipse=1000,
+    #                                   smooth_factor=smooth_factor,
+    #                                   filename=dataset_path,
+    #                                   num_golden_ellipse=num_golden_ellipse)
 
-    dataset_path = f'{root_path}/triangle_sdf_dataset_smf{smooth_factor}_arc_ratio_{num_samples}.csv'
-    df = generate_rounded_triangle_sdf_dataset(num_triangle=num_samples, points_per_triangle=1000, smooth_factor=smooth_factor, filename=dataset_path)
+    # dataset_path = f'{root_path}/triangle_sdf_dataset_smf{smooth_factor}_arc_ratio_{num_samples}_{suffix}.csv'
+    # df = generate_rounded_triangle_sdf_dataset(num_triangle=num_samples, points_per_triangle=1000, smooth_factor=smooth_factor, filename=dataset_path)
 
-    dataset_path = f'{root_path}/quadrangle_sdf_dataset_smf{smooth_factor}_arc_ratio_{num_samples}.csv'
+    dataset_path = f'{root_path}/quadrangle_sdf_dataset_smf{smooth_factor}_arc_ratio_{num_samples}_{suffix}.csv'
     df = generate_rounded_quadrangle_sdf_dataset(num_quadrangle=num_samples,
                                                  points_per_quadrangle=1000,
                                                  smooth_factor=smooth_factor,
@@ -52,28 +54,28 @@ def main(args):
 
     # # #################### surface dataset ####################
 
-    dataset_path = f'{root_path}/ellipse_sdf_surface_dataset_smf{smooth_factor}_150.csv'
-    df, points_df = generate_ellipse_sdf_surface_dataset(num_ellipse=150, points_per_ellipse=1225, smooth_factor=smooth_factor, filename=dataset_path)
+    # dataset_path = f'{root_path}/ellipse_sdf_surface_dataset_smf{smooth_factor}_150_{suffix}.csv'
+    # df, points_df = generate_ellipse_sdf_surface_dataset(num_ellipse=150, points_per_ellipse=1225, smooth_factor=smooth_factor, filename=dataset_path)
 
-    dataset_path = f'{root_path}/quadrangle_sdf_surface_dataset_smf{smooth_factor}_150.csv'
+    dataset_path = f'{root_path}/quadrangle_sdf_surface_dataset_smf{smooth_factor}_150_{suffix} .csv'
     df, points_df = generate_rounded_quadrangle_sdf_surface_dataset(num_quadrangle=150, points_per_quadrangle=1225, smooth_factor=smooth_factor, filename=dataset_path)
 
-    dataset_path = f'{root_path}/triangle_sdf_surface_dataset_smf{smooth_factor}_150.csv'
-    df, points_df = generate_rounded_triangle_sdf_surface_dataset(num_triangle=150, points_per_triangle=1225, smooth_factor=smooth_factor, filename=dataset_path)
+    # dataset_path = f'{root_path}/triangle_sdf_surface_dataset_smf{smooth_factor}_150_{suffix}.csv'
+    # df, points_df = generate_rounded_triangle_sdf_surface_dataset(num_triangle=150, points_per_triangle=1225, smooth_factor=smooth_factor, filename=dataset_path)
 
     # #################### test dataset ####################
 
-    dataset_path = f'{root_path}/ellipse_sdf_dataset_smf{smooth_factor}_arc_ratio_500_test.csv'
-    df = generate_ellipse_sdf_dataset(num_ellipse=500,
-                                      points_per_ellipse=1000,
-                                      smooth_factor=smooth_factor,
-                                      filename=dataset_path,
-                                      num_golden_ellipse=num_golden_ellipse)
+    # dataset_path = f'{root_path}/ellipse_sdf_dataset_smf{smooth_factor}_arc_ratio_500_test_{suffix}.csv'
+    # df = generate_ellipse_sdf_dataset(num_ellipse=500,
+    #                                   points_per_ellipse=1000,
+    #                                   smooth_factor=smooth_factor,
+    #                                   filename=dataset_path,
+    #                                   num_golden_ellipse=num_golden_ellipse)
 
-    dataset_path = f'{root_path}/triangle_sdf_dataset_smf{smooth_factor}_arc_ratio_500_test.csv'
-    df = generate_rounded_triangle_sdf_dataset(num_triangle=500, points_per_triangle=1000, smooth_factor=smooth_factor, filename=dataset_path)
+    # dataset_path = f'{root_path}/triangle_sdf_dataset_smf{smooth_factor}_arc_ratio_500_test_{suffix}.csv'
+    # df = generate_rounded_triangle_sdf_dataset(num_triangle=500, points_per_triangle=1000, smooth_factor=smooth_factor, filename=dataset_path)
 
-    dataset_path = f'{root_path}/quadrangle_sdf_dataset_smf{smooth_factor}_arc_ratio_500_test.csv'
+    dataset_path = f'{root_path}/quadrangle_sdf_dataset_smf{smooth_factor}_arc_ratio_500_test_{suffix}.csv'
     df = generate_rounded_quadrangle_sdf_dataset(num_quadrangle=500,
                                                  points_per_quadrangle=1000,
                                                  smooth_factor=smooth_factor,
@@ -93,38 +95,38 @@ def main(args):
     n_features_per_shape = 5000000
 
     # training dataset
-    dataset_path = f'{root_path}/triangle_reconstruction_dataset_train'
-    df = generate_traingle_reconstruction_dataset(num_triangle=n_features_per_shape, smooth_factor=smooth_factor, filename=dataset_path)
+    # dataset_path = f'{root_path}/triangle_reconstruction_dataset_train_{suffix}'
+    # df = generate_traingle_reconstruction_dataset(num_triangle=n_features_per_shape, smooth_factor=smooth_factor, filename=dataset_path)
 
-    dataset_path = f'{root_path}/quadrangle_reconstruction_dataset_train'
+    dataset_path = f'{root_path}/quadrangle_reconstruction_dataset_train_{suffix}'
     df = generate_quadrangle_reconstruction_dataset(num_quadrangle=n_features_per_shape,
                                                     smooth_factor=smooth_factor,
                                                     filename=dataset_path,
                                                     num_golden_quadrangle=num_golden_quadrangle)
 
-    dataset_path = f'{root_path}/ellipse_reconstruction_dataset_train'
-    df = generate_ellipse_reconstruction_dataset(num_ellipse=n_features_per_shape,
-                                                 smooth_factor=smooth_factor,
-                                                 filename=dataset_path,
-                                                 num_golden_ellipse=num_golden_ellipse)
+    # dataset_path = f'{root_path}/ellipse_reconstruction_dataset_train_{suffix}'
+    # df = generate_ellipse_reconstruction_dataset(num_ellipse=n_features_per_shape,
+    #                                              smooth_factor=smooth_factor,
+    #                                              filename=dataset_path,
+    #                                              num_golden_ellipse=num_golden_ellipse)
 
     n_features_per_shape = 10000
 
     # test dataset
-    dataset_path = f'{root_path}/triangle_reconstruction_dataset_test'
-    df = generate_traingle_reconstruction_dataset(num_triangle=n_features_per_shape, smooth_factor=smooth_factor, filename=dataset_path)
+    # dataset_path = f'{root_path}/triangle_reconstruction_dataset_test_{suffix}'
+    # df = generate_traingle_reconstruction_dataset(num_triangle=n_features_per_shape, smooth_factor=smooth_factor, filename=dataset_path)
 
-    dataset_path = f'{root_path}/quadrangle_reconstruction_dataset_test'
+    dataset_path = f'{root_path}/quadrangle_reconstruction_dataset_test_{suffix}'
     df = generate_quadrangle_reconstruction_dataset(num_quadrangle=n_features_per_shape,
                                                     smooth_factor=smooth_factor,
                                                     filename=dataset_path,
                                                     num_golden_quadrangle=num_golden_quadrangle)
 
-    dataset_path = f'{root_path}/ellipse_reconstruction_dataset_test'
-    df = generate_ellipse_reconstruction_dataset(num_ellipse=n_features_per_shape,
-                                                 smooth_factor=smooth_factor,
-                                                 filename=dataset_path,
-                                                 num_golden_ellipse=num_golden_ellipse)
+    # dataset_path = f'{root_path}/ellipse_reconstruction_dataset_test_{suffix}'
+    # df = generate_ellipse_reconstruction_dataset(num_ellipse=n_features_per_shape,
+    #                                              smooth_factor=smooth_factor,
+    #                                              filename=dataset_path,
+    #                                              num_golden_ellipse=num_golden_ellipse)
 
 def generate_datasets_for_conv_vae(args):
     root_path = args.root_path
