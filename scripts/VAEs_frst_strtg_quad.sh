@@ -19,19 +19,19 @@ CONFIG_NAME="VAE_DeepSDF_quad"
 RUN_NAME="quad"
 DATASET_TYPE="quadrangle"
 
-echo "Running VAE_training.py with config: $CONFIG_NAME"
+# echo "Running VAE_training.py with config: $CONFIG_NAME"
 
-python train/global_training_via_HvDecoder.py \
-    --max_epochs "$MAX_EPOCHS" \
-    --dataset_path "$DATASET_PATH" \
-    --config_dir "$CONFIG_DIR" \
-    --config_name "$CONFIG_NAME" \
-    --metrics_file "$METRICS_FILE" \
-    --run_name "$RUN_NAME" \
-    --dataset_type "$DATASET_TYPE"
+# python train/global_training_via_HvDecoder.py \
+#     --max_epochs "$MAX_EPOCHS" \
+#     --dataset_path "$DATASET_PATH" \
+#     --config_dir "$CONFIG_DIR" \
+#     --config_name "$CONFIG_NAME" \
+#     --metrics_file "$METRICS_FILE" \
+#     --run_name "$RUN_NAME" \
+#     --dataset_type "$DATASET_TYPE"
 
-echo "Completed run: $RUN_NAME"
-echo "----------------------------------------"
+# echo "Completed run: $RUN_NAME"
+# echo "----------------------------------------"
 # done
 
 # for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do
