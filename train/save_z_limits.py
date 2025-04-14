@@ -8,7 +8,10 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 
 # Add the parent directory of NN_TopOpt to the system path
-sys.path.append(os.path.abspath('NN_TopOpt'))
+# sys.path.append(os.path.abspath('NN_TopOpt'))
+# Add parent directory to path since script is run from parent dir
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'datasets'))
 
 from models.sdf_models import (
     LitSdfAE_MINE,
