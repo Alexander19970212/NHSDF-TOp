@@ -213,12 +213,15 @@ class ReconstructionDataset(Dataset):
                     df["class"] = class_i/(self.n_classes-1)
 
         self.data = pd.concat(dfs, ignore_index=True)
-        # print(self.data.columns)
+        print(self.data.columns)
         valid_feature_names = [col for col in feature_names if col in self.data.columns]
         self.data = self.data.reindex(columns=valid_feature_names, fill_value=0)
         self.data = self.data.fillna(0)
 
-        self.feature_dim = len(self.data.columns) - 1
+        if 'point_x' in self.data.columns:
+            self.feature_dim = len(self.data.columns) - 1
+        else:
+            self.feature_dim = len(self.data.columns) + 1 
 
     def __len__(self):
         return len(self.data)
@@ -226,8 +229,8 @@ class ReconstructionDataset(Dataset):
     def __getitem__(self, idx):
         row = self.data.iloc[idx]
         X_row = row.drop(labels=['arc_ratio'])
-        X = torch.zeros(self.feature_dim+2, dtype=torch.float32)
-        X[2:] = torch.tensor(X_row.values, dtype=torch.float32)
+        # X = torch.zeros(self.feature_dim, dtype=torch.float32)
+        X = torch.tensor(X_row.values, dtype=torch.float32)
         arc_ratio = torch.tensor(row['arc_ratio'].item(), dtype=torch.float32)
         
         return X, torch.tensor(0, dtype=torch.float32), arc_ratio

@@ -639,7 +639,7 @@ def plot_latent_space_radius_sum(model, dataloader, latent_dim=3, num_samples=40
 
     plt.show()
 
-def plot_predicted_sdf(model, test_loader, num_samples=5):
+def plot_predicted_sdf(model, test_loader, num_samples=5, dataset_type='tripple'):
     """Plot predicted SDF values for sample inputs"""
     model.eval()
     plt.figure(figsize=(15, 5))
@@ -648,6 +648,8 @@ def plot_predicted_sdf(model, test_loader, num_samples=5):
         # Get sample batch
         batch = next(iter(test_loader))
         inputs = batch[0][:8]  # Take first 8 samples
+        # inputs = inputs[:, :test_loader.dataset.feature_dim]
+        # print(inputs.shape)
 
         output = model(inputs, reconstruction=True)
         z = output["z"]
@@ -667,7 +669,7 @@ def plot_predicted_sdf(model, test_loader, num_samples=5):
             col = i % 4
 
             sdf_pred = model.sdf(z[i], grid_points)
-            geometry_type, geometry_params = extract_geometry(x_reconstructed[i].detach().cpu().numpy())
+            geometry_type, geometry_params = extract_geometry(x_reconstructed[i].detach().cpu().numpy(), dataset_type)
             # extract_geometry(x_original[i].detach().cpu().numpy(), axs[row, col])
 
             if geometry_type == "ellipse":
@@ -704,7 +706,7 @@ def plot_predicted_sdf(model, test_loader, num_samples=5):
                     axs[row, col].plot(x, y, 'b-', linewidth=2)
 
             # geometry_type, geometry_params = extract_geometry(x_reconstructed[i].detach().cpu().numpy(), axs[row, col])
-            geometry_type, geometry_params = extract_geometry(x_original[i].detach().cpu().numpy())
+            geometry_type, geometry_params = extract_geometry(x_original[i].detach().cpu().numpy(), dataset_type)
 
             if geometry_type == "ellipse":
                 a = geometry_params[1]

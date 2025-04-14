@@ -684,14 +684,32 @@ def get_rounded_polygon(vertices, radiuses): # + ->
         
     return line_segments, arc_segments, False
 
-def extract_geometry(chi):
+def extract_geometry(chi, dataset_type):
     line_width = 2
     
-    geometry_label = chi[0]
-    geometry_label = round(geometry_label * 2) / 2
+    if dataset_type == 'tripple':
+        geometry_label = chi[0]
+        geometry_label = round(geometry_label * 2) / 2
+        if geometry_label == 0.5:
+            chi_offset = 2
+        elif geometry_label == 1:
+            chi_offset = 7
+        elif geometry_label == 0:
+            chi_offset = 1
+    elif dataset_type == 'quadrangle':
+        geometry_label = 1
+        chi_offset = 0 
+    elif dataset_type == 'triangle':
+        geometry_label = 0.5
+        chi_offset = 0
+    elif dataset_type == 'ellipse':
+        geometry_label = 0
+        chi_offset = 0
+    else:
+        raise ValueError(f"Invalid dataset type: {dataset_type}")
 
     if geometry_label == 0:
-        sigmas_ratio = chi[1]*1.5
+        sigmas_ratio = chi[chi_offset]*1.5
         a = 0.5
         b = a * sigmas_ratio
         return "ellipse", [sigmas_ratio, a, b]
@@ -703,20 +721,20 @@ def extract_geometry(chi):
         radiuses = []
 
         if geometry_label == 0.5:
-            x3 = chi[2]
-            y3 = chi[3]
+            x3 = chi[chi_offset]
+            y3 = chi[chi_offset+1]
             v3 = np.array([x3, y3])
 
             vertices.append(v3)
 
             for i in range(3):
-                radiuses.append(chi[i+4])
+                radiuses.append(chi[i+chi_offset+2])
 
         elif geometry_label == 1:
-            x3 = chi[7]
-            y3 = chi[8]
-            x4 = chi[9]
-            y4 = chi[10]
+            x3 = chi[chi_offset]
+            y3 = chi[chi_offset+1]
+            x4 = chi[chi_offset+2]
+            y4 = chi[chi_offset+3]
 
             v3 = np.array([x3, y3])
             v4 = np.array([x4, y4])
@@ -725,7 +743,7 @@ def extract_geometry(chi):
             vertices.append(v4)
 
             for i in range(4):
-                radiuses.append(chi[i+11])
+                radiuses.append(chi[i+chi_offset+4])
 
         else:
             print("Unknown geometry label: ", geometry_label, chi)
