@@ -57,7 +57,7 @@ def main(args):
     # dataset_path = f'{root_path}/ellipse_sdf_surface_dataset_smf{smooth_factor}_150_{suffix}.csv'
     # df, points_df = generate_ellipse_sdf_surface_dataset(num_ellipse=150, points_per_ellipse=1225, smooth_factor=smooth_factor, filename=dataset_path)
 
-    dataset_path = f'{root_path}/quadrangle_sdf_surface_dataset_smf{smooth_factor}_150_{suffix} .csv'
+    dataset_path = f'{root_path}/quadrangle_sdf_surface_dataset_smf{smooth_factor}_150_{suffix}.csv'
     df, points_df = generate_rounded_quadrangle_sdf_surface_dataset(num_quadrangle=150, points_per_quadrangle=1225, smooth_factor=smooth_factor, filename=dataset_path)
 
     # dataset_path = f'{root_path}/triangle_sdf_surface_dataset_smf{smooth_factor}_150_{suffix}.csv'
@@ -189,7 +189,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate datasets for VAE training')
     parser.add_argument('--root_path', type=str, default='../shape_datasets', help='Root path for the datasets')
     parser.add_argument('--dataset_name', type=str, default='conv_vae', help='Dataset name')
-    parser.add_argument('--vae_type', type=str, default='conv', help='VAE type')
+    parser.add_argument('--vae_type', type=str, default='default', help='VAE type')
+
     args = parser.parse_args()
     if args.vae_type == 'conv':
         generate_datasets_for_conv_vae(args)
