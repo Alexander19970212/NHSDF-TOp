@@ -109,6 +109,7 @@ def investigate_latent_space(model, dataloader, stats_dir, config_name):
     latent_maxs = np.max(latent_vectors, axis=0)
 
     if stats_dir is not None and config_name is not None:
+        print(f"Saving stats to {stats_dir}")
         np.savez(
             os.path.join(stats_dir, f"{config_name}_full_stats.npz"),
             latent_mins=latent_mins,
@@ -151,7 +152,7 @@ def main():
     model = load_model(args, feature_dim=test_dataset.feature_dim)
 
     # Investigate latent space
-    stats_dir = '../z_limits'
+    stats_dir = './z_limits'
     investigate_latent_space(model, test_loader, stats_dir=stats_dir, config_name=args.config_name)
 
 if __name__ == "__main__":
