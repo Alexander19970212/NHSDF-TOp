@@ -4,7 +4,7 @@
 
 # CONFIG_DIR="configs/NN_sdf_experiments/model_arch_15_wMI_wT"
 CONFIG_DIR="configs/NN_sdf_experiments/final_experiments/VAEs"
-MAX_EPOCHS=1  # Adjust as needed
+MAX_EPOCHS=2  # Adjust as needed
 DATASET_PATH="shape_datasets"
 
 # ROUND_NUM=6
@@ -19,19 +19,19 @@ CONFIG_NAME="VAE_DeepSDF_quad"
 RUN_NAME="Bprec"
 DATASET_TYPE="quadrangle"
 
-# echo "Running VAE_training.py with config: $CONFIG_NAME"
+echo "Running VAE_training.py with config: $CONFIG_NAME"
 
-# python train/global_training_via_HvDecoder.py \
-#     --max_epochs "$MAX_EPOCHS" \
-#     --dataset_path "$DATASET_PATH" \
-#     --config_dir "$CONFIG_DIR" \
-#     --config_name "$CONFIG_NAME" \
-#     --metrics_file "$METRICS_FILE" \
-#     --run_name "$RUN_NAME" \
-#     --dataset_type "$DATASET_TYPE"
+python train/global_training_via_HvDecoder.py \
+    --max_epochs "$MAX_EPOCHS" \
+    --dataset_path "$DATASET_PATH" \
+    --config_dir "$CONFIG_DIR" \
+    --config_name "$CONFIG_NAME" \
+    --metrics_file "$METRICS_FILE" \
+    --run_name "$RUN_NAME" \
+    --dataset_type "$DATASET_TYPE"
 
-# echo "Completed run: $RUN_NAME"
-# echo "----------------------------------------"
+echo "Completed run: $RUN_NAME"
+echo "----------------------------------------"
 
 
 echo "Running VAE_training.py with config: $CONFIG_NAME"
