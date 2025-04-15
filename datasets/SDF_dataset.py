@@ -213,12 +213,11 @@ class ReconstructionDataset(Dataset):
                     df["class"] = class_i/(self.n_classes-1)
 
         self.data = pd.concat(dfs, ignore_index=True)
-        print(self.data.columns)
         valid_feature_names = [col for col in feature_names if col in self.data.columns]
         if 'point_x' not in self.data.columns:
-            valid_feature_names.append('point_x')
-            valid_feature_names.append('point_y')
-            
+            valid_feature_names = ['point_x', 'point_y'] + valid_feature_names
+        print(self.data.columns)
+        
         self.data = self.data.reindex(columns=valid_feature_names, fill_value=0)
         self.data = self.data.fillna(0)
 

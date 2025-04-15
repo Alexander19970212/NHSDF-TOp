@@ -34,7 +34,7 @@ def generate_quadrangle(mirrored_quadrangle=True, golden_quadrangle=False):
                 v4 = np.array([x4, y4])
             else:
                 x4 = np.random.uniform(-0.8, 0.8)
-                y4 = np.random.uniform(-0.8, 0.2)
+                y4 = np.random.uniform(0.2, 0.8)
                 v4 = np.array([x4, y4])
 
         vertices = np.array([v1, v2, v3, v4])
