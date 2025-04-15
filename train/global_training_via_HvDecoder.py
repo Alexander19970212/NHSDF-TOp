@@ -74,9 +74,12 @@ def main(args):
     print(f"Run name: {run_name}")
 
     if dataset_type == 'quadrangle':
-        dataset_train_files = [f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_5000.csv']
-        dataset_test_files = [f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_500_test.csv']
-        surface_files = [f'{dataset_path}/quadrangle_sdf_surface_dataset_smf20_150.csv']
+        smf = 20
+        n_samples = 15000
+        suffix = 'Bprec'
+        dataset_train_files = [f'{dataset_path}/quadrangle_sdf_dataset_smf{smf}_arc_ratio_{n_samples}_{suffix}.csv']
+        dataset_test_files = [f'{dataset_path}/quadrangle_sdf_dataset_smf{smf}_arc_ratio_500_test_{suffix}.csv']
+        surface_files = [f'{dataset_path}/quadrangle_sdf_surface_dataset_smf{smf}_150_{suffix}.csv']
 
     elif dataset_type == 'tripple':
         dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_5000.csv',

@@ -76,8 +76,9 @@ def main(args):
     saved_model_path = f'{models_dir}/{run_name}_HvDecGlobal.pt'
 
     if dataset_type == 'quadrangle':
-        dataset_train_files = [f'{dataset_path}/quadrangle_reconstruction_dataset_train.csv']
-        dataset_test_files = [f'{dataset_path}/quadrangle_reconstruction_dataset_test.csv']
+        suffix = 'Bprec'
+        dataset_train_files = [f'{dataset_path}/quadrangle_reconstruction_dataset_train_{suffix}.csv']
+        dataset_test_files = [f'{dataset_path}/quadrangle_reconstruction_dataset_test_{suffix}.csv']
 
 
     elif dataset_type == 'tripple':
