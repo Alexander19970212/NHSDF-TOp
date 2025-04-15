@@ -29,7 +29,8 @@ params:
   N_g_y: 1
   max_iter: 72
   config_name: VAE_DeepSDF_quad
-  saved_model_name: frst_VAE_DeepSDF_quad_quad
+  # saved_model_name: frst_VAE_DeepSDF_quad_quad
+  saved_model_name: frst_VAE_DeepSDF_quad_Bprec
   config_dir: ../configs/NN_sdf_experiments/final_experiments/VAEs
   input_dim: 10 # quadrangle params + 2 for point
   dataset_type: quadrangle
