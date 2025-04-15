@@ -215,13 +215,15 @@ class ReconstructionDataset(Dataset):
         self.data = pd.concat(dfs, ignore_index=True)
         print(self.data.columns)
         valid_feature_names = [col for col in feature_names if col in self.data.columns]
+        if 'point_x' not in self.data.columns:
+            valid_feature_names.append('point_x')
+            valid_feature_names.append('point_y')
+            
         self.data = self.data.reindex(columns=valid_feature_names, fill_value=0)
         self.data = self.data.fillna(0)
 
-        if 'point_x' in self.data.columns:
-            self.feature_dim = len(self.data.columns) - 1
-        else:
-            self.feature_dim = len(self.data.columns) + 1 
+        self.feature_dim = len(self.data.columns) - 1
+
 
     def __len__(self):
         return len(self.data)
