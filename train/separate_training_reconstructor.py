@@ -157,7 +157,7 @@ def main(args):
 
     # Initialize VAE model
     model_params = config['model']['params']
-    model_params['input_dim'] = train_dataset.feature_dim + 2
+    model_params['input_dim'] = train_dataset.feature_dim
     vae_model = models[config['model']['type']](**model_params)
 
     # Load pre-trained weights for the model
