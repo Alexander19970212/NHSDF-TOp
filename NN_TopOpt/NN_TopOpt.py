@@ -1208,17 +1208,34 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
         if self.dataset_type == "tripple":
             encoder_input[:, 2] = 1
             chi_offset = 9
+            encoder_input[:, chi_offset] = 0.5
+            encoder_input[:, chi_offset+1] = 0.5
+            encoder_input[:, chi_offset+2] = -0.5
+            encoder_input[:, chi_offset+3] = 0.5
+            encoder_input[:, chi_offset+4] = R
+            encoder_input[:, chi_offset+5] = R
+            encoder_input[:, chi_offset+6] = R
+            encoder_input[:, chi_offset+7] = R
+
         elif self.dataset_type == "quadrangle":
             chi_offset = 2
+            encoder_input[:, chi_offset] = 0.5
+            encoder_input[:, chi_offset+1] = 0.5
+            encoder_input[:, chi_offset+2] = -0.5
+            encoder_input[:, chi_offset+3] = 0.5
+            encoder_input[:, chi_offset+4] = R
+            encoder_input[:, chi_offset+5] = R
+            encoder_input[:, chi_offset+6] = R
+            encoder_input[:, chi_offset+7] = R
 
-        encoder_input[:, chi_offset] = 0.5
-        encoder_input[:, chi_offset+1] = 0.5
-        encoder_input[:, chi_offset+2] = -0.5
-        encoder_input[:, chi_offset+3] = 0.5
-        encoder_input[:, chi_offset+4] = R
-        encoder_input[:, chi_offset+5] = R
-        encoder_input[:, chi_offset+6] = R
-        encoder_input[:, chi_offset+7] = R
+        elif self.dataset_type == "triangle":
+            chi_offset = 2
+            R = 0.5 * torch.tanh(torch.tensor(30 * torch.pi/180)) * 0.9
+            encoder_input[:, chi_offset] = 0
+            encoder_input[:, chi_offset+1] = torch.sqrt(torch.tensor(0.75)) - 0.5
+            encoder_input[:, chi_offset+2] = R
+            encoder_input[:, chi_offset+3] = R
+            encoder_input[:, chi_offset+4] = R
 
         # get initial latent vectors
         output = self.model(encoder_input)

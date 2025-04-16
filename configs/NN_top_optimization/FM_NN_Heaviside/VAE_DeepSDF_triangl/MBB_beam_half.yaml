@@ -28,12 +28,12 @@ params:
   N_g_x: 4
   N_g_y: 1
   max_iter: 73
-  config_name: VAE_DeepSDF_quad
+  config_name: VAE_DeepSDF_triangl
   # saved_model_name: frst_VAE_DeepSDF_quad_quad
-  saved_model_name: frst_VAE_DeepSDF_quad_Bprec
+  saved_model_name: frst_VAE_DeepSDF_triangle_Bprec
   config_dir: ../configs/NN_sdf_experiments/final_experiments/VAEs
-  input_dim: 10 # quadrangle params + 2 for point
-  dataset_type: quadrangle
+  input_dim: 7 # quadrangle params + 2 for point
+  dataset_type: triangle
   merging_marker: 10
   merging_adaptation_length: 10
   compliance_w: 1200000000 #38400 #1.2
