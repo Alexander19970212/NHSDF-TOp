@@ -1251,6 +1251,8 @@ class LitHvDecoderGlobal(L.LightningModule):
             
         self.save_hyperparameters(logger=False)
 
+        self.prob_losses = ["sdf_loss", "reconstruction_loss"]
+
     def freezing_weights(self, rec_decoder_training=False):
         print(f"Freezing weights: {rec_decoder_training}")
         for param in self.vae.parameters():
@@ -1318,7 +1320,7 @@ class LitHvDecoderGlobal(L.LightningModule):
         #     total_loss = 0.001*total_loss
 
         for key, value in splitted_loss.items():
-            self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
+            self.log(f'train_{key}', value, prog_bar=key in self.prob_losses, batch_size=x.shape[0])
 
         return total_loss
 
@@ -1334,7 +1336,7 @@ class LitHvDecoderGlobal(L.LightningModule):
             total_loss, splitted_loss = self.vae.loss_function(loss_args)
 
             for key, value in splitted_loss.items():
-                self.log(f'val_{key}', value, prog_bar=True)
+                self.log(f'val_{key}', value, prog_bar=key in self.prob_losses)
 
             # total_loss, splitted_loss = self.vae.reconstruction_loss(output["x_reconstructed"], x)            
             # for key, value in splitted_loss.items():
@@ -1407,11 +1409,11 @@ class LitHvDecoderGlobal(L.LightningModule):
             # for key, value in avg_splitted_loss.items():
             #     self.log(f'val_{key}', value, prog_bar=True)
 
-            self.log('val_mae', avg_mae, prog_bar=True)
-            self.log('val_rmse', avg_rmse, prog_bar=True)
-            self.log('val_smoothness_pred', avg_smoothness_pred, prog_bar=True)
+            self.log('val_mae', avg_mae, prog_bar=False)
+            self.log('val_rmse', avg_rmse, prog_bar=False)
+            self.log('val_smoothness_pred', avg_smoothness_pred, prog_bar=False)
             self.log('val_smoothness_diff', avg_smoothness_diff, prog_bar=True)
-            self.log('val_diff_smoothness', avg_diff_smoothness, prog_bar=True)
+            self.log('val_diff_smoothness', avg_diff_smoothness, prog_bar=False)
 
         if dataloader_idx == 2:
             x, sdf, tau = batch
@@ -1482,7 +1484,7 @@ class LitReconDecoderGlobal(LitHvDecoderGlobal):
                  regularization=None, warmup_steps=1000, max_steps=10000):
         super().__init__(vae_model, learning_rate, reg_weight, regularization, warmup_steps, max_steps)
         self.freezing_weights()
-
+        self.prob_losses = ["reconstruction_loss"]
     def freezing_weights(self):
         for param in self.vae.parameters():
             param.requires_grad = True
@@ -1502,7 +1504,7 @@ class LitReconDecoderGlobal(LitHvDecoderGlobal):
         total_loss, splitted_loss = self.vae.loss_function(loss_args, Reconstruction=True, Heaviside=False)
 
         for key, value in splitted_loss.items():
-            self.log(f'train_{key}', value, prog_bar=True, batch_size=x.shape[0])
+            self.log(f'train_{key}', value, prog_bar=key in self.prob_losses, batch_size=x.shape[0])
 
         return total_loss
     
@@ -1517,7 +1519,7 @@ class LitReconDecoderGlobal(LitHvDecoderGlobal):
         total_loss, splitted_loss = self.vae.loss_function(loss_args, Reconstruction=True, Heaviside=False)
 
         for key, value in splitted_loss.items():
-            self.log(f'val_{key}', value, prog_bar=True)
+            self.log(f'val_{key}', value, prog_bar=key in self.prob_losses)
 
 
 ################################################################################################

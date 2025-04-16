@@ -79,8 +79,10 @@ def main(args):
         suffix = 'Bprec'
         dataset_train_files = [f'{dataset_path}/quadrangle_reconstruction_dataset_train_{suffix}.csv']
         dataset_test_files = [f'{dataset_path}/quadrangle_reconstruction_dataset_test_{suffix}.csv']
-
-
+    elif dataset_type == 'triangle':
+        suffix = 'Bprec'
+        dataset_train_files = [f'{dataset_path}/triangle_reconstruction_dataset_train_{suffix}.csv']
+        dataset_test_files = [f'{dataset_path}/triangle_reconstruction_dataset_test_{suffix}.csv']
     elif dataset_type == 'tripple':
         dataset_train_files = [f'{dataset_path}/ellipse_reconstruction_dataset_train.csv',
                     f'{dataset_path}/triangle_reconstruction_dataset_train.csv',
