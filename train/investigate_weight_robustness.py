@@ -87,21 +87,15 @@ def main(args):
         smf = 20
         n_samples = 15000
         suffix = 'Bprec'
-        dataset_train_files = [f'{dataset_path}/quadrangle_sdf_dataset_smf{smf}_arc_ratio_{n_samples}_{suffix}.csv']
         dataset_test_files = [f'{dataset_path}/quadrangle_sdf_dataset_smf{smf}_arc_ratio_500_test_{suffix}.csv']
         surface_files = [f'{dataset_path}/quadrangle_sdf_surface_dataset_smf{smf}_150_{suffix}.csv']
     elif dataset_type == 'triangle':
         smf = 20
         n_samples = 15000
         suffix = 'Bprec'
-        dataset_train_files = [f'{dataset_path}/triangle_sdf_dataset_smf{smf}_arc_ratio_{n_samples}_{suffix}.csv']
         dataset_test_files = [f'{dataset_path}/triangle_sdf_dataset_smf{smf}_arc_ratio_500_test_{suffix}.csv']
         surface_files = [f'{dataset_path}/triangle_sdf_surface_dataset_smf{smf}_150_{suffix}.csv']
-    elif dataset_type == 'tripple':
-        dataset_train_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_5000.csv',
-                    f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_5000.csv', 
-                    f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_5000.csv']
-    
+    elif dataset_type == 'tripple':    
         dataset_test_files = [f'{dataset_path}/ellipse_sdf_dataset_smf22_arc_ratio_500_test.csv',
                     f'{dataset_path}/triangle_sdf_dataset_smf20_arc_ratio_500_test.csv', 
                     f'{dataset_path}/quadrangle_sdf_dataset_smf20_arc_ratio_500_test.csv']
@@ -112,19 +106,12 @@ def main(args):
     else:
         raise ValueError(f"Invalid dataset type: {dataset_type}")
 
-    train_dataset = SdfDataset(dataset_train_files, exclude_ellipse=False)
     test_dataset = SdfDataset(dataset_test_files, exclude_ellipse=False)
     surface_dataset = SdfDatasetSurface(surface_files, cut_value=False)
     # radius_samples_dataset = RadiusDataset(radius_samples_files)
 
     # Create DataLoaders with shuffling
     batch_size = 64
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,  # Enable shuffling for training data
-        num_workers=15
-    )
 
     test_loader = torch.utils.data.DataLoader(
         test_dataset, 
@@ -148,7 +135,6 @@ def main(args):
     #     num_workers=15
     # )
 
-    print(f"Training set size: {len(train_dataset)}")
     print(f"Test set size: {len(test_dataset)}")
     print(f"Surface test set size: {len(surface_test_loader)}")
     # print(f"Radius samples set size: {len(radius_samples_loader)}")
@@ -156,7 +142,7 @@ def main(args):
     #################################################
 
     MAX_EPOCHS = args.max_epochs
-    MAX_STEPS = MAX_EPOCHS * len(train_loader)
+    MAX_STEPS = MAX_EPOCHS * len(test_loader)
 
     # Training setup
     trainer = Trainer(
@@ -226,7 +212,7 @@ def main(args):
         results[noise_level] = {}
         for run_idx in range(runs_per_noise_level):
             print(f"Running with noise level {noise_level} and run {run_idx}")
-            vae_model.perturbate_weights(vae_model_init, noise_level)
+            vae_trainer.perturbate_weights(vae_model_init, noise_level)
             step_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader])
 
             # Save metrics into a JSON file with run_name
