@@ -79,9 +79,10 @@ def main(args):
     print(f"Run name: {run_name}")
 
     noise_levels = [0.0]
-    runs_per_noise_level = 3
+    runs_per_noise_level = 1
 
     saved_model_path = f'{models_dir}/{run_name}_full.pt'
+    print(f"Saved model path: {saved_model_path}")
 
     if dataset_type == 'quadrangle':
         smf = 20
@@ -186,13 +187,6 @@ def main(args):
 
     # Load pre-trained weights
     state_dict = torch.load(saved_model_path)
-    new_state_dict = vae_model.state_dict()
-
-    # Update the new_state_dict with the loaded state_dict, ignoring size mismatches
-    for key in state_dict:
-        if key in new_state_dict and state_dict[key].size() == new_state_dict[key].size():
-            new_state_dict[key] = state_dict[key]
-
     vae_model.load_state_dict(state_dict)
     vae_model.eval()
 
