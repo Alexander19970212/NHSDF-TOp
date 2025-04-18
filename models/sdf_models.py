@@ -1253,6 +1253,20 @@ class LitHvDecoderGlobal(L.LightningModule):
 
         self.prob_losses = ["sdf_loss", "reconstruction_loss"]
 
+    def perturbate_weights(self, model, noise_level=0.01, name_list=None):
+        # if name_list is None:
+        #     name_list = []
+
+        for name, param in model.named_parameters():
+            print(f"name: {name}, param: {param.shape}")
+            if name_list is not None:
+                if name in name_list:
+                    param.data += torch.randn_like(param.data) * noise_level
+            else:
+                param.data += torch.randn_like(param.data) * noise_level
+
+        self.vae = model
+
     def freezing_weights(self, rec_decoder_training=False):
         print(f"Freezing weights: {rec_decoder_training}")
         for param in self.vae.parameters():

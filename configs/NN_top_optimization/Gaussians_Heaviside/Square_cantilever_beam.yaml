@@ -1,8 +1,8 @@
 params:
-  problem_name: cantilever_beam_high_resolution
+  problem_name: Square_cantilever_beam
   comment: 5 step Adamw
   method: fm_nn_heaviside
-  top_opt_method: CombinedMappingDecoderSDF
+  top_opt_method: GaussianSplattingCompliance
   penal: 3
   shape_combination: true
   splitting: false
@@ -14,28 +14,24 @@ params:
   cleaning_offset: 5
   merging_markers: [200]
   merging_adaptation: 1
-  axis_offset: 0.3
-  init_scale: 0.1
+  axis_offset: 0.2
+  init_scale: 0.2
+  init_centers_x: [0.2, 0.8, 0.8]
+  init_centers_y: [0.5, 0.2, 0.8]
   shape_optimization_ranges: [[40, 150]]
   refactoring_markers: [42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90, 92, 94, 96, 98, 100]
   volfrac: 0.6
-  volfrac_increment: 0.38
+  volfrac_increment: 0.22
   volfrac_increment_marker: 20
   volfrac_increment_duration: 40
   smooth_k: 15
-  N_g: 20
-  N_g_x: 1
-  N_g_y: 3
-  max_iter: 77
-  config_name: VAE_DeepSDF_quad
-  # saved_model_name: frst_VAE_DeepSDF_quad_quad
-  saved_model_name: frst_VAE_DeepSDF_quad_Bprec
-  config_dir: ../configs/NN_sdf_experiments/final_experiments/VAEs
-  input_dim: 10 # quadrangle params + 2 for point
-  dataset_type: quadrangle
+  N_g: 3
+  N_g_x: 2
+  N_g_y: 2
+  max_iter: 80
   merging_marker: 10
   merging_adaptation_length: 10
-  compliance_w: 14000000000 # 15
+  compliance_w: 40000 # 15
   volfrac_w: 1000000
   ks_smooth_factor: 60
   treshold: 0.5

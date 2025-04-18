@@ -1230,7 +1230,9 @@ class CombinedMappingDecoderSDF(torch.nn.Module):
 
         elif self.dataset_type == "triangle":
             chi_offset = 2
-            R = 0.5 * torch.tanh(torch.tensor(30 * torch.pi/180)) * 0.9
+            R = 0.5 * torch.tanh(torch.tensor(30 * torch.pi/180))/3 * 0.9
+            # R = 0.1
+            print("Triangle R: ", R)
             encoder_input[:, chi_offset] = 0
             encoder_input[:, chi_offset+1] = torch.sqrt(torch.tensor(0.75)) - 0.5
             encoder_input[:, chi_offset+2] = R

@@ -26,7 +26,7 @@ params:
   N_g: 20
   N_g_x: 1
   N_g_y: 3
-  max_iter: 77
+  max_iter: 80 # 77
   config_name: VAE_DeepSDF_quad
   # saved_model_name: frst_VAE_DeepSDF_quad_quad
   saved_model_name: frst_VAE_DeepSDF_quad_Bprec
@@ -35,7 +35,7 @@ params:
   dataset_type: quadrangle
   merging_marker: 10
   merging_adaptation_length: 10
-  compliance_w: 14000000000 # 15
+  compliance_w: 19700000000 # 15
   volfrac_w: 1000000
   ks_smooth_factor: 60
   treshold: 0.5
