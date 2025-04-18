@@ -78,7 +78,7 @@ def main(args):
         run_name = f'frst_{config_name}'
     print(f"Run name: {run_name}")
 
-    noise_levels = [0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
+    noise_levels = [0.0]
     runs_per_noise_level = 3
 
     saved_model_path = f'{models_dir}/{run_name}_full.pt'
@@ -212,7 +212,7 @@ def main(args):
         results[noise_level] = {}
         for run_idx in range(runs_per_noise_level):
             print(f"Running with noise level {noise_level} and run {run_idx}")
-            vae_trainer.perturbate_weights(vae_model_init, noise_level)
+            # vae_trainer.perturbate_weights(vae_model_init, noise_level)
             step_metrics = trainer.validate(vae_trainer, dataloaders=[test_loader, surface_test_loader])
 
             # Save metrics into a JSON file with run_name
