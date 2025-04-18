@@ -14,7 +14,7 @@ DATASET_PATH="shape_datasets"
 # for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do
 CONFIG_NAME="VAE_DeepSDF"
 # RUN_NAME="Bprec"
-RUN_NAME=""
+RUN_NAME="20smf"
 DATASET_TYPE="tripple"
 
 echo "Running VAE_training.py with config: $CONFIG_NAME"
