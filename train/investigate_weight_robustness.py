@@ -81,7 +81,8 @@ def main(args):
     noise_levels = [0.0]
     runs_per_noise_level = 1
 
-    saved_model_path = f'{models_dir}/{run_name}_full.pt'
+    # saved_model_path = f'{models_dir}/{run_name}_full.pt'
+    saved_model_path = f'{models_dir}/{run_name}_HvDecGlobal.pt'
     print(f"Saved model path: {saved_model_path}")
 
     if dataset_type == 'quadrangle':
