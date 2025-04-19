@@ -71,6 +71,7 @@ def main(args):
     config_name = args.config_name
     models_dir = args.model_dir
     dataset_type = args.dataset_type
+    layers_to_perturbate = args.layers_to_perturbate
     print(f"Dataset type: {dataset_type}")
     if len(args.run_name) > 0:
         run_name = f'frst_{config_name}_{args.run_name}'
@@ -78,7 +79,32 @@ def main(args):
         run_name = f'frst_{config_name}'
     print(f"Run name: {run_name}")
 
-    name_list = ['encoder']
+    name_dict = {'encoder': ['encoder'],
+                 'decoder': ['decoder_sdf'],
+                 'encoder_decoder': ['encoder', 'decoder_sdf'],
+                 'decoder_residual': ['decoder_sdf.lin0',
+                                      'decoder_sdf.bn0',
+                                      'decoder_sdf.lin1',
+                                      'decoder_sdf.bn1',
+                                      'decoder_sdf.lin2',
+                                      'decoder_sdf.bn2'],
+                 'decoder_output': [  'decoder_sdf.lin3',
+                                      'decoder_sdf.bn3',
+                                      'decoder_sdf.lin4',
+                                      'decoder_sdf.bn4',
+                                      'decoder_sdf.lin5',
+                                      'decoder_sdf.bn5',
+                                      'decoder_sdf.lin6',
+                                      'decoder_sdf.bn6',
+                                      'decoder_sdf.lin7',
+                                      'decoder_sdf.bn7',
+                                      'decoder_sdf.lin8',
+                                      'decoder_sdf.bn8',
+                                      'decoder_sdf.lin9',
+                                      'decoder_sdf.bn9',
+                                      ]}
+    
+    name_list = name_dict[layers_to_perturbate]
 
     # noise_levels = [0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
     noise_levels = [0.0, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01]
@@ -221,7 +247,7 @@ def main(args):
                 results[noise_level][key].append(value)
 
     # Save metrics into a JSON file with run_name
-    metrics_filename = args.metrics_file
+    metrics_filename = args.metrics_file + f'_{layers_to_perturbate}.json'
     try:
         with open(metrics_filename, 'r') as f:
             all_metrics = json.load(f)
@@ -242,6 +268,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset_type', type=str, default='tripple', help='Type of the dataset')
     parser.add_argument('--config_dir', type=str, default='configs/NN_sdf_experiments/architectures', help='Path to the config directory')
     parser.add_argument('--config_name', type=str, default='AE_DeepSDF', help='Name of the config')
-    parser.add_argument('--metrics_file', type=str, default='src/metrics_weight_robustness_encoder.json', help='Path to the metrics file')
+    parser.add_argument('--metrics_file', type=str, default='src/metrics_weight_robustness', help='Path to the metrics file')
+    parser.add_argument('--layers_to_perturbate', type=str, default='encoder', help='Layers to perturbate')
     args = parser.parse_args()
     main(args)
