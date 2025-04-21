@@ -106,7 +106,8 @@ def main(args):
     
     name_list = name_dict[layers_to_perturbate]
 
-    noise_levels = [0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
+    # noise_levels = [0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
+    noise_levels = [0.0, 0.004, 0.008, 0.01, 0.012, 0.016, 0.02]
     # noise_levels = [0.0, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.1]
     # noise_levels = [0.05]
     runs_per_noise_level = 5
@@ -269,7 +270,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset_type', type=str, default='tripple', help='Type of the dataset')
     parser.add_argument('--config_dir', type=str, default='configs/NN_sdf_experiments/architectures', help='Path to the config directory')
     parser.add_argument('--config_name', type=str, default='AE_DeepSDF', help='Name of the config')
-    parser.add_argument('--metrics_file', type=str, default='src/metrics_weight_robustness_gaussianN2', help='Path to the metrics file')
+    parser.add_argument('--metrics_file', type=str, default='src/metrics_weight_robustness_gaussianN3', help='Path to the metrics file')
     parser.add_argument('--layers_to_perturbate', type=str, default='encoder', help='Layers to perturbate')
     args = parser.parse_args()
     main(args)
