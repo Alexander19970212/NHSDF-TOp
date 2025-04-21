@@ -31,30 +31,30 @@ python train/investigate_weight_robustness.py \
 echo "Completed run: $RUN_NAME"
 echo "----------------------------------------"
 
-echo "Running VAE_training.py with config: $CONFIG_NAME"
+# echo "Running VAE_training.py with config: $CONFIG_NAME"
 
-python train/investigate_weight_robustness.py \
-    --max_epochs "$MAX_EPOCHS" \
-    --dataset_path "$DATASET_PATH" \
-    --config_dir "$CONFIG_DIR" \
-    --config_name "$CONFIG_NAME" \
-    --run_name "$RUN_NAME" \
-    --dataset_type "$DATASET_TYPE" \
-    --layers_to_perturbate "decoder_residual"
+# python train/investigate_weight_robustness.py \
+#     --max_epochs "$MAX_EPOCHS" \
+#     --dataset_path "$DATASET_PATH" \
+#     --config_dir "$CONFIG_DIR" \
+#     --config_name "$CONFIG_NAME" \
+#     --run_name "$RUN_NAME" \
+#     --dataset_type "$DATASET_TYPE" \
+#     --layers_to_perturbate "decoder_residual"
 
-echo "Completed run: $RUN_NAME"
-echo "----------------------------------------"
+# echo "Completed run: $RUN_NAME"
+# echo "----------------------------------------"
 
-echo "Running VAE_training.py with config: $CONFIG_NAME"
+# echo "Running VAE_training.py with config: $CONFIG_NAME"
 
-python train/investigate_weight_robustness.py \
-    --max_epochs "$MAX_EPOCHS" \
-    --dataset_path "$DATASET_PATH" \
-    --config_dir "$CONFIG_DIR" \
-    --config_name "$CONFIG_NAME" \
-    --run_name "$RUN_NAME" \
-    --dataset_type "$DATASET_TYPE" \
-    --layers_to_perturbate "decoder_output"
+# python train/investigate_weight_robustness.py \
+#     --max_epochs "$MAX_EPOCHS" \
+#     --dataset_path "$DATASET_PATH" \
+#     --config_dir "$CONFIG_DIR" \
+#     --config_name "$CONFIG_NAME" \
+#     --run_name "$RUN_NAME" \
+#     --dataset_type "$DATASET_TYPE" \
+#     --layers_to_perturbate "decoder_output"
 
-echo "Completed run: $RUN_NAME"
-echo "----------------------------------------"
+# echo "Completed run: $RUN_NAME"
+# echo "----------------------------------------"

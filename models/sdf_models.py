@@ -1262,10 +1262,10 @@ class LitHvDecoderGlobal(L.LightningModule):
                 for name_to_perturbate in name_list:
                     if name_to_perturbate in name:
                         print(f"name: {name}, param: {param.shape}")
-                        param.data += (torch.randn_like(param.data)-0.5) * noise_level
+                        param.data += torch.randn_like(param.data) * noise_level * param.data.ravel().abs().max()
                         break
             else:
-                param.data += (torch.randn_like(param.data)-0.5) * noise_level
+                param.data += torch.randn_like(param.data) * noise_level * param.data.ravel().abs().max()
 
         self.vae = model
 

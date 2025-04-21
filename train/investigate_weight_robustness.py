@@ -107,8 +107,9 @@ def main(args):
     name_list = name_dict[layers_to_perturbate]
 
     # noise_levels = [0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
-    noise_levels = [0.0, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01]
-    runs_per_noise_level = 5
+    # noise_levels = [0.0, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01]
+    noise_levels = [0.05]
+    runs_per_noise_level = 1
 
     # saved_model_path = f'{models_dir}/{run_name}_full.pt'
     saved_model_path = f'{models_dir}/{run_name}_HvDecGlobal.pt'
@@ -247,7 +248,7 @@ def main(args):
                 results[noise_level][key].append(value)
 
     # Save metrics into a JSON file with run_name
-    metrics_filename = args.metrics_file + f'_{layers_to_perturbate}.json'
+    metrics_filename = args.metrics_file + f'_{layers_to_perturbate}_test.json'
     try:
         with open(metrics_filename, 'r') as f:
             all_metrics = json.load(f)
