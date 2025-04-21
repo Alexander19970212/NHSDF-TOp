@@ -639,7 +639,8 @@ def plot_latent_space_radius_sum(model, dataloader, latent_dim=3, num_samples=40
 
     plt.show()
 
-def plot_predicted_sdf(model, test_loader, num_samples=5, dataset_type='tripple'):
+def plot_predicted_sdf(model, test_loader, num_samples=5, dataset_type='tripple',
+                       reconstruct_geometry=False):
     """Plot predicted SDF values for sample inputs"""
     model.eval()
     plt.figure(figsize=(15, 5))
@@ -669,41 +670,43 @@ def plot_predicted_sdf(model, test_loader, num_samples=5, dataset_type='tripple'
             col = i % 4
 
             sdf_pred = model.sdf(z[i], grid_points)
-            geometry_type, geometry_params = extract_geometry(x_reconstructed[i].detach().cpu().numpy(), dataset_type)
-            # extract_geometry(x_original[i].detach().cpu().numpy(), axs[row, col])
 
-            if geometry_type == "ellipse":
-                a = geometry_params[1]
-                b = geometry_params[2]
-                ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='black')
-                axs[row, col].add_patch(ellipse)
+            if reconstruct_geometry:
+                geometry_type, geometry_params = extract_geometry(x_reconstructed[i].detach().cpu().numpy(), dataset_type)
+                # extract_geometry(x_original[i].detach().cpu().numpy(), axs[row, col])
 
-            elif geometry_type == "polygon":
-                vertices = geometry_params[0]
-                radiuses = geometry_params[1]
-                line_segments = geometry_params[2]
-                arc_segments = geometry_params[3]
-                # axs[row, col].add_patch(Polygon(vertices, fill=False, color='red', linewidth=4))
-                for start, end in line_segments:
-                    axs[row, col].plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=2)
-                    # ax2.plot([start[0], end[0]], [start[1], end[1]], [z_offset, z_offset], 'g-', linewidth=line_width)
+                if geometry_type == "ellipse":
+                    a = geometry_params[1]
+                    b = geometry_params[2]
+                    ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='black')
+                    axs[row, col].add_patch(ellipse)
 
-                # Plot arc segments
-                for center, start_angle, end_angle, radius in arc_segments:
-                    # Calculate angles for arc
-                    
-                    # Ensure we draw the shorter arc
-                    if abs(end_angle - start_angle) > np.pi:
-                        if end_angle > start_angle:
-                            start_angle += 2*np.pi
-                        else:
-                            end_angle += 2*np.pi
-                            
-                    # Create points along arc
-                    theta = np.linspace(start_angle, end_angle, 100)
-                    x = center[0] + radius * np.cos(theta)
-                    y = center[1] + radius * np.sin(theta)
-                    axs[row, col].plot(x, y, 'b-', linewidth=2)
+                elif geometry_type == "polygon":
+                    vertices = geometry_params[0]
+                    radiuses = geometry_params[1]
+                    line_segments = geometry_params[2]
+                    arc_segments = geometry_params[3]
+                    # axs[row, col].add_patch(Polygon(vertices, fill=False, color='red', linewidth=4))
+                    for start, end in line_segments:
+                        axs[row, col].plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=2)
+                        # ax2.plot([start[0], end[0]], [start[1], end[1]], [z_offset, z_offset], 'g-', linewidth=line_width)
+
+                    # Plot arc segments
+                    for center, start_angle, end_angle, radius in arc_segments:
+                        # Calculate angles for arc
+                        
+                        # Ensure we draw the shorter arc
+                        if abs(end_angle - start_angle) > np.pi:
+                            if end_angle > start_angle:
+                                start_angle += 2*np.pi
+                            else:
+                                end_angle += 2*np.pi
+                                
+                        # Create points along arc
+                        theta = np.linspace(start_angle, end_angle, 100)
+                        x = center[0] + radius * np.cos(theta)
+                        y = center[1] + radius * np.sin(theta)
+                        axs[row, col].plot(x, y, 'b-', linewidth=2)
 
             # geometry_type, geometry_params = extract_geometry(x_reconstructed[i].detach().cpu().numpy(), axs[row, col])
             geometry_type, geometry_params = extract_geometry(x_original[i].detach().cpu().numpy(), dataset_type)
