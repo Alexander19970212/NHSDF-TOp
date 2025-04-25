@@ -9,9 +9,6 @@ smoothness_metrics.ipynb
 orthogonality_metric.ipynb
 logs/
 shape_datasets/
-model_weights/
-paper/
-src/
 checkpoints/
 __pycache__/
 experiments/
