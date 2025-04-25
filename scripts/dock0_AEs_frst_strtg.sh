@@ -7,7 +7,9 @@ CONFIG_DIR="configs/NN_sdf_experiments/final_experiments/AEs"
 MAX_EPOCHS=1  # Adjust as needed
 DATASET_PATH="shape_datasets"
 
-for ROUND_NUM in 6 8 9; do
+NUM_ROUNDS=5
+
+for ROUND_NUM in $(seq 1 $NUM_ROUNDS); do
     echo "Running round ${ROUND_NUM}"
     METRICS_FILE="src/final_metrics_round${ROUND_NUM}_frst_strtg_AEs.json"
     METRICS_FILE_RECON="src/final_metrics_round${ROUND_NUM}_frst_strtg_AEs_recon.json"

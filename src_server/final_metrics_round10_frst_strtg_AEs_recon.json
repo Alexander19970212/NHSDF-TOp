@@ -1,8 +1,0 @@
-{
-    "frst_AE_20smf": {
-        "val_reconstruction_loss": 0.0001923466334119439
-    },
-    "frst_AE_DeepSDF_20smf": {
-        "val_reconstruction_loss": 0.00017630400543566793
-    }
-}

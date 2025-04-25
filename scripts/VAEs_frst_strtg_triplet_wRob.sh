@@ -7,11 +7,7 @@ CONFIG_DIR="configs/NN_sdf_experiments/final_experiments/VAEs"
 MAX_EPOCHS=1  # Adjust as needed
 DATASET_PATH="shape_datasets"
 
-# ROUND_NUM=6
 
-# for ROUND_NUM in 6 8 9; do
-
-# for CONFIG_FILE in "$CONFIG_DIR"/*.yaml; do
 CONFIG_NAME="VAE_DeepSDF"
 # RUN_NAME="Bprec"
 RUN_NAME="20smf"

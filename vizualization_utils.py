@@ -639,7 +639,7 @@ def plot_latent_space_radius_sum(model, dataloader, latent_dim=3, num_samples=40
 
     plt.show()
 
-def plot_predicted_sdf(model, test_loader, num_samples=5, dataset_type='tripple',
+def plot_predicted_sdf(model, batch, num_samples=5, dataset_type='tripple',
                        reconstruct_geometry=False):
     """Plot predicted SDF values for sample inputs"""
     model.eval()
@@ -647,7 +647,8 @@ def plot_predicted_sdf(model, test_loader, num_samples=5, dataset_type='tripple'
     
     with torch.no_grad():
         # Get sample batch
-        batch = next(iter(test_loader))
+        # batch = next(iter(test_loader))
+        # batch = test_loader[0]
         inputs = batch[0][:8]  # Take first 8 samples
         # inputs = inputs[:, :test_loader.dataset.feature_dim]
         # print(inputs.shape)
@@ -764,12 +765,142 @@ def plot_predicted_sdf(model, test_loader, num_samples=5, dataset_type='tripple'
     plt.tight_layout()
     plt.show()
 
-# def plot_curve(grid_points, sdf_pred, ax):
+def plot_predicted_sdf_single(model, batch, idx, dataset_type='tripple',
+                       reconstruct_geometry=False, filename=None):
+    """Plot predicted SDF values for sample inputs"""
+    model.eval()
+    plt.figure(figsize=(15, 5))
+    
+    with torch.no_grad():
+        # Get sample batch
+        # batch = next(iter(test_loader))
+        # batch = test_loader[0]
+        inputs = batch[0]  # Take first 8 samples
+        # inputs = inputs[:, :test_loader.dataset.feature_dim]
+        # print(inputs.shape)
 
-#     curve_mask = torch.logical_and(sdf_pred[:, 0] > 0.4, sdf_pred[:, 0] < 0.6)
-#     curve_mask_reshaped = curve_mask.reshape(100, 100)[15:85, 15:85]
-#     ax.imshow(curve_mask_reshaped, cmap='gray_r', origin='lower')
-#     return ax
+        output = model(inputs, reconstruction=True)
+        z = output["z"]
+        x_reconstructed = output["x_reconstructed"]
+        x_original = inputs[:, 2:]
+
+        x = np.linspace(-1.1, 1.1, 100)
+        y = np.linspace(-1.1, 1.1, 100)
+        X, Y = np.meshgrid(x, y)
+        grid_points = torch.tensor(np.stack([X.flatten(), Y.flatten()], axis=1), dtype=torch.float32)
+
+        # fig, axs = plt.subplots(1, 1, figsize=(10, 10))
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        # fig.suptitle('Predicted SDF Values for 8 Samples')
+
+        # for i in range(8):
+        #     row = i // 4
+        #     col = i % 4
+
+        sdf_pred = model.sdf(z[idx], grid_points)
+
+        if reconstruct_geometry:
+            geometry_type, geometry_params = extract_geometry(x_reconstructed[i].detach().cpu().numpy(), dataset_type)
+            # extract_geometry(x_original[i].detach().cpu().numpy(), axs[row, col])
+
+            if geometry_type == "ellipse":
+                a = geometry_params[1]
+                b = geometry_params[2]
+                ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='black')
+                ax.add_patch(ellipse)
+
+            elif geometry_type == "polygon":
+                vertices = geometry_params[0]
+                radiuses = geometry_params[1]
+                line_segments = geometry_params[2]
+                arc_segments = geometry_params[3]
+                # axs[row, col].add_patch(Polygon(vertices, fill=False, color='red', linewidth=4))
+                for start, end in line_segments:
+                    ax.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=2)
+                    # ax2.plot([start[0], end[0]], [start[1], end[1]], [z_offset, z_offset], 'g-', linewidth=line_width)
+
+                # Plot arc segments
+                for center, start_angle, end_angle, radius in arc_segments:
+                    # Calculate angles for arc
+                    
+                    # Ensure we draw the shorter arc
+                    if abs(end_angle - start_angle) > np.pi:
+                        if end_angle > start_angle:
+                            start_angle += 2*np.pi
+                        else:
+                            end_angle += 2*np.pi
+                            
+                    # Create points along arc
+                    theta = np.linspace(start_angle, end_angle, 100)
+                    x = center[0] + radius * np.cos(theta)
+                    y = center[1] + radius * np.sin(theta)
+                    ax.plot(x, y, 'b-', linewidth=2)
+
+        # geometry_type, geometry_params = extract_geometry(x_reconstructed[i].detach().cpu().numpy(), axs[row, col])
+        geometry_type, geometry_params = extract_geometry(x_original[idx].detach().cpu().numpy(), dataset_type)
+
+        if geometry_type == "ellipse":
+            a = geometry_params[1]
+            b = geometry_params[2]
+            ellipse = Ellipse(np.array([0, 0]), 2*a, 2*b, fill=False, color='black')
+            ax.add_patch(ellipse)
+
+        elif geometry_type == "polygon":
+            vertices = geometry_params[0]
+            radiuses = geometry_params[1]
+            line_segments = geometry_params[2]
+            arc_segments = geometry_params[3]
+            # axs[row, col].add_patch(Polygon(vertices, fill=False, color='green', linewidth=4))
+            # Plot line segments
+            for start, end in line_segments:
+                ax.plot([start[0], end[0]], [start[1], end[1]], 'g-', linewidth=4)
+                # ax2.plot([start[0], end[0]], [start[1], end[1]], [z_offset, z_offset], 'g-', linewidth=line_width)
+
+            # Plot arc segments
+            for center, start_angle, end_angle, radius in arc_segments:
+                # Calculate angles for arc
+                
+                # Ensure we draw the shorter arc
+                if abs(end_angle - start_angle) > np.pi:
+                    if end_angle > start_angle:
+                        start_angle += 2*np.pi
+                    else:
+                        end_angle += 2*np.pi
+                        
+                # Create points along arc
+                theta = np.linspace(start_angle, end_angle, 100)
+                x = center[0] + radius * np.cos(theta)
+                y = center[1] + radius * np.sin(theta)
+                ax.plot(x, y, 'r-', linewidth=4)
+
+        # Reshape predictions
+        sdf_grid = sdf_pred.reshape(X.shape)
+
+        # Create scatter plot
+        im = ax.imshow(sdf_grid.numpy(),
+                                    extent=[-1.1, 1.1, -1.1, 1.1],
+                                    cmap='plasma',
+                                    origin='lower')
+        ax.set_aspect('equal')
+        # ax.set_title(f'Sample {idx+1}')
+        # ax.set_xlabel('X')
+        # ax.set_ylabel('Y')
+
+        ax.set_frame_on(False)
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+        # Add colorbar
+        # fig.colorbar(scatter, ax=axs.ravel().tolist(), label='Predicted SDF')
+
+    plt.tight_layout()
+
+    if filename is not None:
+        plt.savefig(filename, format='pdf', dpi=300, bbox_inches='tight')
+        plt.savefig(filename.replace('.pdf', '.eps'), format='eps', dpi=300, bbox_inches='tight')
+
+    plt.show()
+
 
 def plot_curve(grid_points, sdf_pred, ax):
 

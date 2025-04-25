@@ -1,8 +1,0 @@
-{
-    "frst_MMD_VAE_20smf": {
-        "val_reconstruction_loss": 0.0001834282447816804
-    },
-    "frst_MMD_VAE_DeepSDF_20smf": {
-        "val_reconstruction_loss": 0.0002054972283076495
-    }
-}
